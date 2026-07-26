@@ -15,7 +15,7 @@ concurrency:
 jobs:
   translate:
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
@@ -26,7 +26,7 @@ jobs:
       - uses: actions/cache@v4
         with:
           path: ~/.cache/huggingface
-          key: m2m100-418m-v1
+          key: opus-mt-zh-ko-v1
 
       - name: Install dependencies
         run: |
@@ -41,15 +41,12 @@ jobs:
           from collections import defaultdict
           from pathlib import Path
           import json, re, torch
-          from transformers import M2M100ForConditionalGeneration, M2M100Tokenizer
+          from transformers import MarianMTModel, MarianTokenizer
 
           root = Path('.')
           cjk = re.compile(r'[\u3400-\u4dbf\u4e00-\u9fff]')
-          normal = re.compile(r'(?<!")"(?:\\.|[^"\\])*"')
-          triple = re.compile(r'""".*?"""', re.S)
-          token = re.compile(
-              r'https?://[^\s"<>]+|\$\{[^{}]*\}|\$[A-Za-z_][A-Za-z0-9_]*|'
-              r'`[^`]+`|%\d*\$?[a-zA-Z]|\\[nrt"\\]|'
+          protected_token = re.compile(
+              r'https?://[^\s"<>]+|`[^`]+`|%\d*\$?[a-zA-Z]|\\[nrt"\\]|'
               r'\b[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)+\b'
           )
           excluded = {
@@ -69,36 +66,125 @@ jobs:
                   or rel == 'app/src/main/kotlin/fuck/andes/config/Prefs.kt'
               )
 
+          def scan_strings(text):
+              n = len(text)
+              i = 0
+              while i < n:
+                  if text.startswith('"""', i):
+                      end = text.find('"""', i + 3)
+                      if end < 0:
+                          return
+                      yield i, end + 3, text[i + 3:end], True
+                      i = end + 3
+                      continue
+                  if text[i] != '"':
+                      i += 1
+                      continue
+                  start = i
+                  i += 1
+                  content_start = i
+                  depth = 0
+                  while i < n:
+                      char = text[i]
+                      if char == '\\':
+                          i += 2
+                      elif depth == 0 and text.startswith('${', i):
+                          depth = 1
+                          i += 2
+                      elif depth == 0 and char == '"':
+                          yield start, i + 1, text[content_start:i], False
+                          i += 1
+                          break
+                      elif depth > 0 and char in {'"', "'"}:
+                          quote = char
+                          i += 1
+                          while i < n:
+                              if text[i] == '\\':
+                                  i += 2
+                              elif text[i] == quote:
+                                  i += 1
+                                  break
+                              else:
+                                  i += 1
+                      elif depth > 0 and char == '{':
+                          depth += 1
+                          i += 1
+                      elif depth > 0 and char == '}':
+                          depth -= 1
+                          i += 1
+                      else:
+                          i += 1
+
+          def interpolation_tokens(raw):
+              values = []
+              i = 0
+              while i < len(raw):
+                  if raw.startswith('${', i):
+                      start = i
+                      depth = 1
+                      i += 2
+                      while i < len(raw) and depth:
+                          if raw[i] == '\\':
+                              i += 2
+                          elif raw[i] in {'"', "'"}:
+                              quote = raw[i]
+                              i += 1
+                              while i < len(raw):
+                                  if raw[i] == '\\':
+                                      i += 2
+                                  elif raw[i] == quote:
+                                      i += 1
+                                      break
+                                  else:
+                                      i += 1
+                          elif raw[i] == '{':
+                              depth += 1
+                              i += 1
+                          elif raw[i] == '}':
+                              depth -= 1
+                              i += 1
+                          else:
+                              i += 1
+                      values.append(raw[start:i])
+                  elif raw[i] == '$' and i + 1 < len(raw) and (raw[i + 1].isalpha() or raw[i + 1] == '_'):
+                      start = i
+                      i += 2
+                      while i < len(raw) and (raw[i].isalnum() or raw[i] == '_'):
+                          i += 1
+                      values.append(raw[start:i])
+                  else:
+                      i += 1
+              return values
+
           locations = defaultdict(list)
           for path in sorted(root.rglob('*.kt')):
               if not selected(path):
                   continue
               text = path.read_text('utf-8')
-              spans = [m.span() for m in triple.finditer(text)]
-              for match in normal.finditer(text):
-                  if any(a <= match.start() < b for a, b in spans):
-                      continue
-                  value = match.group(0)[1:-1]
-                  if cjk.search(value):
+              for start, _, value, is_triple in scan_strings(text):
+                  if not is_triple and cjk.search(value):
                       locations[value].append({
                           'path': path.as_posix(),
-                          'line': text.count('\n', 0, match.start()) + 1,
+                          'line': text.count('\n', 0, start) + 1,
                       })
 
-          originals = sorted(locations, key=lambda s: (len(s), s))
-          tokenizer = M2M100Tokenizer.from_pretrained('facebook/m2m100_418M')
-          model = M2M100ForConditionalGeneration.from_pretrained('facebook/m2m100_418M')
-          tokenizer.src_lang = 'zh'
+          originals = sorted(locations, key=lambda value: (len(value), value))
+          model_name = 'shun89/opus-mt-zh-ko'
+          tokenizer = MarianTokenizer.from_pretrained(model_name)
+          model = MarianMTModel.from_pretrained(model_name)
           model.eval()
           torch.set_num_threads(4)
 
           def protect(value):
               saved = {}
-              def repl(match):
+              def store(original):
                   key = f'ZXQPH{len(saved)}QXZ'
-                  saved[key] = match.group(0)
+                  saved[key] = original
                   return key
-              return token.sub(repl, value), saved
+              for original in interpolation_tokens(value):
+                  value = value.replace(original, store(original), 1)
+              value = protected_token.sub(lambda match: store(match.group(0)), value)
+              return value, saved
 
           def restore(value, saved):
               for key, original in saved.items():
@@ -106,22 +192,17 @@ jobs:
               return value.strip()
 
           result = []
-          batch_size = 32
+          batch_size = 64
           for start in range(0, len(originals), batch_size):
               batch = originals[start:start + batch_size]
               protected, saved = zip(*(protect(value) for value in batch))
-              encoded = tokenizer(
+              inputs = tokenizer(
                   list(protected), return_tensors='pt', padding=True,
                   truncation=True, max_length=256,
               )
               with torch.inference_mode():
-                  generated = model.generate(
-                      **encoded,
-                      forced_bos_token_id=tokenizer.get_lang_id('ko'),
-                      max_new_tokens=256,
-                      num_beams=1,
-                  )
-              translated = tokenizer.batch_decode(generated, skip_special_tokens=True)
+                  outputs = model.generate(**inputs, max_new_tokens=256, num_beams=1)
+              translated = tokenizer.batch_decode(outputs, skip_special_tokens=True)
               for original, korean, placeholders in zip(batch, translated, saved):
                   result.append({
                       'original': original,
