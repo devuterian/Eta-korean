@@ -47,7 +47,7 @@ class AgentModelClientLoopTest {
                 ),
                 reasoning = "需要两个结果",
             ),
-            assistant(content = "已完成", finishReason = "stop"),
+            assistant(content = "완료됨", finishReason = "stop"),
         )
         val executed = mutableListOf<String>()
 
@@ -377,7 +377,7 @@ class AgentModelClientLoopTest {
 
         AgentModelClient.complete(
             config = modelConfig(),
-            prompt = "点击",
+            prompt = "탭",
             toolExecutor = AgentModelClient.ToolExecutor {
                 executed = true
                 AgentModelClient.ToolResult("unexpected")

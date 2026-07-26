@@ -15,7 +15,7 @@ class AgentContinuationBuilderTest {
         )
         val request = AgentRuntimeWire.RunRequest(
             runId = "run-old",
-            prompt = "观察屏幕",
+            prompt = "화면 확인",
             config = modelConfig(),
             images = listOf(image),
             history = listOf(AgentModelClient.ConversationMessage(role = "user", content = "更早的问题")),

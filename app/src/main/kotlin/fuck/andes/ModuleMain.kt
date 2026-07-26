@@ -36,12 +36,12 @@ class ModuleMain : XposedModule() {
         val remotePreferences = try {
             getRemotePreferences(Prefs.GROUP)
         } catch (exception: Exception) {
-            logger.warn("RemotePreferences 不可用，将使用兼容默认值: ${exception.safeLogType()}")
+            logger.warn("RemotePreferences를 사용할 수 없습니다. 호환 기본값을 적용합니다: ${exception.safeLogType()}.")
             null
         }
         Prefs.attachRemote(remotePreferences)
         logger.debug {
-            "模块已加载 process=${param.processName}, framework=$frameworkName($frameworkVersionCode), api=$apiVersion"
+            "모듈이 로드되었습니다. process=${param.processName}, framework=$frameworkName($frameworkVersionCode), api=$apiVersion."
         }
     }
 

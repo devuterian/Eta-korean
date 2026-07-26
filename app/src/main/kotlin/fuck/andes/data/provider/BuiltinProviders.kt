@@ -7,7 +7,7 @@ import fuck.andes.data.model.ProviderSourceTypes
 
 internal object BuiltinProviders {
     const val DEFAULT_SYSTEM_PROMPT =
-        "你是运行在 Android 设备上的手机 Agent。回答要简洁、直接，并保留必要的操作上下文。"
+        "당신은 Android 기기에서 실행되는 모바일 에이전트입니다. 답변은 간결하고 직접적으로 작성하며, 필요한 작업 맥락을 유지하세요."
 
     const val OPENAI_ID = "builtin-openai"
     const val ANTHROPIC_ID = "builtin-anthropic"
@@ -41,7 +41,7 @@ internal object BuiltinProviders {
         ),
         OpenAiCompatibleProviderSetting(
             id = BAILIAN_ID,
-            name = "阿里百炼",
+            name = "알리 백련",
             baseUrl = "https://dashscope.aliyuncs.com/compatible-mode/v1",
             sourceType = ProviderSourceTypes.BAILIAN,
             isBuiltIn = true,
@@ -95,7 +95,7 @@ internal object BuiltinProviders {
         ),
         OpenAiCompatibleProviderSetting(
             id = SILICONFLOW_ID,
-            name = "硅基流动",
+            name = "실리콘 플로우",
             baseUrl = "https://api.siliconflow.cn/v1",
             sourceType = ProviderSourceTypes.SILICONFLOW,
             isBuiltIn = true,

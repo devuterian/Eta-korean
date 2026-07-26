@@ -67,7 +67,7 @@ internal object RemoteModelFetcher {
             )
             .get()
             .build()
-        return OfficialModelCatalog.enrich(provider, executeJson(request, "拉取模型失败").let(::parseOpenAiModels))
+        return OfficialModelCatalog.enrich(provider, executeJson(request, "모델 가져오기 실패").let(::parseOpenAiModels))
     }
 
     private fun fetchAnthropic(provider: AnthropicProviderSetting): List<Model> {
@@ -87,7 +87,7 @@ internal object RemoteModelFetcher {
             )
             .get()
             .build()
-        return OfficialModelCatalog.enrich(provider, executeJson(request, "拉取 Anthropic 模型失败").let(::parseAnthropicModels))
+        return OfficialModelCatalog.enrich(provider, executeJson(request, "Anthropic 모델 가져오기 실패").let(::parseAnthropicModels))
     }
 
     private fun executeJson(request: Request, errorPrefix: String): String =

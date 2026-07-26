@@ -10,8 +10,8 @@ internal class LogThrottle(
     private val lastAcceptedAt = ConcurrentHashMap<String, Long>()
 
     fun shouldLog(key: String, windowMs: Long): Boolean {
-        require(key.isNotBlank()) { "日志节流 key 不能为空" }
-        require(windowMs >= 0L) { "日志节流窗口不能为负数" }
+        require(key.isNotBlank()) { "로그 스로틀 키는 비워둘 수 없습니다." }
+        require(windowMs >= 0L) { "로그 스로틀 윈도우는 음수일 수 없습니다." }
 
         val now = uptimeMillis()
         var accepted = false

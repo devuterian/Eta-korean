@@ -16,21 +16,21 @@ internal class AgentToolCallValidator(tools: JSONArray) {
 
     fun validate(call: AgentModelClient.ToolCall): String? {
         val schema = parametersByName[call.name]
-            ?: return "工具未在本次运行的能力目录中声明"
+            ?: return "도구가 이번 실행의 기능 목록에 선언되어 있지 않습니다."
         val arguments = runCatching { JSONObject(call.argumentsJson.ifBlank { "{}" }) }
-            .getOrElse { return "参数不是有效的 JSON object" }
+            .getOrElse { return "파라미터가 유효한 JSON 객체가 아닙니다." }
         return validateValue(arguments, schema, path = "arguments")
     }
 
     private fun validateValue(value: Any?, schema: JSONObject, path: String): String? {
         val type = schema.optString("type")
         if (type.isNotBlank() && !matchesType(value, type)) {
-            return "$path 类型应为 $type"
+            return "$path의 타입은 $type이어야 합니다."
         }
 
         val enum = schema.optJSONArray("enum")
         if (enum != null && (0 until enum.length()).none { enum.opt(it) == value }) {
-            return "$path 不在允许值集合中"
+            return "$path가 허용된 값 집합에 없습니다."
         }
 
         return when (value) {
@@ -47,7 +47,7 @@ internal class AgentToolCallValidator(tools: JSONArray) {
         if (required != null) {
             for (index in 0 until required.length()) {
                 val key = required.optString(index)
-                if (!value.has(key) || value.isNull(key)) return "$path 缺少必填字段 $key"
+                if (!value.has(key) || value.isNull(key)) return "$path에 필수 필드 $key가 없습니다."
             }
         }
 
@@ -63,9 +63,9 @@ internal class AgentToolCallValidator(tools: JSONArray) {
 
     private fun validateArray(value: JSONArray, schema: JSONObject, path: String): String? {
         val minItems = schema.optInt("minItems", -1)
-        if (minItems >= 0 && value.length() < minItems) return "$path 项目数不能少于 $minItems"
+        if (minItems >= 0 && value.length() < minItems) return "$path의 항목 수가 $minItems보다 적을 수 없습니다."
         val maxItems = schema.optInt("maxItems", -1)
-        if (maxItems >= 0 && value.length() > maxItems) return "$path 项目数不能超过 $maxItems"
+        if (maxItems >= 0 && value.length() > maxItems) return "$path의 항목 수가 $maxItems를 초과할 수 없습니다."
         val itemSchema = schema.optJSONObject("items") ?: return null
         for (index in 0 until value.length()) {
             validateValue(value.opt(index), itemSchema, "$path[$index]")?.let { return it }
@@ -75,19 +75,19 @@ internal class AgentToolCallValidator(tools: JSONArray) {
 
     private fun validateString(value: String, schema: JSONObject, path: String): String? {
         val minLength = schema.optInt("minLength", -1)
-        if (minLength >= 0 && value.length < minLength) return "$path 长度不能少于 $minLength"
+        if (minLength >= 0 && value.length < minLength) return "$path의 길이가 $minLength보다 짧을 수 없습니다."
         val maxLength = schema.optInt("maxLength", -1)
-        if (maxLength >= 0 && value.length > maxLength) return "$path 长度不能超过 $maxLength"
+        if (maxLength >= 0 && value.length > maxLength) return "$path의 길이가 $maxLength를 초과할 수 없습니다."
         return null
     }
 
     private fun validateNumber(value: Number, schema: JSONObject, path: String): String? {
         val number = value.toDouble()
         if (schema.has("minimum") && number < schema.optDouble("minimum")) {
-            return "$path 不能小于 ${schema.opt("minimum")}"
+            return "$path는 ${schema.opt("minimum")}보다 작을 수 없습니다."
         }
         if (schema.has("maximum") && number > schema.optDouble("maximum")) {
-            return "$path 不能大于 ${schema.opt("maximum")}"
+            return "$path는 ${schema.opt("maximum")}보다 클 수 없습니다."
         }
         return null
     }

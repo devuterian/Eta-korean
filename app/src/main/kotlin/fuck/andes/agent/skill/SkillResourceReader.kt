@@ -34,7 +34,7 @@ class SkillResourceReader internal constructor(
         val skillRoot = validateSkillRoot(entry)
             ?: return failure(
                 SkillResourceErrorCode.INVALID_SKILL_ROOT,
-                "Skill 根目录不在应用私有 Skills 目录内",
+                "스킬 루트 디렉터리가 앱의 개인 스킬 디렉터리 내에 있지 않습니다.",
             )
         val start = if (relativeDirectory.isNullOrBlank() || relativeDirectory == ".") {
             skillRoot
@@ -42,22 +42,22 @@ class SkillResourceReader internal constructor(
             val segments = validateResourcePath(relativeDirectory)
                 ?: return failure(
                     SkillResourceErrorCode.INVALID_RELATIVE_PATH,
-                    "资源目录必须是 Skill 内的安全相对路径",
+                    "리소스 디렉터리는 스킬 내의 안전한 상대 경로여야 합니다.",
                 )
             if (hasSymbolicLinkComponent(skillRoot, segments)) {
                 return failure(
                     SkillResourceErrorCode.INVALID_RELATIVE_PATH,
-                    "Skill 资源路径包含不允许的符号链接",
+                    "스킬 리소스 경로에 허용되지 않는 심볼릭 링크가 포함되어 있습니다.",
                 )
             }
             resolveInside(skillRoot, segments)
                 ?: return failure(
                     SkillResourceErrorCode.INVALID_RELATIVE_PATH,
-                    "资源目录超出 Skill 根目录",
+                    "리소스 디렉터리가 스킬 루트 디렉터리를 벗어났습니다.",
                 )
         }
         if (!start.isDirectory || Files.isSymbolicLink(start.toPath())) {
-            return failure(SkillResourceErrorCode.RESOURCE_NOT_FOUND, "资源目录不存在")
+            return failure(SkillResourceErrorCode.RESOURCE_NOT_FOUND, "리소스 디렉터리가 존재하지 않습니다.")
         }
 
         val resources = mutableListOf<SkillResourceInfo>()
@@ -66,12 +66,12 @@ class SkillResourceReader internal constructor(
         while (pending.isNotEmpty()) {
             val directory = pending.removeFirst()
             val children = directory.listFiles()?.sortedBy { it.name }
-                ?: return failure(SkillResourceErrorCode.IO_ERROR, "无法读取 Skill 资源目录")
+                ?: return failure(SkillResourceErrorCode.IO_ERROR, "스킬 리소스 디렉터리를 읽을 수 없습니다.")
             for (child in children) {
                 if (Files.isSymbolicLink(child.toPath())) {
                     return failure(
                         SkillResourceErrorCode.INVALID_RELATIVE_PATH,
-                        "Skill 资源中包含不允许的符号链接",
+                        "스킬 리소스에 허용되지 않는 심볼릭 링크가 포함되어 있습니다.",
                     )
                 }
                 val relative = child.relativeTo(skillRoot).invariantSeparatorsPath
@@ -79,7 +79,7 @@ class SkillResourceReader internal constructor(
                 if (depth > limits.maxPathDepth) {
                     return failure(
                         SkillResourceErrorCode.INVALID_RELATIVE_PATH,
-                        "Skill 资源路径层级超过 ${limits.maxPathDepth} 层",
+                        "스킬 리소스 경로의 깊이가 ${limits.maxPathDepth} 단계를 초과했습니다.",
                     )
                 }
                 when {
@@ -89,7 +89,7 @@ class SkillResourceReader internal constructor(
                         if (resources.size > limits.maxResources) {
                             return failure(
                                 SkillResourceErrorCode.TOO_MANY_RESOURCES,
-                                "Skill 资源数超过 ${limits.maxResources} 个",
+                                "스킬 리소스 개수가 ${limits.maxResources}개를 초과했습니다.",
                             )
                         }
                     }
@@ -113,40 +113,40 @@ class SkillResourceReader internal constructor(
         val skillRoot = validateSkillRoot(entry)
             ?: return readFailure(
                 SkillResourceErrorCode.INVALID_SKILL_ROOT,
-                "Skill 根目录不在应用私有 Skills 目录内",
+                "스킬 루트 디렉터리가 앱의 개인 스킬 디렉터리 내에 있지 않습니다.",
             )
         val segments = validateResourcePath(relativePath)
             ?: return readFailure(
                 SkillResourceErrorCode.INVALID_RELATIVE_PATH,
-                "资源路径必须是 Skill 内的安全相对路径",
+                "리소스 경로는 스킬 내의 안전한 상대 경로여야 합니다.",
             )
         val target = resolveInside(skillRoot, segments)
             ?: return readFailure(
                 SkillResourceErrorCode.INVALID_RELATIVE_PATH,
-                "资源路径超出 Skill 根目录",
+                "리소스 경로가 스킬 루트 디렉터리를 벗어났습니다.",
             )
         if (!target.isFile || Files.isSymbolicLink(target.toPath())) {
-            return readFailure(SkillResourceErrorCode.RESOURCE_NOT_FOUND, "Skill 资源不存在")
+            return readFailure(SkillResourceErrorCode.RESOURCE_NOT_FOUND, "스킬 리소스가 존재하지 않습니다.")
         }
         if (hasSymbolicLinkComponent(skillRoot, segments)) {
             return readFailure(
                 SkillResourceErrorCode.INVALID_RELATIVE_PATH,
-                "Skill 资源路径包含不允许的符号链接",
+                "스킬 리소스 경로에 허용되지 않는 심볼릭 링크가 포함되어 있습니다.",
             )
         }
         if (target.length() > limits.maxTextBytes) {
             return readFailure(
                 SkillResourceErrorCode.RESOURCE_TOO_LARGE,
-                "Skill 文本资源超过 ${limits.maxTextBytes} 字节限制",
+                "스킬 텍스트 리소스가 ${limits.maxTextBytes}바이트 제한을 초과했습니다.",
             )
         }
         val text = try {
             readStrictUtf8(target, limits.maxTextBytes)
         } catch (_: Exception) {
-            return readFailure(SkillResourceErrorCode.IO_ERROR, "读取 Skill 资源失败")
+            return readFailure(SkillResourceErrorCode.IO_ERROR, "스킬 리소스 읽기에 실패했습니다.")
         } ?: return readFailure(
             SkillResourceErrorCode.BINARY_RESOURCE,
-            "该资源不是可安全读取的 UTF-8 文本",
+            "이 리소스는 안전하게 읽을 수 있는 UTF-8 텍스트가 아닙니다.",
         )
         return SkillResourceReadResult.Success(
             relativePath = segments.joinToString("/"),

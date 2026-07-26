@@ -111,7 +111,7 @@ internal object AgentTerminalToolCatalog {
             .put(
                 AgentToolSchema.function(
                     name = "run_command",
-                    description = "在 Android 设备上用非交互 Root Shell 执行命令。适合系统信息、包管理、文件检查、Linux 命令流水线。每次调用都是新 shell；不要运行交互式或长期驻留命令。",
+                    description = "Android 기기에서 비대화식 Root Shell로 명령을 실행합니다. 시스템 정보, 패키지 관리, 파일 검사, Linux 명령 파이프라인에 적합합니다. 호출마다 새로운 shell이 생성됩니다. 대화식 또는 장기 실행 명령은 사용하지 마세요.",
                     parameters = JSONObject()
                         .put("type", "object")
                         .put(
@@ -121,19 +121,19 @@ internal object AgentTerminalToolCatalog {
                                     "command",
                                     JSONObject()
                                         .put("type", "string")
-                                        .put("description", "要执行的 shell 命令，可使用管道和重定向。")
+                                        .put("description", "실행할 shell 명령을 입력하세요. 파이프와 리디렉션 사용 가능.")
                                 )
                                 .put(
                                     "cwd",
                                     JSONObject()
                                         .put("type", "string")
-                                        .put("description", "工作目录，默认 /data/local/tmp/fuck_andes。相对路径也按该目录解析；用户存储可用 ~/ 表示 /storage/emulated/0。")
+                                        .put("description", "작업 디렉터리입니다. 기본값은 /data/local/tmp/fuck_andes입니다. 상대 경로도 해당 디렉터리 기준으로 해석됩니다. 사용자 저장소는 ~/로 /storage/emulated/0을 나타냅니다.")
                                 )
                                 .put(
                                     "timeout_seconds",
                                     JSONObject()
                                         .put("type", "integer")
-                                        .put("description", "超时秒数，1 到 180，默认 30。")
+                                        .put("description", "타임아웃(초): 1~180, 기본값 30초.")
                                 )
                         )
                         .put("required", JSONArray().put("command"))
@@ -142,7 +142,7 @@ internal object AgentTerminalToolCatalog {
             .put(
                 AgentToolSchema.function(
                     name = "read_file",
-                    description = "读取 Android 文件内容。适合读取配置、日志、小文本文件；大文件用 offset_bytes/max_bytes 分段读取。",
+                    description = "Android 파일 내용을 읽습니다. 설정, 로그, 작은 텍스트 파일에 적합합니다. 큰 파일은 offset_bytes와 max_bytes로 분할해서 읽으세요.",
                     parameters = JSONObject()
                         .put("type", "object")
                         .put(
@@ -153,13 +153,13 @@ internal object AgentTerminalToolCatalog {
                                     "offset_bytes",
                                     JSONObject()
                                         .put("type", "integer")
-                                        .put("description", "从第几个字节开始，默认 0。")
+                                        .put("description", "시작 바이트 위치입니다. 기본값은 0입니다.")
                                 )
                                 .put(
                                     "max_bytes",
                                     JSONObject()
                                         .put("type", "integer")
-                                        .put("description", "最多读取字节数，1 到 262144，默认 65536。")
+                                        .put("description", "최대 읽기 바이트 수: 1~262144, 기본값 65536.")
                                 )
                         )
                         .put("required", JSONArray().put("path"))
@@ -168,7 +168,7 @@ internal object AgentTerminalToolCatalog {
             .put(
                 AgentToolSchema.function(
                     name = "write_file",
-                    description = "写入 Android 文件。可覆盖或追加；会自动创建父目录。用于明确需要修改文件的任务。",
+                    description = "Android 파일에 쓰기 작업을 합니다. 덮어쓰기 또는 추가 가능하며, 상위 디렉터리가 자동 생성됩니다. 파일 수정이 필요한 작업에 사용하세요.",
                     parameters = JSONObject()
                         .put("type", "object")
                         .put(
@@ -180,7 +180,7 @@ internal object AgentTerminalToolCatalog {
                                     "append",
                                     JSONObject()
                                         .put("type", "boolean")
-                                        .put("description", "true 追加，false 覆盖，默认 false。")
+                                        .put("description", "true: 추가, false: 덮어쓰기, 기본값은 false입니다.")
                                 )
                         )
                         .put("required", JSONArray().put("path").put("content"))
@@ -189,7 +189,7 @@ internal object AgentTerminalToolCatalog {
             .put(
                 AgentToolSchema.function(
                     name = "list_directory",
-                    description = "列出 Android 目录内容。默认 /data/local/tmp/fuck_andes，输出类似 ls -l。",
+                    description = "Android 디렉터리 내용을 나열합니다. 기본값은 /data/local/tmp/fuck_andes이며, ls -l과 유사하게 출력됩니다.",
                     parameters = JSONObject()
                         .put("type", "object")
                         .put(
@@ -201,7 +201,7 @@ internal object AgentTerminalToolCatalog {
                                     "limit",
                                     JSONObject()
                                         .put("type", "integer")
-                                        .put("description", "最多返回 1 到 200 行，默认 80。")
+                                        .put("description", "최대 반환 행 수: 1~200, 기본값 80.")
                                 )
                         )
                 )

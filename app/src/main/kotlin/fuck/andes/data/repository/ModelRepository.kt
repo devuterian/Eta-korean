@@ -34,13 +34,13 @@ internal object ModelRepository {
         val models = currentModels(providerId)
         val modelId = draft.modelId.trim()
         val displayName = draft.displayName.trim()
-        require(modelId.isNotEmpty()) { "Model ID 不能为空" }
-        require(displayName.isNotEmpty()) { "展示名称不能为空" }
+        require(modelId.isNotEmpty()) { "Model ID는 비워둘 수 없습니다." }
+        require(displayName.isNotEmpty()) { "표시 이름은 비워둘 수 없습니다." }
         require(
             models.none { existing ->
                 existing.id != draft.id && existing.modelId.trim().equals(modelId, ignoreCase = true)
             }
-        ) { "Model ID 已存在" }
+        ) { "Model ID가 이미 존재합니다." }
 
         val existing = models.firstOrNull { it.id == draft.id }
         val saved = if (existing == null) {
@@ -170,7 +170,7 @@ internal object ModelRepository {
     fun newId(): String = UUID.randomUUID().toString()
 
     private suspend fun currentModels(providerId: String): List<Model> =
-        requireNotNull(ProviderRepository.providerById(providerId)) { "Provider 不存在" }
+        requireNotNull(ProviderRepository.providerById(providerId)) { "제공자가 존재하지 않습니다." }
             .models
             .sortedBy { it.sortOrder }
 

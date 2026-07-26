@@ -31,40 +31,40 @@ internal object BrowserUrlPolicy {
 
     fun inspect(rawUrl: String): Decision {
         val input = rawUrl.trim()
-        if (input.isEmpty()) return denied("EMPTY_URL", "网址不能为空")
-        if (input.length > MAX_URL_CHARS) return denied("URL_TOO_LONG", "网址过长")
+        if (input.isEmpty()) return denied("EMPTY_URL", "URL을 입력하세요.")
+        if (input.length > MAX_URL_CHARS) return denied("URL_TOO_LONG", "URL이 너무 깁니다.")
         if (input.any { it.isISOControl() } || '\\' in input) {
-            return denied("INVALID_URL", "网址格式不安全")
+            return denied("INVALID_URL", "URL 형식이 안전하지 않습니다.")
         }
 
         val uri = runCatching { URI(input) }.getOrNull()
-            ?: return denied("INVALID_URL", "网址格式无效")
+            ?: return denied("INVALID_URL", "URL 형식이 올바르지 않습니다.")
         val scheme = uri.scheme?.lowercase(Locale.ROOT)
         if (scheme != "https") {
-            return denied("UNSUPPORTED_SCHEME", "Agent 浏览器仅允许 https 网址")
+            return denied("UNSUPPORTED_SCHEME", "에이전트 브라우저는 https URL만 허용합니다.")
         }
         if (uri.rawUserInfo != null || uri.rawAuthority?.contains('@') == true) {
-            return denied("URL_USERINFO_BLOCKED", "网址不能包含用户名或密码")
+            return denied("URL_USERINFO_BLOCKED", "URL에 사용자명이나 비밀번호를 포함할 수 없습니다.")
         }
 
         val authority = parseAuthority(uri.rawAuthority)
-            ?: return denied("INVALID_HOST", "网址缺少有效主机名")
+            ?: return denied("INVALID_HOST", "URL에 유효한 호스트명이 없습니다.")
         if (authority.port !in -1..65535 || authority.port == 0) {
-            return denied("INVALID_PORT", "网址端口无效")
+            return denied("INVALID_PORT", "URL 포트가 올바르지 않습니다.")
         }
 
         val normalizedHost = normalizeHost(authority.host)
-            ?: return denied("INVALID_HOST", "网址主机名无效")
+            ?: return denied("INVALID_HOST", "URL 호스트명이 올바르지 않습니다.")
         if (isLocalHostname(normalizedHost)) {
-            return denied("LOCAL_HOST_BLOCKED", "不允许访问本机或局域网主机")
+            return denied("LOCAL_HOST_BLOCKED", "로컬 또는 내부 네트워크 호스트 접근이 허용되지 않습니다.")
         }
 
         val literal = parseAddress(normalizedHost)
         if (literal != null && !isPublicAddressBytes(literal)) {
-            return denied("PRIVATE_ADDRESS_BLOCKED", "不允许访问本地、私有或保留地址")
+            return denied("PRIVATE_ADDRESS_BLOCKED", "로컬, 사설 또는 예약된 주소 접근이 허용되지 않습니다.")
         }
         if (literal == null && looksLikeNumericAddress(normalizedHost)) {
-            return denied("AMBIGUOUS_ADDRESS_BLOCKED", "不允许使用非标准数字地址")
+            return denied("AMBIGUOUS_ADDRESS_BLOCKED", "비표준 숫자 주소는 사용할 수 없습니다.")
         }
 
         val effectivePort = when {
@@ -81,7 +81,7 @@ internal object BrowserUrlPolicy {
             uri.rawFragment?.let { append('#').append(it) }
         }
         if (runCatching { URI(normalized) }.isFailure) {
-            return denied("INVALID_URL", "网址格式无效")
+            return denied("INVALID_URL", "URL 형식이 올바르지 않습니다.")
         }
         return Decision(
             allowed = true,
@@ -98,14 +98,14 @@ internal object BrowserUrlPolicy {
             return decision.copy(
                 allowed = false,
                 errorCode = "DNS_RESOLUTION_FAILED",
-                message = "无法解析该网址的主机名"
+                message = "URL의 호스트명을 해석할 수 없습니다."
             )
         }
         if (resolvedAddresses.any { !isPublicAddress(it) }) {
             return decision.copy(
                 allowed = false,
                 errorCode = "PRIVATE_ADDRESS_BLOCKED",
-                message = "网址解析到了本地、私有或保留地址"
+                message = "URL이 로컬, 사설 또는 예약된 주소로 해석되었습니다."
             )
         }
         return decision
@@ -117,10 +117,10 @@ internal object BrowserUrlPolicy {
     }
 
     fun redactForDisplay(rawUrl: String): String {
-        val uri = runCatching { URI(rawUrl) }.getOrNull() ?: return "无效网址"
-        val rawAuthority = uri.rawAuthority ?: return "无效网址"
-        val authority = parseAuthority(rawAuthority) ?: return "无效网址"
-        val host = normalizeHost(authority.host) ?: return "无效网址"
+        val uri = runCatching { URI(rawUrl) }.getOrNull() ?: return "유효하지 않은 URL입니다."
+        val rawAuthority = uri.rawAuthority ?: return "유효하지 않은 URL입니다."
+        val authority = parseAuthority(rawAuthority) ?: return "유효하지 않은 URL입니다."
+        val host = normalizeHost(authority.host) ?: return "유효하지 않은 URL입니다."
         val hostForDisplay = if (':' in host) "[$host]" else host
         val scheme = uri.scheme?.lowercase(Locale.ROOT).orEmpty()
         val port = when {
@@ -185,8 +185,8 @@ internal object BrowserUrlPolicy {
             "verify you are human" in sample ||
             "are you a robot" in sample ||
             "unusual traffic" in sample ||
-            "人机验证" in sample ||
-            "安全验证" in sample
+            "로봇이 아님을 인증하세요." in sample ||
+            "보안 인증이 필요합니다." in sample
         ) {
             return "captcha"
         }

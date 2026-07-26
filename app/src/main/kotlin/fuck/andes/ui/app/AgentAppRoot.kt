@@ -403,7 +403,7 @@ fun AgentAppRoot() {
         var renameInput by remember(conversation.id) { mutableStateOf(conversation.title) }
         WindowDialog(
             show = true,
-            title = "重命名对话",
+            title = "대화 이름 변경",
             onDismissRequest = { conversationRenameTarget = null },
         ) {
             Column {
@@ -417,10 +417,10 @@ fun AgentAppRoot() {
                     modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
                     horizontalArrangement = Arrangement.End,
                 ) {
-                    TextButton(text = "取消", onClick = { conversationRenameTarget = null })
+                    TextButton(text = "취소", onClick = { conversationRenameTarget = null })
                     Spacer(modifier = Modifier.width(8.dp))
                     TextButton(
-                        text = "确定",
+                        text = "확인",
                         colors = ButtonDefaults.textButtonColorsPrimary(),
                         onClick = {
                             agentState.renameConversation(conversation.id, renameInput)
@@ -435,7 +435,7 @@ fun AgentAppRoot() {
     conversationDeleteTarget?.let { conversation ->
         WindowDialog(
             show = true,
-            title = "删除后，该对话将不可恢复",
+            title = "삭제한 대화는 복구할 수 없습니다.",
             onDismissRequest = { conversationDeleteTarget = null },
         ) {
             Column(
@@ -454,10 +454,10 @@ fun AgentAppRoot() {
                         contentColor = MiuixTheme.colorScheme.onError,
                     ),
                 ) {
-                    Text("删除该对话")
+                    Text("이 대화 삭제")
                 }
                 TextButton(
-                    text = "取消",
+                    text = "취소",
                     modifier = Modifier.fillMaxWidth(),
                     onClick = { conversationDeleteTarget = null },
                 )

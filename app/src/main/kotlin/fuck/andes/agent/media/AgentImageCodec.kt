@@ -16,8 +16,8 @@ internal object AgentImageCodec {
         source: String,
         mimeHint: String = "image/jpeg"
     ): AgentModelClient.ModelImage {
-        require(bytes.isNotEmpty()) { "图片内容为空" }
-        require(bytes.size <= MAX_AGENT_IMAGE_BYTES) { "图片数据过大：${bytes.size}" }
+        require(bytes.isNotEmpty()) { "이미지 내용이 비어 있습니다." }
+        require(bytes.size <= MAX_AGENT_IMAGE_BYTES) { "이미지 데이터가 너무 큽니다: ${bytes.size}" }
         // 全局发原图：直接 base64 原始 bytes，不 decode+re-encode（零损失），只读尺寸/mime
         val opts = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         BitmapFactory.decodeByteArray(bytes, 0, bytes.size, opts)
@@ -194,7 +194,7 @@ internal object AgentImageCodec {
         val length = context.contentResolver.openAssetFileDescriptor(uri, "r")?.use { descriptor ->
             descriptor.length
         } ?: -1L
-        require(length <= MAX_AGENT_IMAGE_BYTES || length < 0L) { "图片文件过大：$length" }
+        require(length <= MAX_AGENT_IMAGE_BYTES || length < 0L) { "이미지 파일이 너무 큽니다: $length" }
         val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         context.contentResolver.openInputStream(uri)?.use { input ->
             BitmapFactory.decodeStream(input, null, options)
@@ -219,7 +219,7 @@ internal object AgentImageCodec {
         source: String,
     ): AgentModelClient.ModelImage? = runCatching {
         val length = file.length()
-        require(file.isFile && length in 1..MAX_AGENT_IMAGE_BYTES.toLong()) { "图片文件不可读或过大" }
+        require(file.isFile && length in 1..MAX_AGENT_IMAGE_BYTES.toLong()) { "이미지 파일을 읽을 수 없거나 너무 큽니다." }
         val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         BitmapFactory.decodeFile(file.absolutePath, options)
         AgentModelClient.ModelImage(
@@ -233,7 +233,7 @@ internal object AgentImageCodec {
     }.getOrNull()
 
     private fun File.readBytesLimited(): ByteArray {
-        require(length() <= MAX_AGENT_IMAGE_BYTES.toLong()) { "图片文件过大：${length()}" }
+        require(length() <= MAX_AGENT_IMAGE_BYTES.toLong()) { "이미지 파일이 너무 큽니다: ${length()}" }
         return readBytes()
     }
 
@@ -245,7 +245,7 @@ internal object AgentImageCodec {
             val read = read(buffer)
             if (read < 0) break
             total += read
-            require(total <= MAX_AGENT_IMAGE_BYTES) { "图片数据过大：$total" }
+            require(total <= MAX_AGENT_IMAGE_BYTES) { "이미지 데이터가 너무 큽니다: $total" }
             output.write(buffer, 0, read)
         }
         return output.toByteArray()

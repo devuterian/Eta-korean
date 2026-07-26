@@ -56,12 +56,12 @@ internal object AgentRuntimeImageTransfer {
         images: List<AgentModelClient.ModelImage>,
     ): PreparedImages {
         if (images.size > MAX_IMAGE_COUNT) {
-            throw ImageTransferException("一次最多支持 $MAX_IMAGE_COUNT 张图片")
+            throw ImageTransferException("최대 $MAX_IMAGE_COUNT개의 이미지만 지원합니다")
         }
 
         val cacheDirectory = File(context.cacheDir, CACHE_DIRECTORY)
         if (!cacheDirectory.isDirectory && !cacheDirectory.mkdirs()) {
-            throw ImageTransferException("无法创建图片传输缓存")
+            throw ImageTransferException("이미지 전송 캐시 생성 실패")
         }
         cleanupStaleFiles(cacheDirectory)
 
@@ -72,7 +72,7 @@ internal object AgentRuntimeImageTransfer {
             images.forEach { image ->
                 if (image.reference.isRemoteUrl()) {
                     if (image.reference.length > MAX_REMOTE_URL_CHARS) {
-                        throw ImageTransferException("远程图片链接过长")
+                        throw ImageTransferException("원격 이미지 링크가 너무 깁니다")
                     }
                     wireImages += image.toWireImage(remoteUrl = image.reference)
                     return@forEach
@@ -82,7 +82,7 @@ internal object AgentRuntimeImageTransfer {
                 val directSize = directDescriptor?.statSize ?: -1L
                 if (directSize > MAX_IMAGE_BYTES) {
                     directDescriptor?.close()
-                    throw ImageTransferException("单张图片不能超过 ${MAX_IMAGE_BYTES / 1024 / 1024} MiB")
+                    throw ImageTransferException("단일 이미지는 ${MAX_IMAGE_BYTES / 1024 / 1024} MiB를 초과할 수 없습니다")
                 }
                 val descriptor: ParcelFileDescriptor
                 val imageBytes: Long
@@ -105,16 +105,16 @@ internal object AgentRuntimeImageTransfer {
                 }
                 if (imageBytes <= 0L) {
                     descriptor.close()
-                    throw ImageTransferException("图片内容为空")
+                    throw ImageTransferException("이미지 내용이 비어 있습니다.")
                 }
                 if (imageBytes > MAX_IMAGE_BYTES) {
                     descriptor.close()
-                    throw ImageTransferException("单张图片不能超过 ${MAX_IMAGE_BYTES / 1024 / 1024} MiB")
+                    throw ImageTransferException("단일 이미지는 ${MAX_IMAGE_BYTES / 1024 / 1024} MiB를 초과할 수 없습니다")
                 }
                 totalBytes += imageBytes
                 if (totalBytes > MAX_TOTAL_IMAGE_BYTES) {
                     descriptor.close()
-                    throw ImageTransferException("图片总大小不能超过 ${MAX_TOTAL_IMAGE_BYTES / 1024 / 1024} MiB")
+                    throw ImageTransferException("이미지 전체 크기는 ${MAX_TOTAL_IMAGE_BYTES / 1024 / 1024} MiB를 초과할 수 없습니다")
                 }
                 wireImages += image.toWireImage(
                     fileDescriptor = descriptor,
@@ -125,7 +125,7 @@ internal object AgentRuntimeImageTransfer {
         } catch (throwable: Throwable) {
             PreparedImages(wireImages, files).close()
             if (throwable is ImageTransferException) throw throwable
-            throw ImageTransferException("无法读取待发送图片", throwable)
+            throw ImageTransferException("전송할 이미지를 읽을 수 없습니다", throwable)
         }
     }
 
@@ -134,7 +134,7 @@ internal object AgentRuntimeImageTransfer {
         incoming: AgentRuntimeWire.IncomingRunRequest,
     ): AgentRuntimeWire.RunRequest = incoming.use { request ->
         if (request.images.size > MAX_IMAGE_COUNT) {
-            throw ImageTransferException("一次最多支持 $MAX_IMAGE_COUNT 张图片")
+            throw ImageTransferException("최대 $MAX_IMAGE_COUNT개의 이미지만 지원합니다")
         }
 
         var totalBytes = 0L
@@ -143,20 +143,20 @@ internal object AgentRuntimeImageTransfer {
                 val startedAt = SystemClock.elapsedRealtime()
                 val statSize = descriptor.statSize
                 if (statSize <= 0L) {
-                    throw ImageTransferException("图片文件描述符无有效大小")
+                    throw ImageTransferException("이미지 파일 디스크립터에 유효한 크기가 없습니다")
                 }
                 if (statSize > MAX_IMAGE_BYTES) {
-                    throw ImageTransferException("单张图片不能超过 ${MAX_IMAGE_BYTES / 1024 / 1024} MiB")
+                    throw ImageTransferException("단일 이미지는 ${MAX_IMAGE_BYTES / 1024 / 1024} MiB를 초과할 수 없습니다")
                 }
                 val bytes = ParcelFileDescriptor.AutoCloseInputStream(descriptor).use { input ->
                     input.readBytesLimited(MAX_IMAGE_BYTES)
                 }
                 if (bytes.size.toLong() != statSize) {
-                    throw ImageTransferException("图片传输不完整")
+                    throw ImageTransferException("이미지 전송이 완전하지 않습니다")
                 }
                 totalBytes += bytes.size
                 if (totalBytes > MAX_TOTAL_IMAGE_BYTES) {
-                    throw ImageTransferException("图片总大小不能超过 ${MAX_TOTAL_IMAGE_BYTES / 1024 / 1024} MiB")
+                    throw ImageTransferException("이미지 전체 크기는 ${MAX_TOTAL_IMAGE_BYTES / 1024 / 1024} MiB를 초과할 수 없습니다")
                 }
                 return@mapIndexed AgentImageCodec.fromAttachmentBytes(
                     bytes = bytes,
@@ -175,7 +175,7 @@ internal object AgentRuntimeImageTransfer {
             val reference = image.remoteUrl.orEmpty()
             if (reference.isRemoteUrl()) {
                 if (reference.length > MAX_REMOTE_URL_CHARS) {
-                    throw ImageTransferException("远程图片链接过长")
+                    throw ImageTransferException("원격 이미지 링크가 너무 깁니다")
                 }
                 return@mapIndexed AgentModelClient.ModelImage(
                     reference = reference,
@@ -187,13 +187,13 @@ internal object AgentRuntimeImageTransfer {
                 )
             }
             if (reference.length > MAX_ENCODED_IMAGE_CHARS) {
-                throw ImageTransferException("内联图片数据过大")
+                throw ImageTransferException("인라인 이미지 데이터가 너무 큽니다.")
             }
             AgentImageCodec.fromReference(
                 context = null,
                 value = reference,
                 source = image.source,
-            ) ?: throw ImageTransferException("无法读取旧协议中的图片")
+            ) ?: throw ImageTransferException("구버전 프로토콜의 이미지를 읽을 수 없습니다.")
         }
         request.request.copy(images = images)
     }
@@ -223,11 +223,11 @@ internal object AgentRuntimeImageTransfer {
 
             Uri.parse(reference).scheme in setOf("content", "file") ->
                 context.contentResolver.openInputStream(Uri.parse(reference))
-                    ?: throw ImageTransferException("无法打开本地图片")
+                    ?: throw ImageTransferException("로컬 이미지를 열 수 없습니다.")
 
             else -> {
                 val file = File(reference)
-                if (!file.isFile) throw ImageTransferException("图片引用不可读")
+                if (!file.isFile) throw ImageTransferException("이미지 참조를 읽을 수 없습니다.")
                 file.inputStream()
             }
         }
@@ -263,11 +263,11 @@ internal object AgentRuntimeImageTransfer {
     private fun String.openDataUrlStream(): InputStream {
         val separator = indexOf(',')
         if (separator <= 0 || !substring(0, separator).endsWith(";base64", ignoreCase = true)) {
-            throw ImageTransferException("不支持的内联图片格式")
+            throw ImageTransferException("지원하지 않는 인라인 이미지 형식입니다.")
         }
         val encoded = substring(separator + 1)
         if (encoded.length > MAX_ENCODED_IMAGE_CHARS) {
-            throw ImageTransferException("内联图片数据过大")
+            throw ImageTransferException("인라인 이미지 데이터가 너무 큽니다.")
         }
         return Base64InputStream(
             ByteArrayInputStream(encoded.toByteArray(Charsets.US_ASCII)),
@@ -286,7 +286,7 @@ internal object AgentRuntimeImageTransfer {
             if (read < 0) return
             total += read
             if (total > maxBytes) {
-                throw ImageTransferException("单张图片不能超过 ${maxBytes / 1024 / 1024} MiB")
+                throw ImageTransferException("단일 이미지는 ${maxBytes / 1024 / 1024} MiB를 초과할 수 없습니다.")
             }
             output.write(buffer, 0, read)
         }
@@ -301,7 +301,7 @@ internal object AgentRuntimeImageTransfer {
             if (read < 0) return output.toByteArray()
             total += read
             if (total > maxBytes) {
-                throw ImageTransferException("单张图片不能超过 ${maxBytes / 1024 / 1024} MiB")
+                throw ImageTransferException("단일 이미지는 ${maxBytes / 1024 / 1024} MiB를 초과할 수 없습니다.")
             }
             output.write(buffer, 0, read)
         }

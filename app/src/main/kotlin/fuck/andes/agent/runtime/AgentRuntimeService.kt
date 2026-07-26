@@ -137,12 +137,12 @@ internal class AgentRuntimeService : Service(), LifecycleOwner, SavedStateRegist
                     runId = pending.incoming.request.runId,
                     ok = false,
                     content = "",
-                    error = "Agent Runtime 服务已停止",
+                    error = "에이전트 런타임 서비스가 중지되었습니다.",
                 ),
             )
         }
         pendingStartRequest = null
-        activeSession?.cancel("Agent Runtime 服务已停止")
+        activeSession?.cancel("에이전트 런타임 서비스가 중지되었습니다.")
         activeSession = null
         mainHandler.removeCallbacksAndMessages(null)
         resultCardView?.let { view -> runCatching { windowManager?.removeView(view) } }
@@ -174,7 +174,7 @@ internal class AgentRuntimeService : Service(), LifecycleOwner, SavedStateRegist
                 AgentRuntimeWire.MSG_START_RUN -> {
                     val data = msg.data
                     if (data == null) {
-                        finishWithFailure("Agent Runtime 请求缺少消息体", msg.replyTo)
+                        finishWithFailure("에이전트 런타임 요청에 메시지 본문이 없습니다.", msg.replyTo)
                         return
                     }
                     val incoming = runCatching {
@@ -183,13 +183,13 @@ internal class AgentRuntimeService : Service(), LifecycleOwner, SavedStateRegist
                         AndroidAgentLogger.warnThrottled("runtime_invalid_start_request") {
                             "Agent runtime rejected invalid start request: type=${throwable.safeLogType()}"
                         }
-                        finishWithFailure("Agent Runtime 请求格式无效", msg.replyTo)
+                        finishWithFailure("에이전트 런타임 요청 형식이 올바르지 않습니다.", msg.replyTo)
                         return
                     }
                     val request = incoming.request
                     if (request.runId.isBlank() || (request.prompt.isBlank() && incoming.images.isEmpty())) {
                         incoming.close()
-                        finishWithFailure("Agent Runtime 请求缺少 runId 或用户输入", msg.replyTo)
+                        finishWithFailure("에이전트 런타임 요청에 runId 또는 사용자 입력이 없습니다.", msg.replyTo)
                         return
                     }
                     ingestRunRequest(incoming, msg.replyTo)
@@ -228,7 +228,7 @@ internal class AgentRuntimeService : Service(), LifecycleOwner, SavedStateRegist
                     runId = previous.incoming.request.runId,
                     ok = false,
                     content = "",
-                    error = "已被新的 Agent 任务替换",
+                    error = "새로운 에이전트 작업으로 대체되었습니다.",
                 ),
             )
         }
@@ -261,7 +261,7 @@ internal class AgentRuntimeService : Service(), LifecycleOwner, SavedStateRegist
                         finishWithFailure(
                             (throwable as? AgentRuntimeImageTransfer.ImageTransferException)
                                 ?.message
-                                ?: "Agent Runtime 无法读取图片",
+                                ?: "에이전트 런타임에서 이미지를 읽을 수 없습니다.",
                             replyTo,
                         )
                     },
@@ -274,7 +274,7 @@ internal class AgentRuntimeService : Service(), LifecycleOwner, SavedStateRegist
         request: AgentRuntimeWire.RunRequest,
         replyTo: Messenger? = null,
     ) {
-        activeSession?.cancel("已被新的 Agent 任务替换")
+        activeSession?.cancel("새로운 에이전트 작업으로 대체되었습니다.")
         val session = AgentRuntimeSession(
             runId = request.runId,
             eventSink = { event -> sendEventTo(replyTo, event) },
@@ -408,7 +408,7 @@ internal class AgentRuntimeService : Service(), LifecycleOwner, SavedStateRegist
                     enterFinalState(
                         state.value.copy(
                             phase = AgentOverlayPhase.FINISHED,
-                            statusText = "已返回结果",
+                            statusText = "결과가 반환되었습니다",
                             detailText = result.content.trim().ifBlank { state.value.detailText },
                         ),
                         keepVisible = entrySurfaceGuard?.wasTriggered == true,
@@ -417,7 +417,7 @@ internal class AgentRuntimeService : Service(), LifecycleOwner, SavedStateRegist
                     enterFinalState(
                         AgentOverlayState(
                             phase = AgentOverlayPhase.FAILED,
-                            statusText = if (result.error == "已停止") "已停止" else "调用失败",
+                            statusText = if (result.error == "중지됨") "중지됨" else "호출 실패",
                             detailText = result.error.orEmpty(),
                         ),
                         keepVisible = entrySurfaceGuard?.wasTriggered == true,
@@ -535,7 +535,7 @@ internal class AgentRuntimeService : Service(), LifecycleOwner, SavedStateRegist
         enterFinalState(
             AgentOverlayState(
                 phase = AgentOverlayPhase.FAILED,
-                statusText = "调用失败",
+                statusText = "호출 실패",
                 detailText = message
             )
         )
@@ -563,7 +563,7 @@ internal class AgentRuntimeService : Service(), LifecycleOwner, SavedStateRegist
                     runId = runId,
                     ok = false,
                     content = "",
-                    error = "已停止",
+                    error = "중지됨",
                 ),
             )
             return
@@ -573,8 +573,8 @@ internal class AgentRuntimeService : Service(), LifecycleOwner, SavedStateRegist
             AndroidAgentLogger.debug { "Agent runtime ignored stale cancel request" }
             return
         }
-        if (session.cancel("已停止")) {
-            state.value = state.value.copy(statusText = "正在停止")
+        if (session.cancel("중지됨")) {
+            state.value = state.value.copy(statusText = "중지 중입니다.")
         }
     }
 
@@ -582,7 +582,7 @@ internal class AgentRuntimeService : Service(), LifecycleOwner, SavedStateRegist
         activeSession?.controller?.pause()
         state.value = state.value.copy(
             phase = AgentOverlayPhase.PAUSED,
-            statusText = "已暂停",
+            statusText = "일시 중지됨",
         )
     }
 
@@ -590,7 +590,7 @@ internal class AgentRuntimeService : Service(), LifecycleOwner, SavedStateRegist
         activeSession?.controller?.resume()
         state.value = state.value.copy(
             phase = AgentOverlayPhase.RUNNING,
-            statusText = "继续执行",
+            statusText = "계속 실행",
         )
     }
 
@@ -605,7 +605,7 @@ internal class AgentRuntimeService : Service(), LifecycleOwner, SavedStateRegist
             if (event == null) {
                 if (!session.isTerminal) {
                     state.value = state.value.copy(
-                        statusText = "任务正在收尾，请在结果出现后继续补充",
+                        statusText = "작업이 마무리 중입니다. 결과가 나타난 후 추가 입력을 해주세요.",
                     )
                     return
                 }
@@ -620,7 +620,7 @@ internal class AgentRuntimeService : Service(), LifecycleOwner, SavedStateRegist
 
         val completed = lastCompletedRunContext ?: return
         if (completed.request.handoff?.source != AGENT_UI_HANDOFF_SOURCE) {
-            state.value = state.value.copy(statusText = "当前入口不支持继续补充")
+            state.value = state.value.copy(statusText = "현재 입구에서는 추가 입력을 지원하지 않습니다.")
             return
         }
         val continuationRequest = AgentContinuationBuilder.build(

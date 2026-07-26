@@ -41,13 +41,13 @@ fun PermissionHealthCard(
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = "权限健康",
+                    text = "권한 상태",
                     modifier = Modifier.weight(1f),
                     style = MiuixTheme.textStyles.headline1,
                     color = MiuixTheme.colorScheme.onSurfaceContainer,
                 )
                 Text(
-                    text = if (issueCount == 0) "正常" else "${issueCount} 项需关注",
+                    text = if (issueCount == 0) "정상" else "${issueCount}개 항목 확인 필요",
                     style = MiuixTheme.textStyles.body2,
                     color = if (issueCount == 0) {
                         MiuixTheme.colorScheme.onSurfaceVariantActions
@@ -115,8 +115,8 @@ private fun PermissionStatusIcon(status: PermissionStatusUi) {
 }
 
 private fun statusLabel(status: PermissionStatusUi): String = when (status) {
-    PermissionStatusUi.Available -> "正常"
-    PermissionStatusUi.Missing -> "缺失"
-    PermissionStatusUi.Warning -> "异常"
-    PermissionStatusUi.Disabled -> "未启用"
+    PermissionStatusUi.Available -> "정상"
+    PermissionStatusUi.Missing -> "누락"
+    PermissionStatusUi.Warning -> "오류"
+    PermissionStatusUi.Disabled -> "사용 안 함"
 }

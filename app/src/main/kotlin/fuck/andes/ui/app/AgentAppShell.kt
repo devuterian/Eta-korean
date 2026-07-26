@@ -113,14 +113,14 @@ private fun AgentTopBar(
                 IconButton(onClick = onOpenConversationPane) {
                     Icon(
                         painter = painterResource(LucideR.drawable.lucide_ic_menu),
-                        contentDescription = "会话历史",
+                        contentDescription = "대화 기록",
                     )
                 }
             } else {
                 IconButton(onClick = onBack) {
                     Icon(
                         painter = painterResource(LucideR.drawable.lucide_ic_chevron_left),
-                        contentDescription = "返回",
+                        contentDescription = "뒤로",
                     )
                 }
             }
@@ -130,7 +130,7 @@ private fun AgentTopBar(
                 IconButton(onClick = onNewConversation) {
                     Icon(
                         painter = painterResource(LucideR.drawable.lucide_ic_message_circle_plus),
-                        contentDescription = "新建对话",
+                        contentDescription = "새 대화",
                     )
                 }
             }
@@ -141,16 +141,16 @@ private fun AgentTopBar(
 @Composable
 private fun titleForRoute(route: AppRoute?): String = when (route) {
     is AppRoute.Home -> ""
-    is AppRoute.Chat -> "对话"
-    is AppRoute.Browser -> "Agent 浏览器"
-    is AppRoute.Tools -> "工具能力"
-    is AppRoute.Skills -> "技能"
-    is AppRoute.Permissions -> "权限健康"
-    is AppRoute.SystemEnhance -> "系统增强"
-    is AppRoute.Settings -> "设置"
-    is AppRoute.LinuxEnvironment -> "Linux 工具环境"
-    is AppRoute.ModelProviders -> "模型提供商"
-    is AppRoute.ModelProviderDetail -> route.providerId.let { "Provider 详情" }
-    is AppRoute.ModelProviderNew -> "新建提供商"
+    is AppRoute.Chat -> "대화"
+    is AppRoute.Browser -> "에이전트 브라우저"
+    is AppRoute.Tools -> "도구"
+    is AppRoute.Skills -> "스킬"
+    is AppRoute.Permissions -> "권한 상태"
+    is AppRoute.SystemEnhance -> "시스템 강화"
+    is AppRoute.Settings -> "설정"
+    is AppRoute.LinuxEnvironment -> "Linux 도구 환경"
+    is AppRoute.ModelProviders -> "모델 제공자"
+    is AppRoute.ModelProviderDetail -> route.providerId.let { "제공자 상세" }
+    is AppRoute.ModelProviderNew -> "새 제공자"
     null -> "Eta"
 }

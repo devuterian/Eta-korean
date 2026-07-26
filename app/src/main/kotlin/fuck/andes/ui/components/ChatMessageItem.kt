@@ -268,10 +268,10 @@ internal fun AgentWorkProcess(
             Spacer(modifier = Modifier.width(8.dp))
             Text(
                 text = when {
-                    running && toolCount > 0 -> "正在处理 · 第 $toolCount 步"
-                    running -> "正在分析任务"
-                    toolCount > 0 -> "已完成 $toolCount 个步骤"
-                    else -> "已完成分析"
+                    running && toolCount > 0 -> "처리 중 · $toolCount단계"
+                    running -> "작업 분석 중"
+                    toolCount > 0 -> "$toolCount단계 완료"
+                    else -> "분석 완료"
                 },
                 style = MiuixTheme.textStyles.body2,
                 color = if (running) {
@@ -286,7 +286,7 @@ internal fun AgentWorkProcess(
                     if (expanded) LucideR.drawable.lucide_ic_chevron_down
                     else LucideR.drawable.lucide_ic_chevron_right
                 ),
-                contentDescription = if (expanded) "收起工作过程" else "展开工作过程",
+                contentDescription = if (expanded) "작업 과정 접기" else "작업 과정 펼치기",
                 modifier = Modifier.size(14.dp),
                 tint = MiuixTheme.colorScheme.onSurfaceVariantSummary.copy(alpha = 0.7f),
             )
@@ -476,7 +476,7 @@ private fun AgentMessageBlock(
                             if (copied) LucideR.drawable.lucide_ic_check
                             else LucideR.drawable.lucide_ic_copy
                         ),
-                        contentDescription = if (copied) "已复制" else "复制回答",
+                        contentDescription = if (copied) "복사됨" else "답변 복사",
                         modifier = Modifier.size(15.dp),
                         tint = if (copied) {
                             MiuixTheme.colorScheme.primary
@@ -1030,7 +1030,7 @@ private fun ChatCodeBlock(
                         if (copied) LucideR.drawable.lucide_ic_check
                         else LucideR.drawable.lucide_ic_copy
                     ),
-                    contentDescription = if (copied) "已复制" else "复制代码",
+                    contentDescription = if (copied) "복사됨" else "코드 복사",
                     modifier = Modifier.size(13.dp),
                     tint = if (copied) {
                         MiuixTheme.colorScheme.primary
@@ -1330,9 +1330,9 @@ private fun ThinkingRow(
             Spacer(modifier = Modifier.width(8.dp))
             Text(
                 text = if (message.isStreaming) {
-                    "正在思考…"
+                    "생각 중…"
                 } else {
-                    "思考已完成${message.elapsedSeconds?.let { " · 用时 ${it} 秒" }.orEmpty()}"
+                    "생각 완료${message.elapsedSeconds?.let { " · ${it}초 소요" }.orEmpty()}"
                 },
                 style = MiuixTheme.textStyles.body2,
                 color = if (message.isStreaming) {
@@ -1347,7 +1347,7 @@ private fun ThinkingRow(
                     if (expanded) LucideR.drawable.lucide_ic_chevron_down
                     else LucideR.drawable.lucide_ic_chevron_right
                 ),
-                contentDescription = if (expanded) "收起思考过程" else "展开思考过程",
+                contentDescription = if (expanded) "생각 과정 접기" else "생각 과정 펼치기",
                 modifier = Modifier.size(14.dp),
                 tint = MiuixTheme.colorScheme.onSurfaceVariantSummary.copy(alpha = 0.7f),
             )
@@ -1479,7 +1479,7 @@ private fun ToolActivityInline(
             ) {
                 if (message.argumentsSummary.isNotBlank()) {
                     Text(
-                        text = "操作",
+                        text = "작업",
                         style = MiuixTheme.textStyles.footnote1,
                         color = MiuixTheme.colorScheme.primary,
                         modifier = Modifier.padding(bottom = 2.dp)
@@ -1493,7 +1493,7 @@ private fun ToolActivityInline(
                 }
                 if (message.resultSummary != null && message.resultSummary.isNotBlank()) {
                     Text(
-                        text = "结果",
+                        text = "결과",
                         style = MiuixTheme.textStyles.footnote1,
                         color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
                         modifier = Modifier.padding(bottom = 2.dp)
@@ -1512,7 +1512,7 @@ private fun ToolActivityInline(
                         horizontalArrangement = Arrangement.End,
                     ) {
                         TextButton(
-                            text = "打开当前浏览器",
+                            text = "현재 브라우저 열기",
                             onClick = onOpenBrowser,
                             colors = ButtonDefaults.textButtonColorsPrimary(),
                             minHeight = 36.dp,
@@ -1556,7 +1556,7 @@ private fun RunTraceRow(
         )
         Spacer(modifier = Modifier.width(8.dp))
         Text(
-            text = "可用能力",
+            text = "사용 가능한 기능",
             style = MiuixTheme.textStyles.body2,
             color = MiuixTheme.colorScheme.onSurface,
             modifier = Modifier.weight(1f),
@@ -1673,9 +1673,9 @@ private fun ToolActivityStatusUi.statusColor() = when (this) {
 }
 
 private fun ToolActivityStatusUi.statusLabel(): String = when (this) {
-    ToolActivityStatusUi.Running -> "执行中"
-    ToolActivityStatusUi.Success -> "已完成"
-    ToolActivityStatusUi.Failed -> "失败"
+    ToolActivityStatusUi.Running -> "실행 중"
+    ToolActivityStatusUi.Success -> "완료됨"
+    ToolActivityStatusUi.Failed -> "실패"
 }
 
 @Composable
@@ -1717,46 +1717,46 @@ private fun String.toToolIcon(): Int = when (this) {
 }
 
 private fun String.toToolLabel(): String = when (this) {
-    "observe_screen" -> "查看屏幕"
-    "tap_element" -> "点击元素"
-    "tap_area" -> "点击区域"
-    "long_press" -> "长按"
-    "swipe" -> "滑动"
-    "scroll" -> "滚动"
-    "input_text" -> "输入文字"
-    "replace_text" -> "替换文字"
-    "clear_text" -> "清空文字"
-    "paste_text" -> "粘贴文字"
-    "wait_for_text" -> "等待文本"
-    "wait_for_package" -> "等待应用"
-    "search_apps" -> "搜索应用"
-    "get_current_context" -> "时间与位置"
-    "launch_app" -> "打开应用"
-    "open_uri" -> "打开链接"
-    "browser_use" -> "浏览网页"
-    "press_key" -> "按键"
-    "open_system_panel" -> "系统面板"
-    "set_alarm" -> "设置闹钟"
-    "set_timer" -> "设置计时器"
-    "device_status" -> "设备状态"
-    "network_info" -> "网络状态"
-    "media_control" -> "媒体控制"
-    "set_volume" -> "设置音量"
-    "top_memory_apps" -> "内存排行"
-    "top_storage_apps" -> "存储排行"
-    "send_message" -> "发送微信消息"
-    "read_sms_code" -> "读取验证码"
-    "recent_notifications" -> "读取通知"
-    "wifi_credentials" -> "读取 Wi‑Fi 密码"
-    "get_setting" -> "读取系统设置"
-    "set_setting" -> "修改系统设置"
-    "set_device_state" -> "设备开关"
-    "app_state_control" -> "应用状态"
-    "get_logcat" -> "读取系统日志"
-    "terminal" -> "终端"
-    "run_command" -> "执行命令"
-    "read_file" -> "读取文件"
-    "write_file" -> "写入文件"
-    "list_directory" -> "列目录"
+    "observe_screen" -> "화면 보기"
+    "tap_element" -> "요소 탭"
+    "tap_area" -> "영역 탭"
+    "long_press" -> "길게 누르기"
+    "swipe" -> "스와이프"
+    "scroll" -> "스크롤"
+    "input_text" -> "텍스트 입력"
+    "replace_text" -> "텍스트 바꾸기"
+    "clear_text" -> "텍스트 지우기"
+    "paste_text" -> "텍스트 붙여넣기"
+    "wait_for_text" -> "텍스트 대기"
+    "wait_for_package" -> "앱 대기"
+    "search_apps" -> "앱 검색"
+    "get_current_context" -> "시간 및 위치"
+    "launch_app" -> "앱 열기"
+    "open_uri" -> "링크 열기"
+    "browser_use" -> "웹 탐색"
+    "press_key" -> "버튼"
+    "open_system_panel" -> "시스템 패널"
+    "set_alarm" -> "알람 설정"
+    "set_timer" -> "타이머 설정"
+    "device_status" -> "기기 상태"
+    "network_info" -> "네트워크 상태"
+    "media_control" -> "미디어 제어"
+    "set_volume" -> "음량 설정"
+    "top_memory_apps" -> "메모리 사용 순위"
+    "top_storage_apps" -> "저장공간 사용 순위"
+    "send_message" -> "WeChat 메시지 보내기"
+    "read_sms_code" -> "인증번호 읽기"
+    "recent_notifications" -> "알림 읽기"
+    "wifi_credentials" -> "Wi‑Fi 비밀번호 읽기"
+    "get_setting" -> "시스템 설정 읽기"
+    "set_setting" -> "시스템 설정 변경"
+    "set_device_state" -> "기기 스위치"
+    "app_state_control" -> "앱 상태"
+    "get_logcat" -> "시스템 로그 읽기"
+    "terminal" -> "터미널"
+    "run_command" -> "명령 실행"
+    "read_file" -> "파일 읽기"
+    "write_file" -> "파일 쓰기"
+    "list_directory" -> "디렉터리 목록"
     else -> this
 }

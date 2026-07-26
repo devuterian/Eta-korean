@@ -16,11 +16,11 @@ internal object AgentConversationCodec {
     private const val MAX_REASONING_CHARS = 64_000
     private const val MAX_TOOL_ARGUMENT_CHARS = 32_000
     private const val MAX_TOOL_CALLS_PER_MESSAGE = 64
-    private const val IMAGE_OMITTED_TEXT = "[图片观察已在当前回合使用，未写入持久会话]"
+    private const val IMAGE_OMITTED_TEXT = "[이미지 관찰은 현재 회차에서만 사용되며, 영구 세션에는 저장되지 않습니다.]"
     private const val SENSITIVE_TOOL_OMITTED_TEXT =
-        "[敏感工具参数与原始结果仅供当前回合使用，未写入持久会话]"
+        "[민감한 도구 파라미터와 원본 결과는 현재 회차에서만 사용되며, 영구 세션에는 저장되지 않습니다.]"
     private const val COMPACTION_NOTICE =
-        "[Eta 上下文提示：此前部分 assistant/tool 记录因跨进程或持久化容量上限已压缩，请勿假定缺失步骤未执行。]"
+        "[Eta 컨텍스트 안내: 이전 일부 assistant/tool 기록은 프로세스 간 또는 저장 용량 제한으로 압축되었습니다. 누락된 단계가 미실행된 것으로 가정하지 마세요.]"
 
     private val json = Json {
         ignoreUnknownKeys = true
@@ -108,7 +108,7 @@ internal object AgentConversationCodec {
         )
         images.forEach { image ->
             require(image.reference.isProviderImageReference()) {
-                "模型图片尚未在 Agent Runtime 中物化"
+                "모델 이미지가 에이전트 런타임에서 아직 생성되지 않았습니다."
             }
             content.put(
                 JSONObject()

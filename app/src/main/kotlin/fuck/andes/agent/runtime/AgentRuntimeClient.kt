@@ -43,12 +43,12 @@ internal class AgentRuntimeClient(
         )
 
         val lease = AgentRuntimeConnection.acquire(context, logger)
-            ?: return AgentRuntimeWire.RunResult("", false, "", "Agent Runtime 服务绑定失败")
+            ?: return AgentRuntimeWire.RunResult("", false, "", "에이전트 런타임 서비스 바인딩 실패")
         val serviceMessenger = lease.messenger
         val deathRecipient = IBinder.DeathRecipient {
             if (resultRef.get() == null) {
                 resultRef.set(
-                    AgentRuntimeWire.RunResult("", false, "", "Agent Runtime 服务连接已断开")
+                    AgentRuntimeWire.RunResult("", false, "", "에이전트 런타임 서비스 연결이 끊어졌습니다")
                 )
                 resultLatch.countDown()
             }
@@ -72,10 +72,10 @@ internal class AgentRuntimeClient(
                     runId = request.runId,
                     ok = false,
                     content = "",
-                    error = "Agent Runtime 执行超时",
+                    error = "에이전트 런타임 실행 시간 초과",
                 )
             }
-            return resultRef.get() ?: AgentRuntimeWire.RunResult("", false, "", "Agent Runtime 未返回结果")
+            return resultRef.get() ?: AgentRuntimeWire.RunResult("", false, "", "에이전트 런타임 결과 없음")
         } catch (interrupted: InterruptedException) {
             Thread.currentThread().interrupt()
             runCatching {
@@ -83,7 +83,7 @@ internal class AgentRuntimeClient(
                 cancelMessage.data = AgentRuntimeWire.ackBundle(request.runId)
                 serviceMessenger.send(cancelMessage)
             }
-            return AgentRuntimeWire.RunResult("", false, "", "Agent Runtime 等待被中断")
+            return AgentRuntimeWire.RunResult("", false, "", "에이전트 런타임 중단 대기 중")
         } catch (throwable: Throwable) {
             logger.warn("Agent runtime start request failed: type=${throwable.safeLogType()}")
             return AgentRuntimeWire.RunResult(
@@ -93,7 +93,7 @@ internal class AgentRuntimeClient(
                 error = when (throwable) {
                     is AgentRuntimeWire.PayloadTooLargeException -> throwable.message
                     is AgentRuntimeImageTransfer.ImageTransferException -> throwable.message
-                    else -> "Agent Runtime 请求发送失败（${throwable.safeLogType()}）"
+                    else -> "에이전트 런타임 요청 전송 실패(${throwable.safeLogType()})"
                 },
             )
         } finally {

@@ -134,13 +134,13 @@ internal object AgentModelClient {
     }
 
     private fun ModelConfig.validate() {
-        require(baseUrl.isNotBlank()) { "请先配置 API 地址" }
-        require(apiKey.isNotBlank()) { "请先配置 API Key" }
-        require(model.isNotBlank()) { "请先配置模型名" }
+        require(baseUrl.isNotBlank()) { "API 주소를 먼저 설정하세요." }
+        require(apiKey.isNotBlank()) { "API Key를 먼저 설정하세요." }
+        require(model.isNotBlank()) { "모델 이름을 먼저 설정하세요." }
         if (extraBodyJson.isNotBlank()) {
             runCatching { JSONObject(extraBodyJson) }
                 .getOrElse { throwable ->
-                    error("额外请求体 JSON 无效：${throwable.message ?: throwable.javaClass.simpleName}")
+                    error("추가 요청 본문의 JSON이 유효하지 않습니다: ${throwable.message ?: throwable.javaClass.simpleName}")
                 }
         }
     }

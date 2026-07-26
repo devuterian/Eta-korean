@@ -44,9 +44,9 @@ internal class ShellProcessSupervisor(
         linuxRootfsPath: String? = null,
     ): Process? {
         if (isClosing) return null
-        require(identity == "root" || identity == "user") { "identity 仅支持 root/user" }
+        require(identity == "root" || identity == "user") { "identity는 root 또는 user만 지원합니다." }
         require(environment != TerminalEnvironment.LINUX || identity == "root") {
-            "Linux 工具环境仅支持 root identity"
+            "Linux 도구 환경은 root identity만 지원합니다."
         }
         val ownershipFile = runCatching {
             File.createTempFile("eta-terminal-", ".owner")
@@ -162,7 +162,7 @@ internal class ShellProcessSupervisor(
             )
             TerminalEnvironment.LINUX -> buildLinuxPayload(
                 rootfsPath = requireNotNull(linuxRootfsPath) {
-                    "Linux 工具环境 rootfs 未配置"
+                    "Linux 도구 환경 rootfs가 구성되지 않았습니다."
                 },
                 command = managedCommand,
             )

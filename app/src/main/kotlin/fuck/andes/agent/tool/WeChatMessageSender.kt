@@ -25,11 +25,11 @@ internal class WeChatMessageSender(
         val message = args.getString("message")
         val mode = args.getString("mode").lowercase(Locale.ROOT)
         val send = mode == "send"
-        if (isCancelled()) return sensitiveError("CANCELLED", "运行已停止，本次未发送")
+        if (isCancelled()) return sensitiveError("CANCELLED", "실행이 중지되었습니다. 이번에는 전송하지 않았습니다.")
         val service = AgentAccessibilityService.current()
-            ?: return sensitiveError("ACCESSIBILITY_UNAVAILABLE", "Eta 无障碍服务尚未连接")
+            ?: return sensitiveError("ACCESSIBILITY_UNAVAILABLE", "Eta 접근성 서비스가 아직 연결되지 않았습니다.")
         val launchIntent = context.packageManager.getLaunchIntentForPackage(WECHAT_PACKAGE)
-            ?: return sensitiveError("WECHAT_NOT_INSTALLED", "未安装微信或微信没有可启动入口")
+            ?: return sensitiveError("WECHAT_NOT_INSTALLED", "WeChat이 설치되어 있지 않거나 실행할 수 있는 진입점이 없습니다.")
         return runCatching {
             context.startActivity(
                 launchIntent.addFlags(
@@ -37,29 +37,29 @@ internal class WeChatMessageSender(
                 ),
             )
             if (!waitForPackage(service, WECHAT_PACKAGE, PACKAGE_TIMEOUT_MS)) {
-                return sensitiveError("WECHAT_LAUNCH_TIMEOUT", "微信未在时限内进入前台")
+                return sensitiveError("WECHAT_LAUNCH_TIMEOUT", "WeChat이 시간 내에 전면으로 실행되지 않았습니다.")
             }
 
             val searchSnapshot = findOrOpenSearch(service)
-                ?: return sensitiveError("WECHAT_SEARCH_NOT_FOUND", "无法可靠定位微信搜索入口")
+                ?: return sensitiveError("WECHAT_SEARCH_NOT_FOUND", "WeChat 검색 진입점을 정확히 찾을 수 없습니다.")
             val searchInput = searchSnapshot.nodes
                 .firstOrNull { it.enabled && it.editable && !it.password }
-                ?: return sensitiveError("WECHAT_SEARCH_INPUT_NOT_FOUND", "无法可靠定位微信搜索框")
+                ?: return sensitiveError("WECHAT_SEARCH_INPUT_NOT_FOUND", "WeChat 검색창을 정확히 찾을 수 없습니다.")
             val searchWrite = service.setTextNode(searchSnapshot, searchInput.index, contact)
             if (!searchWrite.ok) {
-                return sensitiveError(searchWrite.code, searchWrite.message.ifBlank { "联系人搜索失败" })
+                return sensitiveError(searchWrite.code, searchWrite.message.ifBlank { "연락처 검색에 실패했습니다." })
             }
 
             val resultSnapshot = waitForSnapshot(service, CONTENT_TIMEOUT_MS) { snapshot ->
                 exactContactRows(snapshot, contact).isNotEmpty()
-            } ?: return sensitiveError("CONTACT_NOT_FOUND", "没有找到精确匹配的微信联系人")
+            } ?: return sensitiveError("CONTACT_NOT_FOUND", "정확히 일치하는 WeChat 연락처를 찾지 못했습니다.")
             val rows = exactContactRows(resultSnapshot, contact)
             if (rows.size != 1) {
-                return sensitiveError("AMBIGUOUS_CONTACT", "存在多个同名联系人；为避免发错人，本次未打开会话")
+                return sensitiveError("AMBIGUOUS_CONTACT", "동명이인 연락처가 여러 명 있습니다. 잘못 전송되는 것을 방지하기 위해 이번에는 대화를 열지 않았습니다.")
             }
             val openResult = service.clickNode(resultSnapshot, rows.single().index)
             if (!openResult.ok) {
-                return sensitiveError(openResult.code, openResult.message.ifBlank { "无法打开联系人会话" })
+                return sensitiveError(openResult.code, openResult.message.ifBlank { "연락처 대화를 열 수 없습니다." })
             }
 
             val displayHeight = service.displaySize()?.second ?: Int.MAX_VALUE
@@ -69,14 +69,14 @@ internal class WeChatMessageSender(
                         node.enabled && node.editable && !node.password &&
                             node.bounds.centerY() > displayHeight * 0.55
                     }
-            } ?: return sensitiveError("CHAT_INPUT_NOT_FOUND", "没有可靠进入联系人聊天页，本次未填写消息")
+            } ?: return sensitiveError("CHAT_INPUT_NOT_FOUND", "연락처 채팅 페이지에 정확히 진입하지 못했습니다. 이번에는 메시지를 입력하지 않았습니다.")
             val chatInput = chatSnapshot.nodes.first {
                 it.enabled && it.editable && !it.password &&
                     it.bounds.centerY() > displayHeight * 0.55
             }
             val writeResult = service.setTextNode(chatSnapshot, chatInput.index, message)
             if (!writeResult.ok) {
-                return sensitiveError(writeResult.code, writeResult.message.ifBlank { "填写消息失败" })
+                return sensitiveError(writeResult.code, writeResult.message.ifBlank { "메시지 입력에 실패했습니다." })
             }
             if (!send) {
                 logger.info("Agent direct tool action=send_message outcome=drafted")
@@ -88,7 +88,7 @@ internal class WeChatMessageSender(
             }
 
             if (isCancelled()) {
-                return sensitiveError("CANCELLED", "运行已停止；消息已填入但未发送")
+                return sensitiveError("CANCELLED", "실행이 중지되었습니다. 메시지는 입력되었으나 전송되지 않았습니다.")
             }
             val sendSnapshot = waitForSnapshot(service, CONTENT_TIMEOUT_MS) { snapshot ->
                 snapshot.nodes.any { node ->
@@ -96,7 +96,7 @@ internal class WeChatMessageSender(
                         node.bounds.centerY() > displayHeight * 0.55 &&
                         (node.text == SEND_TEXT || node.desc == SEND_TEXT)
                 }
-            } ?: return sensitiveError("SEND_BUTTON_NOT_FOUND", "消息已填入，但未找到可验证的发送按钮；本次未发送")
+            } ?: return sensitiveError("SEND_BUTTON_NOT_FOUND", "메시지는 입력되었으나 확인 가능한 전송 버튼을 찾지 못했습니다. 이번에는 전송하지 않았습니다.")
             val sendNodes = deduplicateRows(
                 sendSnapshot.nodes.filter { node ->
                     node.enabled &&
@@ -105,13 +105,13 @@ internal class WeChatMessageSender(
                 },
             )
             if (sendNodes.size != 1) {
-                return sensitiveError("AMBIGUOUS_SEND_BUTTON", "发送按钮不唯一；消息已填入但未发送")
+                return sensitiveError("AMBIGUOUS_SEND_BUTTON", "전송 버튼이 하나가 아닙니다. 메시지는 입력되었으나 전송되지 않았습니다.")
             }
             val click = service.clickNode(sendSnapshot, sendNodes.single().index)
             if (!click.ok) {
                 return sensitiveError(
                     click.code,
-                    click.message.ifBlank { "发送动作结果未知；不会自动重试，以免重复发送" },
+                    click.message.ifBlank { "전송 결과를 알 수 없습니다. 중복 전송을 방지하기 위해 자동 재시도하지 않습니다." },
                 )
             }
 
@@ -131,7 +131,7 @@ internal class WeChatMessageSender(
             if (!verified) {
                 return sensitiveError(
                     "ACTION_OUTCOME_UNKNOWN",
-                    "已点击一次发送，但未能可靠验证结果；不会自动重试，请在微信中确认",
+                    "전송 버튼을 한 번 클릭했으나 결과를 정확히 확인하지 못했습니다. 자동 재시도하지 않으니 WeChat에서 직접 확인해 주세요.",
                 )
             }
             logger.info("Agent direct tool action=send_message outcome=verified")
@@ -143,7 +143,7 @@ internal class WeChatMessageSender(
                 .put("message_chars", message.length)
                 .toToolResult()
         }.getOrElse {
-            sensitiveError("WECHAT_AUTOMATION_FAILED", "微信自动发送流程失败，本次不会自动重试")
+            sensitiveError("WECHAT_AUTOMATION_FAILED", "WeChat 자동 전송 과정이 실패했습니다. 이번에는 자동 재시도하지 않습니다.")
         }
     }
 

@@ -118,7 +118,7 @@ internal class AgentRuntimeRunExecutor(
                             entrySurfaceGuard?.dismissOnce() == false ->
                                 ToolExecutionDecision.Reject(
                                     code = "ENTRY_SURFACE_NOT_READY",
-                                    message = "入口窗口尚未确认关闭；本次工具未执行，请稍后重试",
+                                    message = "입구 창이 아직 닫히지 않았습니다. 이번 도구 실행이 취소되었습니다. 잠시 후 다시 시도하세요.",
                                 )
                             else -> ToolExecutionDecision.Allow
                         }
@@ -159,7 +159,7 @@ internal class AgentRuntimeRunExecutor(
             cancelled = runController.isCancelled || throwable is AgentRunCancelledException
             val modelFailure = throwable as? AgentModelExecutionException
             val message = if (cancelled) {
-                "已停止"
+                "중지됨"
             } else {
                 throwable.message ?: throwable.javaClass.simpleName
             }
@@ -186,7 +186,7 @@ internal class AgentRuntimeRunExecutor(
         }
 
         if (cancelled) {
-            session.cancel("已停止")
+            session.cancel("중지됨")
             return Outcome(
                 result = result,
                 entrySurfaceGuard = entrySurfaceGuard,

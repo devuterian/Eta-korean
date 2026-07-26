@@ -24,7 +24,7 @@ fun SystemEnhanceScreen(
     modifier: Modifier = Modifier,
 ) {
     MiuixScaffoldPage(
-        title = "系统增强",
+        title = "시스템 강화",
         onBack = { onAction(AgentSystemEnhanceAction.NavigateBack) },
         modifier = modifier,
     ) {
@@ -63,9 +63,9 @@ private fun SystemEnhanceItemRow(
         endActions = {
             Text(
                 text = when (item.status) {
-                    SystemEnhanceStatusUi.Active -> "已启用"
-                    SystemEnhanceStatusUi.Inactive -> "未启用"
-                    SystemEnhanceStatusUi.Unsupported -> "不支持"
+                    SystemEnhanceStatusUi.Active -> "사용 중"
+                    SystemEnhanceStatusUi.Inactive -> "사용 안 함"
+                    SystemEnhanceStatusUi.Unsupported -> "지원하지 않음"
                 },
                 style = MiuixTheme.textStyles.body2,
                 color = MiuixTheme.colorScheme.onSurfaceVariantActions,

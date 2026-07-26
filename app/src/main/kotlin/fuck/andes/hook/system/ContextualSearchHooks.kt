@@ -46,7 +46,7 @@ internal object ContextualSearchHooks {
             hooks.missing(
                 id = "system.contextual-search-bootstrap",
                 description = "SystemServer.startOtherServices",
-                detail = "未找到 SystemServer.startOtherServices(TimingsTraceAndSlog)"
+                detail = "SystemServer.startOtherServices(TimingsTraceAndSlog)를 찾을 수 없음"
             )
             return
         }
@@ -78,7 +78,7 @@ internal object ContextualSearchHooks {
             hooks.missing(
                 id = "system.contextual-search-package",
                 description = "ContextualSearchManagerService.getContextualSearchPackageName",
-                detail = "未找到 ContextualSearchManagerService.getContextualSearchPackageName()"
+                detail = "ContextualSearchManagerService.getContextualSearchPackageName()를 찾을 수 없음"
             )
             return
         }
@@ -100,7 +100,7 @@ internal object ContextualSearchHooks {
             hooks.missing(
                 id = "system.contextual-search-permission",
                 description = "ContextualSearchManagerService.enforcePermission",
-                detail = "未找到 ContextualSearchManagerService.enforcePermission(String)"
+                detail = "ContextualSearchManagerService.enforcePermission(String)를 찾을 수 없음"
             )
             return
         }
@@ -143,19 +143,19 @@ internal object ContextualSearchHooks {
         source: String
     ) {
         if (isContextualSearchServiceAlive()) {
-            logger.debug { "$source: contextual_search service 已存在" }
+            logger.debug { "$source: contextual_search 서비스 이미 존재함" }
             return
         }
 
         val systemServiceManager = HookSupport.getFieldValue(systemServerInstance, "mSystemServiceManager")
         if (systemServiceManager == null) {
-            logger.warn("$source: mSystemServiceManager 为空，无法补启动 contextual_search")
+            logger.warn("$source: mSystemServiceManager가 비어 있어 contextual_search를 보완 실행할 수 없습니다")
             return
         }
 
         val serviceClass = HookSupport.findClassOrNull(classLoader, ModuleConfig.CONTEXTUAL_SEARCH_CLASS)
         if (serviceClass == null) {
-            logger.warn("$source: 未找到 ContextualSearchManagerService class，无法补启动")
+            logger.warn("$source: ContextualSearchManagerService 클래스를 찾을 수 없어 보완 실행할 수 없습니다")
             return
         }
 
@@ -165,20 +165,20 @@ internal object ContextualSearchHooks {
             Class::class.java
         )
         if (startServiceMethod == null) {
-            logger.warn("$source: 未找到 SystemServiceManager.startService(Class)")
+            logger.warn("$source: SystemServiceManager.startService(Class)를 찾을 수 없습니다")
             return
         }
 
         try {
             module.getInvoker(startServiceMethod).invoke(systemServiceManager, serviceClass)
             if (isContextualSearchServiceAlive()) {
-                logger.debug { "$source: 已补启动 ContextualSearchManagerService" }
+                logger.debug { "$source: ContextualSearchManagerService를 보완 실행했습니다" }
             } else {
-                logger.warn("$source: 已调用 startService(Class)，但 contextual_search 仍不可用")
+                logger.warn("$source: startService(Class)를 호출했지만 contextual_search는 여전히 사용할 수 없습니다")
             }
         } catch (exception: Exception) {
             // XposedFrameworkError 属于 Error，必须继续交给框架处理。
-            logger.error("$source: 补启动 ContextualSearchManagerService 失败", exception)
+            logger.error("$source: ContextualSearchManagerService 보완 실행에 실패했습니다", exception)
         }
     }
 

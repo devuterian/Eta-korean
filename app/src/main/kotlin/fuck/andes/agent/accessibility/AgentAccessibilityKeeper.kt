@@ -117,14 +117,14 @@ object AgentAccessibilityKeeper {
         if (rootResult.exitCode != 0 || rootResult.output !in ROOT_SUCCESS_RESULTS) {
             return AccessibilityEnableResult.failure(
                 code = "ACCESSIBILITY_ROOT_ENABLE_FAILED",
-                message = "Root 无法启用 Eta 无障碍服务；本次 GUI 操作未执行",
+                message = "Root에서 Eta 접근성 서비스를 활성화할 수 없습니다. 이번 GUI 작업은 실행되지 않았습니다.",
                 rootAttempted = true,
             )
         }
         if (!awaitServiceBinding()) {
             return AccessibilityEnableResult.failure(
                 code = "ACCESSIBILITY_BIND_TIMEOUT",
-                message = "Eta 无障碍服务已写入系统设置，但未在时限内连接；本次 GUI 操作未执行",
+                message = "Eta 접근성 서비스가 시스템 설정에 저장되었지만, 시간 내에 연결되지 않았습니다. 이번 GUI 작업은 실행되지 않았습니다.",
                 rootAttempted = true,
                 settingChanged = settingChanged,
             )

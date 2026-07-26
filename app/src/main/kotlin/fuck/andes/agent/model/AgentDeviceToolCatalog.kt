@@ -21,16 +21,16 @@ internal object AgentDeviceToolCatalog {
             .put(
                 function(
                     "set_alarm",
-                    "直接创建系统闹钟，不要用 GUI。涉及相对日期时先用 get_current_context 换算；hour/minute 使用设备本地时间。系统不接受直达操作时可能只打开时钟页面。",
+                    "시스템 알람을 직접 생성하세요. GUI를 사용하지 마세요. 상대 날짜가 포함되면 get_current_context로 변환하세요. hour/minute는 기기 현지 시간을 사용합니다. 시스템이 직접 실행을 허용하지 않으면 시계 페이지만 열릴 수 있습니다.",
                     properties(
-                        "hour" to integer("0 到 23", 0, 23),
-                        "minute" to integer("0 到 59", 0, 59),
-                        "label" to string("闹钟标签，最多 100 字", 100),
+                        "hour" to integer("0~23", 0, 23),
+                        "minute" to integer("0~59", 0, 59),
+                        "label" to string("알람 라벨, 최대 100자", 100),
                         "repeat_days" to stringArray(
-                            "重复星期；不提供表示仅下一次",
+                            "반복 요일; 미설정 시 한 번만 알림",
                             "mon", "tue", "wed", "thu", "fri", "sat", "sun",
                         ),
-                        "vibrate" to boolean("是否振动，默认 true"),
+                        "vibrate" to boolean("진동 여부, 기본값 true"),
                     ),
                     "hour", "minute",
                 ),
@@ -38,25 +38,25 @@ internal object AgentDeviceToolCatalog {
             .put(
                 function(
                     "set_timer",
-                    "直接创建系统计时器，不要用 GUI。duration_seconds 必须是 1 到 86400 秒。",
+                    "시스템 타이머를 바로 생성합니다. GUI를 사용하지 마세요. duration_seconds는 1~86400초여야 합니다.",
                     properties(
-                        "duration_seconds" to integer("计时秒数", 1, 86_400),
-                        "label" to string("计时器标签，最多 100 字", 100),
+                        "duration_seconds" to integer("타이머 초 수", 1, 86_400),
+                        "label" to string("타이머 라벨, 최대 100자", 100),
                     ),
                     "duration_seconds",
                 ),
             )
-            .put(emptyFunction("device_status", "读取电池、内存、存储、系统版本与开机时长。"))
-            .put(emptyFunction("network_info", "读取当前联网方式、联网验证状态和当前 Wi‑Fi 基本信息，不返回保存的密码。"))
-            .put(limitFunction("top_memory_apps", "按当前 RSS 列出内存占用最高的进程。"))
-            .put(limitFunction("top_storage_apps", "按应用、数据与缓存合计列出存储占用最高的应用。"))
+            .put(emptyFunction("device_status", "배터리, 메모리, 저장소, 시스템 버전, 부팅 시간 정보를 읽습니다."))
+            .put(emptyFunction("network_info", "현재 네트워크 방식, 인증 상태, 현재 Wi‑Fi 기본 정보를 읽습니다. 저장된 비밀번호는 반환하지 않습니다."))
+            .put(limitFunction("top_memory_apps", "현재 RSS 기준 메모리 사용량이 가장 높은 프로세스를 나열합니다."))
+            .put(limitFunction("top_storage_apps", "앱, 데이터, 캐시 합산 저장소 사용량이 가장 많은 앱을 나열합니다."))
             .put(
                 function(
                     "media_control",
-                    "直接控制当前媒体会话，不要操作播放器 GUI。",
+                    "현재 미디어 세션을 직접 제어합니다. 플레이어 GUI를 조작하지 마세요.",
                     properties(
                         "action" to enumString(
-                            "媒体动作",
+                            "미디어 동작",
                             "play", "pause", "play_pause", "next", "previous", "stop",
                         ),
                     ),
@@ -66,10 +66,10 @@ internal object AgentDeviceToolCatalog {
             .put(
                 function(
                     "set_volume",
-                    "直接设置系统音量，不要操作音量 GUI。",
+                    "시스템 볼륨을 직접 설정합니다. 볼륨 GUI를 조작하지 마세요.",
                     properties(
-                        "stream" to enumString("音量通道", "media", "alarm", "ring", "notification"),
-                        "percent" to integer("0 到 100 的音量百分比", 0, 100),
+                        "stream" to enumString("볼륨 채널", "media", "alarm", "ring", "notification"),
+                        "percent" to integer("0~100 볼륨 백분율", 0, 100),
                     ),
                     "stream", "percent",
                 ),
@@ -81,10 +81,10 @@ internal object AgentDeviceToolCatalog {
             .put(
                 function(
                     "get_setting",
-                    "读取一个 Android Settings 值。结果可能包含设备标识等敏感信息，原始结果不会持久化。",
+                    "Android Settings 값을 읽습니다. 결과에 기기 식별 등 민감 정보가 포함될 수 있으며, 원본 결과는 저장되지 않습니다.",
                     properties(
-                        "namespace" to enumString("设置命名空间", "system", "secure", "global"),
-                        "key" to string("精确设置键", 200),
+                        "namespace" to enumString("설정 네임스페이스", "system", "secure", "global"),
+                        "key" to string("정확한 설정 키", 200),
                     ),
                     "namespace", "key",
                 ),
@@ -92,39 +92,39 @@ internal object AgentDeviceToolCatalog {
             .put(
                 function(
                     "wifi_credentials",
-                    "读取手机保存的 Wi‑Fi 名称与密码。原始结果不会持久化。",
+                    "휴대폰에 저장된 Wi‑Fi 이름과 비밀번호를 읽습니다. 원본 결과는 저장되지 않습니다.",
                     properties(
-                        "ssid" to string("可选的精确 Wi‑Fi 名称", 128),
-                        "limit" to integer("最多返回数量，默认 20", 1, 50),
+                        "ssid" to string("선택적 정확한 Wi‑Fi 이름", 128),
+                        "limit" to integer("최대 반환 개수, 기본값 20", 1, 50),
                     ),
                 ),
             )
             .put(
                 function(
                     "recent_notifications",
-                    "读取当前通知栏中的通知标题与正文。结果不写入持久会话。",
+                    "현재 알림창의 알림 제목과 본문을 읽습니다. 결과는 세션에 저장되지 않습니다.",
                     properties(
-                        "package_name" to string("可选的精确应用包名过滤", 255),
-                        "limit" to integer("最多返回数量，默认 10", 1, 20),
+                        "package_name" to string("선택적 정확한 앱 패키지명 필터", 255),
+                        "limit" to integer("최대 반환 개수, 기본값 10", 1, 20),
                     ),
                 ),
             )
             .put(
                 function(
                     "read_sms_code",
-                    "从最近短信中只提取 4 到 8 位验证码、发送方和时间，不返回完整短信正文。",
+                    "최근 문자메시지에서 4~8자리 인증번호, 발신자, 시간만 추출하며, 전체 메시지 본문은 반환하지 않습니다.",
                     properties(
-                        "max_age_minutes" to integer("只检查多少分钟内的短信，默认 10", 1, 1_440),
+                        "max_age_minutes" to integer("몇 분 이내의 문자만 확인합니다. 기본값은 10입니다.", 1, 1_440),
                     ),
                 ),
             )
             .put(
                 function(
                     "get_logcat",
-                    "读取最近系统日志。query 只在已读取日志中做文本过滤，不会进入 Shell。",
+                    "최근 시스템 로그를 읽습니다. query는 읽은 로그에서만 텍스트 필터링하며 Shell에는 접근하지 않습니다.",
                     properties(
-                        "query" to string("可选过滤文本", 200),
-                        "max_lines" to integer("最多日志行数，默认 200", 20, 500),
+                        "query" to string("필터링할 텍스트(선택 사항)", 200),
+                        "max_lines" to integer("최대 로그 행 수, 기본값 200", 20, 500),
                     ),
                 ),
             )
@@ -135,11 +135,11 @@ internal object AgentDeviceToolCatalog {
             .put(
                 function(
                     "set_setting",
-                    "修改一个非安全关键 Android Settings 值。无障碍、ADB、设备初始化等关键键会被拒绝。",
+                    "안전과 관련 없는 Android Settings 값을 수정합니다. 무장애, ADB, 기기 초기화 등 주요 키는 거부됩니다.",
                     properties(
-                        "namespace" to enumString("设置命名空间", "system", "secure", "global"),
-                        "key" to string("精确设置键", 200),
-                        "value" to string("新值", 2_000),
+                        "namespace" to enumString("설정 네임스페이스", "system", "secure", "global"),
+                        "key" to string("정확한 설정 키", 200),
+                        "value" to string("새 값", 2_000),
                     ),
                     "namespace", "key", "value",
                 ),
@@ -147,10 +147,10 @@ internal object AgentDeviceToolCatalog {
             .put(
                 function(
                     "set_device_state",
-                    "直接启用或关闭 Wi‑Fi/蓝牙，不要操作设置 GUI。",
+                    "Wi‑Fi/블루투스를 직접 켜거나 끕니다. 설정 GUI는 조작하지 않습니다.",
                     properties(
-                        "target" to enumString("设备能力", "wifi", "bluetooth"),
-                        "enabled" to boolean("true 启用，false 关闭"),
+                        "target" to enumString("기기 기능", "wifi", "bluetooth"),
+                        "enabled" to boolean("true: 활성화, false: 비활성화"),
                     ),
                     "target", "enabled",
                 ),
@@ -158,10 +158,10 @@ internal object AgentDeviceToolCatalog {
             .put(
                 function(
                     "app_state_control",
-                    "停止、冻结或解冻一个精确包名。核心系统包受保护；freeze 不允许系统应用。",
+                    "정확한 패키지명을 중지, 동결 또는 해제합니다. 핵심 시스템 패키지는 보호되며, 시스템 앱은 동결할 수 없습니다.",
                     properties(
-                        "package_name" to string("精确 Android 包名", 255),
-                        "action" to enumString("动作", "force_stop", "freeze", "unfreeze"),
+                        "package_name" to string("정확한 Android 패키지명", 255),
+                        "action" to enumString("동작", "force_stop", "freeze", "unfreeze"),
                     ),
                     "package_name", "action",
                 ),
@@ -169,11 +169,11 @@ internal object AgentDeviceToolCatalog {
             .put(
                 function(
                     "send_message",
-                    "通过 Eta 无障碍服务在微信中精确查找联系人并填写或真正发送消息。只接受精确联系人；同名时拒绝。mode=send 会点击一次发送并验证，失败或结果未知时绝不自动重试，也不要改用 tap/input_text 重放。",
+                    "Eta 무장애 서비스를 통해 WeChat에서 정확한 연락처를 찾아 메시지를 입력하거나 실제로 보냅니다. 정확히 일치하는 연락처만 허용하며, 동명이인은 거부됩니다. mode=send는 한 번만 전송 및 검증하며, 실패 또는 결과 미확정 시 자동 재시도나 tap/input_text 재실행을 하지 않습니다.",
                     properties(
-                        "contact" to string("微信联系人，必须精确匹配", 64),
-                        "message" to string("消息正文", 2_000),
-                        "mode" to enumString("draft 只填入，send 真正发送", "draft", "send"),
+                        "contact" to string("WeChat 연락처(정확히 일치해야 함)", 64),
+                        "message" to string("메시지 내용", 2_000),
+                        "mode" to enumString("draft: 입력만, send: 실제 전송", "draft", "send"),
                     ),
                     "contact", "message", "mode",
                 ),
@@ -187,7 +187,7 @@ internal object AgentDeviceToolCatalog {
         function(
             name,
             description,
-            properties("limit" to integer("最多返回数量，默认 10", 1, 30)),
+            properties("limit" to integer("최대 반환 개수, 기본값 10", 1, 30)),
         )
 
     private fun function(

@@ -67,7 +67,7 @@ fun AgentStatusCard(
                 )
                 if (activeRun.status == RunStatusUi.Running) {
                     TextButton(
-                        text = "停止",
+                        text = "중지",
                         onClick = onStopRun,
                         colors = ButtonDefaults.textButtonColors(),
                     )

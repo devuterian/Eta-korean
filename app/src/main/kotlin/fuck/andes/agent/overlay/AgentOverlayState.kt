@@ -13,11 +13,11 @@ internal enum class AgentOverlayPhase { RUNNING, PAUSED, FINISHED, FAILED }
 internal data class AgentOverlayState(
     val phase: AgentOverlayPhase = AgentOverlayPhase.RUNNING,
     val round: Int = 0,
-    val statusText: String = "准备中…",
+    val statusText: String = "준비 중…",
     val detailText: String = "",
 ) {
     companion object {
-        val Initial = AgentOverlayState(statusText = "收到指令，准备调用模型")
+        val Initial = AgentOverlayState(statusText = "명령을 받아 모델 호출 준비 중")
     }
 }
 
@@ -30,26 +30,26 @@ internal data class AgentOverlayState(
 internal fun AgentOverlayState.applyEvent(event: AgentEvent): AgentOverlayState = when (event) {
     is AgentEvent.RunStarted -> copy(
         phase = AgentOverlayPhase.RUNNING,
-        statusText = "准备工具：${event.toolCount} 个",
+        statusText = "도구 준비 중: ${event.toolCount}개",
         detailText = "",
     )
 
     is AgentEvent.RoundStarted -> copy(
         phase = AgentOverlayPhase.RUNNING,
         round = event.round,
-        statusText = "第 ${event.round} 轮思考",
+        statusText = "${event.round}번째 라운드 생각 중",
     )
 
     is AgentEvent.ProviderRequestStarted -> copy(
         phase = AgentOverlayPhase.RUNNING,
         round = event.round,
-        statusText = "正在请求模型",
+        statusText = "모델 요청 중",
     )
 
     is AgentEvent.ProviderResponseStarted -> copy(
         phase = AgentOverlayPhase.RUNNING,
         round = event.round,
-        statusText = "模型已响应",
+        statusText = "모델이 응답했습니다",
     )
 
     is AgentEvent.AssistantBlockStart -> when (event.kind) {
@@ -59,7 +59,7 @@ internal fun AgentOverlayState.applyEvent(event: AgentEvent): AgentOverlayState 
         AgentEvent.AssistantBlockKind.TOOL_CALL -> copy(
             phase = AgentOverlayPhase.RUNNING,
             round = event.round,
-            statusText = "正在生成工具参数",
+            statusText = "도구 파라미터 생성 중",
         )
     }
 
@@ -68,13 +68,13 @@ internal fun AgentOverlayState.applyEvent(event: AgentEvent): AgentOverlayState 
         AgentEvent.AssistantBlockKind.THINKING -> copy(
             phase = AgentOverlayPhase.RUNNING,
             round = event.round,
-            statusText = "正在思考",
+            statusText = "생각 중입니다.",
         )
 
         AgentEvent.AssistantBlockKind.TOOL_CALL -> copy(
             phase = AgentOverlayPhase.RUNNING,
             round = event.round,
-            statusText = "正在生成工具参数",
+            statusText = "도구 파라미터 생성 중",
         )
     }
 
@@ -84,9 +84,9 @@ internal fun AgentOverlayState.applyEvent(event: AgentEvent): AgentOverlayState 
         phase = AgentOverlayPhase.RUNNING,
         round = event.round,
         statusText = if (event.toolNames.isEmpty()) {
-            "正在整理回答"
+            "답변 정리 중입니다."
         } else {
-            "计划执行：${event.toolNames.joinToString("、") { it.toToolLabel() }}"
+            "실행 예정: ${event.toolNames.joinToString("、") { it.toToolLabel() }}"
         },
     )
 
@@ -94,37 +94,37 @@ internal fun AgentOverlayState.applyEvent(event: AgentEvent): AgentOverlayState 
 
     is AgentEvent.UserSupplementReceived -> copy(
         phase = AgentOverlayPhase.RUNNING,
-        statusText = "已接收补充，继续执行",
+        statusText = "추가 내용 수신됨, 계속 진행합니다.",
         detailText = "",
     )
 
     is AgentEvent.ToolStarted -> copy(
         phase = AgentOverlayPhase.RUNNING,
         round = event.round,
-        statusText = "执行工具：${event.name.toToolLabel()}",
+        statusText = "도구 실행: ${event.name.toToolLabel()}",
     )
 
     is AgentEvent.ToolFinished -> copy(
         phase = AgentOverlayPhase.RUNNING,
         round = event.round,
-        statusText = "工具完成：${event.name.toToolLabel()}",
+        statusText = "도구 완료: ${event.name.toToolLabel()}",
     )
 
     is AgentEvent.ToolImagesAttached -> copy(
         phase = AgentOverlayPhase.RUNNING,
         round = event.round,
-        statusText = "已读取图片：${event.imageCount} 张",
+        statusText = "이미지 ${event.imageCount}장 읽음",
     )
 
     is AgentEvent.RunFinished -> copy(
         phase = AgentOverlayPhase.FINISHED,
         round = event.round,
-        statusText = "已返回结果",
+        statusText = "결과가 반환되었습니다",
     )
 
     is AgentEvent.RunFailed -> copy(
         phase = AgentOverlayPhase.FAILED,
-        statusText = "调用失败",
+        statusText = "호출 실패",
         detailText = event.reason,
     )
 }
@@ -133,34 +133,34 @@ internal fun AgentOverlayState.applyEvent(event: AgentEvent): AgentOverlayState 
  * 工具原始名 -> 中文标签，供渲染层共用。
  */
 private fun String.toToolLabel(): String = when (this) {
-    "observe_screen" -> "观察屏幕"
-    "tap" -> "点击"
-    "tap_element" -> "点击元素"
-    "long_press" -> "长按"
-    "long_press_element" -> "长按元素"
-    "swipe" -> "滑动"
-    "scroll" -> "滚动"
-    "scroll_element" -> "滚动元素"
-    "input_text" -> "输入文字"
-    "replace_text" -> "替换文字"
-    "clear_text" -> "清空文字"
-    "set_clipboard" -> "写剪贴板"
-    "get_clipboard" -> "读剪贴板"
-    "paste_text" -> "粘贴文字"
-    "press_key" -> "按键"
-    "wait" -> "等待"
-    "wait_for_text" -> "等待文本"
-    "wait_for_package" -> "等待应用"
-    "open_system_panel" -> "系统面板"
-    "search_apps" -> "搜索应用"
-    "launch_app" -> "打开应用"
-    "open_uri" -> "用应用打开"
-    "browser_use" -> "浏览网页"
-    "terminal" -> "终端"
-    "run_command" -> "执行命令"
-    "read_file" -> "读取文件"
-    "write_file" -> "写入文件"
-    "list_directory" -> "列出目录"
+    "observe_screen" -> "화면 관찰"
+    "tap" -> "탭"
+    "tap_element" -> "요소 탭"
+    "long_press" -> "길게 누르기"
+    "long_press_element" -> "요소 길게 누르기"
+    "swipe" -> "스와이프"
+    "scroll" -> "스크롤"
+    "scroll_element" -> "요소 스크롤"
+    "input_text" -> "텍스트 입력"
+    "replace_text" -> "텍스트 교체"
+    "clear_text" -> "텍스트 삭제"
+    "set_clipboard" -> "클립보드에 쓰기"
+    "get_clipboard" -> "클립보드 읽기"
+    "paste_text" -> "텍스트 붙여넣기"
+    "press_key" -> "키 입력"
+    "wait" -> "대기"
+    "wait_for_text" -> "텍스트 대기"
+    "wait_for_package" -> "앱 대기 중"
+    "open_system_panel" -> "시스템 패널"
+    "search_apps" -> "앱 검색"
+    "launch_app" -> "앱 열기"
+    "open_uri" -> "앱으로 열기"
+    "browser_use" -> "웹페이지 보기"
+    "terminal" -> "터미널"
+    "run_command" -> "명령 실행"
+    "read_file" -> "파일 읽기"
+    "write_file" -> "파일에 쓰기"
+    "list_directory" -> "디렉터리 목록 보기"
     else -> this
 }
 
@@ -173,7 +173,7 @@ private fun AgentOverlayState.appendStreamingText(event: AgentEvent.AssistantBlo
     return copy(
         phase = AgentOverlayPhase.RUNNING,
         round = event.round,
-        statusText = "正在生成回答",
+        statusText = "답변 생성 중",
         detailText = nextPreview,
     )
 }
@@ -183,8 +183,8 @@ private fun AgentOverlayState.appendStreamingText(event: AgentEvent.AssistantBlo
  */
 internal val AgentOverlayState.subStatusText: String
     get() = when (phase) {
-        AgentOverlayPhase.RUNNING -> "智能执行中"
-        AgentOverlayPhase.PAUSED -> "已暂停，可点击继续"
-        AgentOverlayPhase.FINISHED -> "已完成"
-        AgentOverlayPhase.FAILED -> "执行失败"
+        AgentOverlayPhase.RUNNING -> "지능형 실행 중"
+        AgentOverlayPhase.PAUSED -> "일시 중지됨, 클릭하면 계속됩니다"
+        AgentOverlayPhase.FINISHED -> "완료됨"
+        AgentOverlayPhase.FAILED -> "실행 실패"
     }

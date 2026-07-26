@@ -416,7 +416,7 @@ internal fun AgentOverlayBubble(
                     ) {
                         Icon(
                             painter = painterResource(LucideR.drawable.lucide_ic_pencil),
-                            contentDescription = "补充",
+                            contentDescription = "추가",
                             modifier = Modifier.size(14.dp),
                             tint = MiuixTheme.colorScheme.onSurface,
                         )
@@ -430,7 +430,7 @@ internal fun AgentOverlayBubble(
                         ) {
                             Icon(
                                 painter = painterResource(LucideR.drawable.lucide_ic_pause),
-                                contentDescription = "接管",
+                                contentDescription = "인수",
                                 modifier = Modifier.size(14.dp),
                                 tint = MiuixTheme.colorScheme.onSurface,
                             )
@@ -444,7 +444,7 @@ internal fun AgentOverlayBubble(
                         ) {
                             Icon(
                                 painter = painterResource(LucideR.drawable.lucide_ic_play),
-                                contentDescription = "继续",
+                                contentDescription = "계속",
                                 modifier = Modifier.size(14.dp),
                                 tint = MiuixTheme.colorScheme.primary,
                             )
@@ -458,7 +458,7 @@ internal fun AgentOverlayBubble(
                     ) {
                         Icon(
                             painter = painterResource(LucideR.drawable.lucide_ic_square),
-                            contentDescription = "停止",
+                            contentDescription = "중지",
                             modifier = Modifier.size(14.dp),
                             tint = MiuixTheme.colorScheme.error,
                         )
@@ -502,7 +502,7 @@ private fun SupplementInput(
         ) {
             if (value.isBlank()) {
                 Text(
-                    text = "补充要求，Agent 会基于当前任务继续",
+                    text = "추가 요청, 에이전트가 현재 작업을 기반으로 계속 진행합니다",
                     color = textColor.copy(alpha = 0.45f),
                     fontSize = 14.sp,
                     lineHeight = 18.sp,
@@ -531,7 +531,7 @@ private fun SupplementInput(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             TextButton(
-                text = "取消",
+                text = "취소",
                 onClick = onCancel,
                 minWidth = 44.dp,
                 minHeight = 32.dp,
@@ -539,7 +539,7 @@ private fun SupplementInput(
             )
             Spacer(modifier = Modifier.width(8.dp))
             TextButton(
-                text = "发送",
+                text = "전송",
                 onClick = onSend,
                 enabled = value.isNotBlank(),
                 minWidth = 44.dp,
@@ -568,7 +568,7 @@ internal fun AgentResultCard(
 
     val isFailed = state.phase == AgentOverlayPhase.FAILED
     val titleColor = if (isFailed) MiuixTheme.colorScheme.error else phaseAccent(state.phase)
-    val title = if (isFailed) "执行失败" else "已返回结果"
+    val title = if (isFailed) "실행 실패" else "결과가 반환되었습니다"
     val content = state.detailText.ifBlank { state.statusText }
     val textColor = MiuixTheme.colorScheme.onSurface
 
@@ -618,7 +618,7 @@ internal fun AgentResultCard(
                         Spacer(modifier = Modifier.weight(1f))
                         // 关闭直接交给 Service，不经 Compose 协程延迟
                         TextButton(
-                            text = "关闭",
+                            text = "닫기",
                             onClick = onClose,
                             minWidth = 44.dp,
                             minHeight = 32.dp,

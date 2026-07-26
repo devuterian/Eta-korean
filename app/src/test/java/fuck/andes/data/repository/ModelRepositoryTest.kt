@@ -45,7 +45,7 @@ class ModelRepositoryTest {
         val restored = ModelRepository.modelsByProvider(PROVIDER_ID).single()
         assertEquals(saved.id, restored.id)
         assertEquals("custom-model", restored.modelId)
-        assertEquals("自定义模型", restored.displayName)
+        assertEquals("맞춤 모델", restored.displayName)
         assertEquals(ModelSource.MANUAL, restored.source)
     }
 
