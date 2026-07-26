@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: android-apk-${{ github.workflow }}-${{ github.ref }}
@@ -22,6 +22,28 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+
+      - name: Read Korean version
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE_VERSION="$(sed -nE 's/^[[:space:]]*versionName = "([^"]+)".*/\1/p' app/build.gradle.kts | head -n 1)"
+          VERSION_SUFFIX="$(sed -nE 's/^[[:space:]]*versionNameSuffix = "([^"]+)".*/\1/p' app/build.gradle.kts | head -n 1)"
+
+          if [[ -z "$BASE_VERSION" ]]; then
+            echo 'Could not read versionName from app/build.gradle.kts.' >&2
+            exit 1
+          fi
+          if [[ "$VERSION_SUFFIX" != '-ko' ]]; then
+            echo "Expected Korean versionNameSuffix '-ko', got '$VERSION_SUFFIX'." >&2
+            exit 1
+          fi
+
+          VERSION="${BASE_VERSION}${VERSION_SUFFIX}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "apk_name=Eta-${VERSION}.apk" >> "$GITHUB_OUTPUT"
 
       - name: Set up JDK 25
         uses: actions/setup-java@v4
@@ -90,14 +112,59 @@ jobs:
       - name: Build debug APK
         run: ./gradlew --no-daemon --stacktrace --console=plain assembleDebug
 
-      - name: Upload APK
+      - name: Name APK for release
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp app/build/outputs/apk/debug/app-debug.apk \
+            "app/build/outputs/apk/debug/${{ steps.version.outputs.apk_name }}"
+
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Eta-korean-debug-${{ github.sha }}
-          path: app/build/outputs/apk/debug/app-debug.apk
+          name: Eta-${{ steps.version.outputs.version }}
+          path: app/build/outputs/apk/debug/${{ steps.version.outputs.apk_name }}
           if-no-files-found: error
           compression-level: 0
           retention-days: 14
+
+      - name: Publish GitHub Release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+          TAG: ${{ steps.version.outputs.tag }}
+          APK_NAME: ${{ steps.version.outputs.apk_name }}
+        run: |
+          set -euo pipefail
+          APK_PATH="app/build/outputs/apk/debug/$APK_NAME"
+          NOTES_FILE=/tmp/eta-release-notes.md
+          cat > "$NOTES_FILE" <<EOF
+          Eta ${VERSION} 한국어 현지화 빌드입니다.
+
+          - 원본 Eta 버전: ${VERSION%-ko}
+          - 한국어판 버전: ${VERSION}
+          - 빌드: GitHub Actions debug APK
+          - 커밋: ${GITHUB_SHA}
+          EOF
+
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$APK_PATH" \
+              --repo "$GITHUB_REPOSITORY" \
+              --clobber
+            gh release edit "$TAG" \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "Eta $VERSION" \
+              --notes-file "$NOTES_FILE" \
+              --target "$GITHUB_SHA"
+          else
+            gh release create "$TAG" "$APK_PATH" \
+              --repo "$GITHUB_REPOSITORY" \
+              --target "$GITHUB_SHA" \
+              --title "Eta $VERSION" \
+              --notes-file "$NOTES_FILE"
+          fi
 
       - name: Upload build reports on failure
         if: failure()
