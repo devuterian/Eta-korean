@@ -1,0 +1,29 @@
+name: Diagnose localization failure
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Print failed job log tail
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/jobs/89750799710/logs" \
+            -o /tmp/job.log
+          echo '--- failure log tail ---'
+          tail -n 100 /tmp/job.log
