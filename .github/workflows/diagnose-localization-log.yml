@@ -23,9 +23,9 @@ jobs:
           curl -fsSL \
             -H "Authorization: Bearer $GH_TOKEN" \
             -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/jobs/89750799710/logs" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/jobs/89751448572/logs" \
             -o /tmp/job.log
           echo '--- matched errors ---'
-          grep -E 'Traceback|RuntimeError|ValueError|unexpected CJK|HTTP [0-9]{3}|Error:' /tmp/job.log | tail -n 30 || true
-          echo '--- final 25 lines ---'
-          tail -n 25 /tmp/job.log
+          grep -E 'fatal:|error:|rejected|denied|nothing to commit|Process completed|workflow' /tmp/job.log | tail -n 35 || true
+          echo '--- final 30 lines ---'
+          tail -n 30 /tmp/job.log
