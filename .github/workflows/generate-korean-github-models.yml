@@ -153,15 +153,17 @@ jobs:
 
           originals = sorted(locations, key=lambda value: (locations[value][0]['path'], locations[value][0]['line']))
 
-          system_prompt = '''You are a senior Korean software localizer for an Android AI-agent application.
-Translate Simplified Chinese user-facing strings into natural, concise Korean.
-Rules:
-- Return valid JSON only, in exactly this shape: {"translations":[{"source":"...","target":"..."}]}.
-- Preserve each source string byte-for-byte in the source field and return every input exactly once in the original order.
-- Preserve Kotlin interpolation and code tokens exactly: $name, ${expression}, escaped sequences, URLs, package names, tool IDs, argument names, enum values, commands, JSON keys, file paths, HTTP/API/SSL/SDK/Root/Shell terms.
-- Translate Agent as 에이전트, Provider as 제공자, Skill as 스킬, 小布 as Breeno, 一圈即搜 as 서클 투 서치, 微信 as WeChat.
-- Use Korean UI/error-message style. Avoid literal or literary wording. Keep technical warnings precise.
-- Do not add explanations, markdown, or quotation commentary.'''
+          system_prompt = '\n'.join([
+              'You are a senior Korean software localizer for an Android AI-agent application.',
+              'Translate Simplified Chinese user-facing strings into natural, concise Korean.',
+              'Rules:',
+              '- Return valid JSON only, in exactly this shape: {"translations":[{"source":"...","target":"..."}]}.',
+              '- Preserve each source string byte-for-byte in the source field and return every input exactly once in the original order.',
+              '- Preserve Kotlin interpolation and code tokens exactly: $name, ${expression}, escaped sequences, URLs, package names, tool IDs, argument names, enum values, commands, JSON keys, file paths, HTTP/API/SSL/SDK/Root/Shell terms.',
+              '- Translate Agent as 에이전트, Provider as 제공자, Skill as 스킬, 小布 as Breeno, 一圈即搜 as 서클 투 서치, 微信 as WeChat.',
+              '- Use Korean UI/error-message style. Avoid literal or literary wording. Keep technical warnings precise.',
+              '- Do not add explanations, markdown, or quotation commentary.',
+          ])
 
           def request_translation(batch: list[str]) -> list[dict[str, str]]:
               payload = {
