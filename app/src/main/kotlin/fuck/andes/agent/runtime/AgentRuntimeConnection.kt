@@ -87,7 +87,7 @@ internal object AgentRuntimeConnection {
 
     fun acquire(context: Context, callLogger: AgentLogger): Lease? {
         check(Looper.myLooper() != Looper.getMainLooper()) {
-            "Agent Runtime 同步客户端不能在主线程调用"
+            "에이전트 런타임 동기 클라이언트는 메인 스레드에서 호출할 수 없습니다"
         }
 
         val shouldBind: Boolean

@@ -24,7 +24,7 @@ import kotlinx.serialization.json.Json
  */
 internal object AgentRuntimeWire {
     internal class PayloadTooLargeException(sizeBytes: Int) : IllegalArgumentException(
-        "Agent Runtime 请求元数据过大（$sizeBytes bytes）；请缩短输入或会话历史后重试"
+        "에이전트 런타임 요청의 메타데이터가 너무 큽니다($sizeBytes 바이트). 입력이나 대화 기록을 줄인 후 다시 시도하세요."
     )
 
     /** bind 获取服务端 Messenger 的 Intent action。 */
@@ -114,7 +114,7 @@ internal object AgentRuntimeWire {
     private const val MAX_RESULT_REASONING_CHARS = 32_000
     private const val MAX_DRAIN_CONTENT_CHARS = 16_000
     private const val MAX_DRAIN_REASONING_CHARS = 4_000
-    private const val TRUNCATED_SUFFIX = "\n\n[跨进程结果过长，已截断]"
+    private const val TRUNCATED_SUFFIX = "\n\n[프로세스 간 결과가 너무 길어 일부가 잘렸습니다.]"
     private const val MAX_START_REQUEST_PARCEL_BYTES = 768 * 1024
 
     data class RunRequest(
@@ -183,10 +183,10 @@ internal object AgentRuntimeWire {
     }
 
     fun toBundle(request: RunRequest, images: List<WireImage>): Bundle {
-        require(images.size == request.images.size) { "图片传输项与请求图片数量不一致" }
+        require(images.size == request.images.size) { "이미지 전송 항목과 요청 이미지 수가 일치하지 않습니다." }
         val imageBundles = images.map { image ->
             require((image.remoteUrl == null) xor (image.fileDescriptor == null)) {
-                "图片传输项必须且只能包含远程 URL 或文件描述符"
+                "이미지 전송 항목에는 원격 URL 또는 파일 디스크립터만 포함되어야 합니다."
             }
             Bundle().apply {
                 image.remoteUrl?.let { putString(KEY_IMAGE_URL, it) }
@@ -267,7 +267,7 @@ internal object AgentRuntimeWire {
                 val reference = image.getString(KEY_IMAGE_URL)
                     ?: image.getString(KEY_DATA_URL) // 兼容升级前仍内联 data URL 的入口进程。
                 require((reference == null) xor (descriptor == null)) {
-                    "图片传输项必须且只能包含引用或文件描述符"
+                    "이미지 전송 항목에는 참조 또는 파일 디스크립터만 포함되어야 합니다."
                 }
                 images += WireImage(
                     remoteUrl = reference,
@@ -302,7 +302,7 @@ internal object AgentRuntimeWire {
     fun runRequestFromBundle(bundle: Bundle): RunRequest =
         incomingRunRequestFromBundle(bundle).use { incoming ->
             require(incoming.images.none { it.fileDescriptor != null }) {
-                "包含文件描述符的请求必须先在 Runtime 后台物化"
+                "파일 디스크립터가 포함된 요청은 먼저 런타임 백그라운드에서 실체화되어야 합니다."
             }
             incoming.request.copy(
                 images = incoming.images.map { image ->

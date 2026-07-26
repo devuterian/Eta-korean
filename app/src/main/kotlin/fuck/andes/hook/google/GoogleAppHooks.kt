@@ -81,7 +81,7 @@ internal object GoogleAppHooks {
             hooks.missing(
                 id = "google.floaty-on-resume",
                 description = "FloatyActivity.onResume(Google voice command)",
-                detail = "未找到 FloatyActivity/Activity.onResume()，跳过 Gemini 语音补偿"
+                detail = "FloatyActivity/Activity.onResume()를 찾을 수 없어 Gemini 음성 보정 건너뜀"
             )
             return
         }
@@ -113,7 +113,7 @@ internal object GoogleAppHooks {
             return
         }
 
-        val scenario = if (fromKeyguard) "锁屏" else "亮屏"
+        val scenario = if (fromKeyguard) "잠금화면" else "화면 켜짐"
         Handler(Looper.getMainLooper()).postDelayed({
             // 即时关闭：开关在延迟任务排队期间可能已被用户关闭。
             if (!Prefs.isEnabled(prefKey)) {
@@ -136,11 +136,11 @@ internal object GoogleAppHooks {
                         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                     }
                 )
-                logger.debug { "GSA: 已为${scenario} Gemini 浮窗补发 ACTION_VOICE_COMMAND" }
+                logger.debug { "GSA: ${scenario} Gemini 플로팅창에 ACTION_VOICE_COMMAND 재전송 완료" }
             }.onFailure { throwable ->
                 clearVoiceCommandAttempt(activity)
                 logger.warnThrottled("gsa_floaty_voice_command_failed") {
-                    "GSA: ${scenario} Gemini 浮窗补发 ACTION_VOICE_COMMAND 失败，" +
+                    "GSA: ${scenario} Gemini 플로팅창에 ACTION_VOICE_COMMAND 재전송 실패," +
                         "type=${throwable.safeLogType()}"
                 }
             }
@@ -179,7 +179,7 @@ internal object GoogleAppHooks {
         val field = runCatching {
             clazz.getDeclaredField(fieldName).apply { isAccessible = true }
         }.getOrElse { throwable ->
-            logger.warn("GSA: 找不到 Build.$fieldName，type=${throwable.safeLogType()}")
+            logger.warn("GSA: Build.${fieldName}을(를) 찾을 수 없음, type=${throwable.safeLogType()}")
             return
         }
 
@@ -201,7 +201,7 @@ internal object GoogleAppHooks {
                 Any::class.java
             ).invoke(theUnsafe, base, offset, value)
         }.onFailure { throwable ->
-            logger.warn("GSA: 修改 Build.$fieldName 失败，type=${throwable.safeLogType()}")
+            logger.warn("GSA: Build.$fieldName 수정 실패, type=${throwable.safeLogType()}")
         }
     }
 }

@@ -326,7 +326,7 @@ private fun PaneActionBar(
                     onSearch = onSearchChange,
                     expanded = false,
                     onExpandedChange = {},
-                    label = "搜索全部对话",
+                    label = "전체 대화 검색",
                 )
             },
             content = {},
@@ -440,7 +440,7 @@ private fun ConversationTextRow(
         ) {
             val renameItem = remember {
                 DropdownItem(
-                    text = "重命名",
+                    text = "이름 변경",
                     icon = { modifier ->
                         Icon(
                             painter = painterResource(LucideR.drawable.lucide_ic_pencil),
@@ -452,7 +452,7 @@ private fun ConversationTextRow(
             }
             val deleteItem = remember {
                 DropdownItem(
-                    text = "删除",
+                    text = "삭제",
                     icon = { modifier ->
                         Icon(
                             painter = painterResource(LucideR.drawable.lucide_ic_trash_2),
@@ -498,7 +498,7 @@ private fun ConversationTextRow(
 @Composable
 private fun EmptyConversations(isSearching: Boolean) {
     Text(
-        text = if (isSearching) "没有匹配的对话" else "还没有对话",
+        text = if (isSearching) "일치하는 대화가 없습니다." else "아직 대화가 없습니다.",
         color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
         style = MiuixTheme.textStyles.body2,
         fontWeight = FontWeight.Medium,
@@ -524,27 +524,27 @@ private fun PaneDock(
     ) {
         DockButton(
             icon = LucideR.drawable.lucide_ic_settings,
-            label = "设置",
+            label = "설정",
             onClick = onOpenSettings,
         )
         DockButton(
             icon = LucideR.drawable.lucide_ic_cpu,
-            label = "模型",
+            label = "모델",
             onClick = onOpenModelProviders,
         )
         DockButton(
             icon = LucideR.drawable.lucide_ic_package,
-            label = "工具",
+            label = "도구",
             onClick = onOpenTools,
         )
         DockButton(
             icon = LucideR.drawable.lucide_ic_puzzle,
-            label = "技能",
+            label = "스킬",
             onClick = onOpenSkills,
         )
         DockButton(
             icon = LucideR.drawable.lucide_ic_lock,
-            label = "权限",
+            label = "권한",
             onClick = onOpenPermissions,
         )
     }
@@ -590,7 +590,7 @@ private fun List<ConversationSummaryUi>.groupForDrawer(): List<ConversationDrawe
 }
 
 private fun ConversationSummaryUi.drawerSectionLabel(): String = when {
-    isPinned -> "置顶"
-    timeLabel == "现在" || timeLabel == "最近" || ":" in timeLabel -> "今天"
+    isPinned -> "고정"
+    timeLabel == "지금" || timeLabel == "최근" || ":" in timeLabel -> "오늘"
     else -> timeLabel
 }

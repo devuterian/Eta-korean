@@ -143,7 +143,7 @@ internal fun AgentBrowserScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .onFocusChanged { state -> addressFocused = state.isFocused },
-            label = "网址或域名",
+            label = "URL 또는 도메인",
             useLabelAsPlaceholder = true,
             singleLine = true,
             keyboardOptions = KeyboardOptions(
@@ -175,7 +175,7 @@ internal fun AgentBrowserScreen(
                 ) {
                     Icon(
                         painter = painterResource(LucideR.drawable.lucide_ic_arrow_right),
-                        contentDescription = "访问",
+                        contentDescription = "이동",
                         modifier = Modifier.size(19.dp),
                         tint = MiuixTheme.colorScheme.onSurface,
                     )
@@ -206,7 +206,7 @@ internal fun AgentBrowserScreen(
                     runCatching {
                         context.startActivity(Intent(Intent.ACTION_VIEW, currentUrl.toUri()))
                     }.onFailure {
-                        Toast.makeText(context, "没有应用可以打开当前网页", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "현재 웹페이지를 열 수 있는 앱이 없습니다.", Toast.LENGTH_SHORT).show()
                     }
                 }
             },
@@ -254,11 +254,11 @@ internal fun AgentBrowserScreen(
     if (showResetDialog) {
         WindowDialog(
             show = true,
-            title = "重置浏览器会话",
+            title = "브라우저 세션 초기화",
             onDismissRequest = { showResetDialog = false },
         ) {
             Text(
-                text = "将关闭当前页面并清除 Eta 浏览器的 Cookie 与站点数据。外部浏览器不会受到影响。",
+                text = "현재 페이지를 닫고 Eta 브라우저의 쿠키와 사이트 데이터를 삭제합니다. 외부 브라우저에는 영향을 주지 않습니다.",
                 style = MiuixTheme.textStyles.body2,
                 color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
             )
@@ -269,12 +269,12 @@ internal fun AgentBrowserScreen(
                 horizontalArrangement = Arrangement.End,
             ) {
                 TextButton(
-                    text = "取消",
+                    text = "취소",
                     onClick = { showResetDialog = false },
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 TextButton(
-                    text = "重置",
+                    text = "초기화",
                     onClick = {
                         showResetDialog = false
                         address = ""
@@ -312,13 +312,13 @@ private fun BrowserControlBar(
         ) {
             BrowserControlButton(
                 icon = LucideR.drawable.lucide_ic_arrow_left,
-                description = "后退",
+                description = "뒤로",
                 enabled = snapshot.canGoBack && !actionPending,
                 onClick = onBack,
             )
             BrowserControlButton(
                 icon = LucideR.drawable.lucide_ic_arrow_right,
-                description = "前进",
+                description = "앞으로",
                 enabled = snapshot.canGoForward && !actionPending,
                 onClick = onForward,
             )
@@ -328,7 +328,7 @@ private fun BrowserControlBar(
                 } else {
                     LucideR.drawable.lucide_ic_refresh_cw
                 },
-                description = if (snapshot.isLoading) "停止加载" else "刷新",
+                description = if (snapshot.isLoading) "로딩 중지" else "새로고침",
                 enabled = snapshot.available && (snapshot.isLoading || !actionPending),
                 onClick = onRefresh,
             )
@@ -339,7 +339,7 @@ private fun BrowserControlBar(
                     .padding(horizontal = 8.dp),
             ) {
                 Text(
-                    text = snapshot.title.ifBlank { "Agent 浏览器" },
+                    text = snapshot.title.ifBlank { "에이전트 브라우저" },
                     style = MiuixTheme.textStyles.body2,
                     fontWeight = FontWeight.Medium,
                     color = MiuixTheme.colorScheme.onSurface,
@@ -357,13 +357,13 @@ private fun BrowserControlBar(
 
             BrowserControlButton(
                 icon = LucideR.drawable.lucide_ic_external_link,
-                description = "用外部应用打开",
+                description = "외부 앱으로 열기",
                 enabled = snapshot.available,
                 onClick = onOpenExternal,
             )
             BrowserControlButton(
                 icon = LucideR.drawable.lucide_ic_trash_2,
-                description = "重置会话",
+                description = "세션 초기화",
                 enabled = snapshot.available && !actionPending,
                 onClick = onReset,
             )
@@ -401,10 +401,10 @@ private fun BrowserControlButton(
 private fun BrowserStatusBanner(snapshot: BrowserSessionSnapshot) {
     val risk = snapshot.riskChallengeKind
     val message = when {
-        risk != null -> "页面需要人工验证，Agent 已停止自动点击和输入。你可以在下方手动接管。"
+        risk != null -> "페이지에 사람의 확인이 필요해 에이전트가 자동 탭과 입력을 중지했습니다. 아래에서 직접 조작할 수 있습니다."
         snapshot.error != null -> snapshot.error
         snapshot.isUserControlling && snapshot.available ->
-            "你正在接管当前会话，Agent 的网页操作已停止；返回后可让 Agent 继续。"
+            "현재 세션을 직접 조작하고 있습니다. 에이전트의 웹 작업은 중지되었으며, 뒤로 돌아가면 계속하도록 할 수 있습니다."
         else -> null
     } ?: return
     val color = when {
@@ -472,14 +472,14 @@ private fun BrowserEmptyState(modifier: Modifier = Modifier) {
         )
         Spacer(modifier = Modifier.height(14.dp))
         Text(
-            text = "浏览器尚未打开网页",
+            text = "브라우저에 열린 웹페이지가 없습니다.",
             style = MiuixTheme.textStyles.body1,
             fontWeight = FontWeight.Medium,
             color = MiuixTheme.colorScheme.onSurface,
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
-            text = "在地址栏输入网址，或让 Agent 帮你查阅网页。会话只在 Eta 内使用。",
+            text = "주소창에 URL을 입력하거나 에이전트에게 웹페이지를 찾아보도록 요청하세요. 세션은 Eta 안에서만 사용됩니다.",
             style = MiuixTheme.textStyles.body2,
             color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
         )
@@ -515,7 +515,7 @@ private fun BrowserLoadingState(
         )
         Spacer(modifier = Modifier.height(12.dp))
         Text(
-            text = if (host.isBlank()) "正在打开网页" else "正在打开 $host",
+            text = if (host.isBlank()) "웹페이지 여는 중" else "$host 여는 중",
             style = MiuixTheme.textStyles.body2,
             color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
             maxLines = 1,
@@ -549,7 +549,7 @@ private fun BrowserFailedState(modifier: Modifier = Modifier) {
         )
         Spacer(modifier = Modifier.height(12.dp))
         Text(
-            text = "网页未能打开",
+            text = "웹페이지를 열지 못했습니다.",
             style = MiuixTheme.textStyles.body2,
             color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
         )

@@ -54,7 +54,7 @@ internal object PowerHooks {
             hooks.missing(
                 id = "system.power-assist-message",
                 description = "OplusSpeechHandler.handleMessage",
-                detail = "未找到 OplusSpeechHandler.handleMessage(Message)"
+                detail = "OplusSpeechHandler.handleMessage(Message)를 찾을 수 없습니다"
             )
             return
         }
@@ -78,7 +78,7 @@ internal object PowerHooks {
             val pwm = resolvePhoneWindowManager(chain.getThisObject())
             if (pwm == null) {
                 logger.warnThrottled("oplus_speech_missing_pwm") {
-                    "OplusSpeechHandler 未能解析 PhoneWindowManager，回退原逻辑"
+                    "OplusSpeechHandler가 PhoneWindowManager를 파싱하지 못해 기존 로직으로 복귀합니다"
                 }
                 return@intercept chain.proceed()
             }
@@ -122,21 +122,21 @@ internal object PowerHooks {
         val context = HookSupport.getFieldValue(phoneWindowManager, "mContext") as? Context
         if (context == null) {
             logger.warnThrottled("${source}_missing_context") {
-                "$source 缺少 mContext，回退原逻辑"
+                "${source}에 mContext가 없어 기존 로직으로 복귀합니다"
             }
             return LaunchResult.NOT_HANDLED
         }
 
         if (!HookSupport.isPackageInstalled(context, ModuleConfig.GOOGLE_PACKAGE)) {
             logger.warnThrottled("${source}_google_missing") {
-                "$source: Google App 未安装，回退原逻辑"
+                "$source: Google 앱이 설치되어 있지 않아 기존 로직으로 복귀합니다"
             }
             return LaunchResult.NOT_HANDLED
         }
 
         val now = SystemClock.uptimeMillis()
         if (now - lastInterceptUptime <= ModuleConfig.INTERCEPT_DEDUP_WINDOW_MS) {
-            logger.debug { "$source: 命中去重窗口，直接吞掉重复触发" }
+            logger.debug { "$source: 중복 윈도우에 감지되어 중복 트리거를 무시합니다" }
             return LaunchResult.LAUNCHED
         }
 
@@ -147,7 +147,7 @@ internal object PowerHooks {
                 logFailures = false
             )) {
             finalizeSuccessfulLaunch(logger, phoneWindowManager, source, now)
-            logger.debug { "$source: 已通过 voiceinteraction 启动 Google" }
+            logger.debug { "$source: voiceinteraction으로 Google을 실행했습니다" }
             return LaunchResult.LAUNCHED
         }
 
@@ -194,13 +194,13 @@ internal object PowerHooks {
         val resolves = runCatching { HookSupport.resolvesActivity(context, intent) }
             .getOrElse { throwable ->
                 logger.warnThrottled("${source}_${action}_resolve_failed") {
-                    "$source: 查询 Google $action 入口失败，type=${throwable.safeLogType()}"
+                    "$source: Google $action 진입점 조회에 실패했습니다, type=${throwable.safeLogType()}"
                 }
                 false
             }
         if (!resolves) {
             logger.warnThrottled("${source}_${action}_missing") {
-                "$source: Google 未暴露 $action，回退原逻辑"
+                "$source: Google이 ${action}을 노출하지 않아 기존 로직으로 복귀합니다"
             }
             return false
         }
@@ -208,11 +208,11 @@ internal object PowerHooks {
         return runCatching {
             context.startActivity(intent)
             finalizeSuccessfulLaunch(logger, phoneWindowManager, source, now)
-            logger.debug { "$source: 已通过 $action 启动 Google" }
+            logger.debug { "$source: ${action}으로 Google을 실행했습니다" }
             true
         }.getOrElse { throwable ->
             logger.warnThrottled("${source}_${action}_failed") {
-                "$source: $action 启动失败，回退原逻辑，type=${throwable.safeLogType()}"
+                "$source: $action 실행에 실패하여 기존 로직으로 복귀합니다, type=${throwable.safeLogType()}"
             }
             false
         }
@@ -234,12 +234,12 @@ internal object PowerHooks {
         source: String
     ) {
         if (invokeOplusAssistantHapticFeedback(phoneWindowManager)) {
-            logger.debug { "$source: 已补发 Oplus 原生助理震感" }
+            logger.debug { "$source: Oplus 기본 에이전트 진동을 보완 전송했습니다" }
             return
         }
 
         logger.warnThrottled("${source}_assistant_haptic_missing") {
-            "$source: 未找到 Oplus 原生长按助理震感入口"
+            "$source: Oplus 기본 길게 누르기 에이전트 진동 진입점을 찾을 수 없습니다"
         }
     }
 
@@ -265,7 +265,7 @@ internal object PowerHooks {
     ) {
         if (handler == null) {
             logger.warnThrottled("${source}_recovery_missing_handler") {
-                "$source: 无法取得 OplusSpeechHandler 实例，跳过后台配置修复"
+                "$source: OplusSpeechHandler 인스턴스를 얻을 수 없어 백그라운드 설정 복구를 건너뜁니다"
             }
             return
         }
@@ -273,7 +273,7 @@ internal object PowerHooks {
         val context = HookSupport.getFieldValue(phoneWindowManager, "mContext") as? Context
         if (context == null) {
             logger.warnThrottled("${source}_recovery_missing_context") {
-                "$source: 无法取得 mContext，跳过后台配置修复"
+                "$source: mContext를 얻을 수 없어 백그라운드 설정 복구를 건너뜁니다"
             }
             return
         }
@@ -287,11 +287,11 @@ internal object PowerHooks {
         )
         if (!scheduled) {
             logger.warnThrottled("${source}_configuration_schedule_failed") {
-                "$source: 默认助理后台修复无法入队"
+                "$source: 기본 에이전트 백그라운드 복구를 큐에 추가할 수 없습니다"
             }
         } else {
             logger.warnThrottled("${source}_assistant_recovery_pending") {
-                "$source: voiceinteraction 失败，已在后台修复默认助理配置"
+                "$source: voiceinteraction 실패, 기본 에이전트 설정을 백그라운드에서 복구했습니다"
             }
         }
     }

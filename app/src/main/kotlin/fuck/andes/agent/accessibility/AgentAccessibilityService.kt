@@ -358,19 +358,19 @@ class AgentAccessibilityService : AccessibilityService() {
             if (indexed.clickTarget != null && actionable == null) {
                 NodeActionResult.failure(
                     "STALE_ACTION_TARGET",
-                    "节点的可点击目标已经变化，请重新观察屏幕",
+                    "노드의 클릭 가능한 대상이 변경되었습니다. 화면을 다시 관찰하세요.",
                 )
             } else if (actionable != null) {
                 when (performNodeAction(actionable, AccessibilityNodeInfo.ACTION_CLICK)) {
                     ActionDispatch.ACCEPTED -> NodeActionResult.success(method = "ACTION_CLICK")
                     ActionDispatch.REJECTED ->
-                        NodeActionResult.failure("ACTION_FAILED", "目标节点拒绝点击动作")
+                        NodeActionResult.failure("ACTION_FAILED", "대상 노드가 클릭 동작을 거부했습니다.")
                     ActionDispatch.OUTCOME_UNKNOWN -> NodeActionResult.outcomeUnknown()
                 }
             } else {
                 val bounds = clippedNodeBounds(node)
                 if (bounds.isEmpty) {
-                    NodeActionResult.failure("INVALID_NODE_BOUNDS", "目标节点没有可点击区域")
+                    NodeActionResult.failure("INVALID_NODE_BOUNDS", "대상 노드에 클릭 가능한 영역이 없습니다.")
                 } else gestureTap(bounds.centerX().toFloat(), bounds.centerY().toFloat())
             }
         }
@@ -385,19 +385,19 @@ class AgentAccessibilityService : AccessibilityService() {
         if (indexed.longClickTarget != null && actionable == null) {
             NodeActionResult.failure(
                 "STALE_ACTION_TARGET",
-                "节点的可长按目标已经变化，请重新观察屏幕",
+                "노드의 길게 누를 수 있는 대상이 변경되었습니다. 화면을 다시 관찰하세요.",
             )
         } else if (actionable != null) {
             when (performNodeAction(actionable, AccessibilityNodeInfo.ACTION_LONG_CLICK)) {
                 ActionDispatch.ACCEPTED -> NodeActionResult.success(method = "ACTION_LONG_CLICK")
                 ActionDispatch.REJECTED ->
-                    NodeActionResult.failure("ACTION_FAILED", "目标节点拒绝长按动作")
+                    NodeActionResult.failure("ACTION_FAILED", "대상 노드가 길게 누르기 동작을 거부했습니다.")
                 ActionDispatch.OUTCOME_UNKNOWN -> NodeActionResult.outcomeUnknown()
             }
         } else {
             val bounds = clippedNodeBounds(node)
             if (bounds.isEmpty) {
-                NodeActionResult.failure("INVALID_NODE_BOUNDS", "目标节点没有可长按区域")
+                NodeActionResult.failure("INVALID_NODE_BOUNDS", "대상 노드에 길게 누를 수 있는 영역이 없습니다.")
             } else {
                 gestureTap(
                     bounds.centerX().toFloat(),
@@ -419,7 +419,7 @@ class AgentAccessibilityService : AccessibilityService() {
             ?: return ScrollActionResult.failure(
                 direction = direction,
                 code = "SERVICE_TIMEOUT",
-                message = "无障碍服务主线程无响应",
+                message = "접근성 서비스 메인 스레드가 응답하지 않습니다.",
                 targetIndex = index,
             )
         val validationNode = when (validation) {
@@ -436,14 +436,14 @@ class AgentAccessibilityService : AccessibilityService() {
             return ScrollActionResult.failure(
                 direction = direction,
                 code = "STALE_ACTION_TARGET",
-                message = "节点的滚动容器已经变化，请重新观察屏幕",
+                message = "노드의 스크롤 컨테이너가 변경되었습니다. 화면을 다시 관찰하세요.",
                 targetIndex = index,
             )
         }
         scrollable ?: return ScrollActionResult.failure(
             direction = direction,
             code = "NOT_SCROLLABLE",
-            message = "指定节点及其父节点不可滚动",
+            message = "지정된 노드와 부모 노드는 스크롤할 수 없습니다.",
             targetIndex = index,
         )
         return executeScroll(scrollable, direction, targetIndex = index)
@@ -455,7 +455,7 @@ class AgentAccessibilityService : AccessibilityService() {
         } ?: return ScrollActionResult.failure(
             direction = direction,
             code = "NO_ACTIVE_WINDOW",
-            message = "当前活动窗口不可访问",
+            message = "현재 활성 창에 접근할 수 없습니다.",
         )
         return executeScroll(target, direction, targetIndex = null)
     }
@@ -471,7 +471,7 @@ class AgentAccessibilityService : AccessibilityService() {
             return ScrollActionResult.failure(
                 direction = direction,
                 code = "STALE_NODE",
-                message = "滚动目标已经失效，请重新观察屏幕",
+                message = "스크롤 대상이 유효하지 않습니다. 화면을 다시 관찰하세요.",
                 targetIndex = targetIndex,
             )
         }
@@ -479,7 +479,7 @@ class AgentAccessibilityService : AccessibilityService() {
             return ScrollActionResult.failure(
                 direction = direction,
                 code = "AXIS_MISMATCH",
-                message = "目标只支持另一滚动轴；为避免误触侧滑，本次未执行任何动作",
+                message = "대상은 다른 스크롤 축만 지원합니다. 오작동을 방지하기 위해 이번에는 아무 동작도 하지 않았습니다.",
                 targetIndex = targetIndex,
                 elapsedMs = SystemClock.elapsedRealtime() - startedAt,
             )
@@ -498,7 +498,7 @@ class AgentAccessibilityService : AccessibilityService() {
             return ScrollActionResult.failure(
                 direction = direction,
                 code = "ACTION_OUTCOME_UNKNOWN",
-                message = "滚动动作可能已提交，但系统未在时限内返回结果；请先重新观察，避免重复滚动",
+                message = "스크롤 동작이 제출되었으나 시스템이 시간 내에 결과를 반환하지 않았습니다. 중복 스크롤을 피하기 위해 먼저 화면을 다시 관찰하세요.",
                 method = methodName,
                 targetIndex = targetIndex,
                 elapsedMs = SystemClock.elapsedRealtime() - startedAt,
@@ -523,7 +523,7 @@ class AgentAccessibilityService : AccessibilityService() {
                 ?: return ScrollActionResult.failure(
                     direction = direction,
                     code = "INVALID_NODE_BOUNDS",
-                    message = "滚动目标没有足够的可用区域",
+                    message = "스크롤 대상에 충분한 사용 가능한 영역이 없습니다.",
                     targetIndex = targetIndex,
                 )
             methodName = "GESTURE_SWIPE"
@@ -561,7 +561,7 @@ class AgentAccessibilityService : AccessibilityService() {
             return ScrollActionResult.failure(
                 direction = direction,
                 code = "ACTION_FAILED",
-                message = "系统拒绝滚动动作",
+                message = "시스템이 스크롤 동작을 거부했습니다.",
                 method = methodName,
                 targetIndex = targetIndex,
                 elapsedMs = SystemClock.elapsedRealtime() - startedAt,
@@ -599,7 +599,7 @@ class AgentAccessibilityService : AccessibilityService() {
             return ScrollActionResult.failure(
                 direction = direction,
                 code = "DIRECTION_MISMATCH",
-                message = "界面向请求方向的反方向移动",
+                message = "인터페이스가 요청한 방향과 반대로 이동했습니다.",
                 method = methodName,
                 targetIndex = targetIndex,
                 deltaX = delta.takeIf { direction.axis == ScrollAxis.HORIZONTAL },
@@ -640,7 +640,7 @@ class AgentAccessibilityService : AccessibilityService() {
         return ScrollActionResult.failure(
             direction = direction,
             code = "ACTION_OUTCOME_UNKNOWN",
-            message = "滚动动作已经发出，但无法确认内容位移；请先重新观察，禁止直接重试",
+            message = "스크롤 동작이 실행되었으나 내용 이동을 확인할 수 없습니다. 화면을 다시 관찰하고 직접 재시도하지 마세요.",
             method = methodName,
             targetIndex = targetIndex,
             deltaX = delta.takeIf { direction.axis == ScrollAxis.HORIZONTAL },
@@ -653,7 +653,7 @@ class AgentAccessibilityService : AccessibilityService() {
         val node = findFocusedEditableNode()
             ?: return@runNodeActionOnMainSync NodeActionResult.failure(
                 "NO_FOCUSED_EDITABLE",
-                "没有获得输入焦点的可编辑节点",
+                "입력 포커스를 받은 편집 가능한 노드가 없습니다.",
             )
         node.incrementalTextValidationError()?.let { error ->
             return@runNodeActionOnMainSync error
@@ -665,7 +665,7 @@ class AgentAccessibilityService : AccessibilityService() {
             selectionEnd = node.textSelectionEnd,
         ) ?: return@runNodeActionOnMainSync NodeActionResult.failure(
             "TEXT_SELECTION_UNAVAILABLE",
-            "当前输入框未提供可靠光标或选区；请用 replace_text 提供完整值",
+            "현재 입력란에서 신뢰할 수 있는 커서 또는 선택 영역이 제공되지 않습니다. replace_text로 전체 값을 입력하세요.",
         )
         setNodeText(node, plan.text, plan.cursor)
     }
@@ -677,10 +677,10 @@ class AgentAccessibilityService : AccessibilityService() {
     ): NodeActionResult {
         if (index != null) {
             val requiredSnapshot = snapshot
-                ?: return NodeActionResult.failure("NO_OBSERVATION", "指定 index 需要有效观察快照")
+                ?: return NodeActionResult.failure("NO_OBSERVATION", "지정된 index를 사용하려면 유효한 관찰 스냅샷이 필요합니다.")
             return withValidatedNode(requiredSnapshot, index) { node ->
                 if (!node.isEditable) {
-                    NodeActionResult.failure("NOT_EDITABLE", "指定节点不可编辑")
+                    NodeActionResult.failure("NOT_EDITABLE", "지정된 노드는 편집할 수 없습니다.")
                 } else {
                     setNodeText(node, text, text.length)
                 }
@@ -690,7 +690,7 @@ class AgentAccessibilityService : AccessibilityService() {
             val node = findFocusedEditableNode()
                 ?: return@runNodeActionOnMainSync NodeActionResult.failure(
                     "NO_FOCUSED_EDITABLE",
-                    "没有获得输入焦点的可编辑节点",
+                    "입력 포커스를 받은 편집 가능한 노드가 없습니다.",
                 )
             setNodeText(node, text, text.length)
         }
@@ -701,7 +701,7 @@ class AgentAccessibilityService : AccessibilityService() {
         val node = findFocusedEditableNode()
             ?: return@runNodeActionOnMainSync NodeActionResult.failure(
                 "NO_FOCUSED_EDITABLE",
-                "没有获得输入焦点的可编辑节点",
+                "입력 포커스를 받은 편집 가능한 노드가 없습니다.",
             )
         node.incrementalTextValidationError()?.let { error ->
             return@runNodeActionOnMainSync error
@@ -713,7 +713,7 @@ class AgentAccessibilityService : AccessibilityService() {
             selectionEnd = node.textSelectionEnd,
         ) ?: return@runNodeActionOnMainSync NodeActionResult.failure(
             "TEXT_SELECTION_UNAVAILABLE",
-            "当前输入框未提供可靠光标或选区；请用 replace_text 提供完整值",
+            "현재 입력란에서 신뢰할 수 있는 커서 또는 선택 영역이 제공되지 않습니다. replace_text로 전체 값을 입력하세요.",
         )
         val directResult = setNodeText(node, plan.text, plan.cursor)
         if (directResult.ok) {
@@ -736,7 +736,7 @@ class AgentAccessibilityService : AccessibilityService() {
         if (!copied) {
             return@runNodeActionOnMainSync NodeActionResult.failure(
                 "CLIPBOARD_WRITE_FAILED",
-                "写入剪贴板失败",
+                "클립보드에 쓰기 실패했습니다.",
             )
         }
         val pasteResult = try {
@@ -749,7 +749,7 @@ class AgentAccessibilityService : AccessibilityService() {
                     NodeActionResult.outcomeUnknown()
                 }
             } else {
-                NodeActionResult.failure("ACTION_FAILED", "输入节点拒绝粘贴动作")
+                NodeActionResult.failure("ACTION_FAILED", "입력 노드가 붙여넣기를 거부했습니다.")
             }
         } catch (_: Throwable) {
             NodeActionResult.outcomeUnknown()
@@ -790,12 +790,12 @@ class AgentAccessibilityService : AccessibilityService() {
         val node = findFocusedEditableNode()
             ?: return@runNodeActionOnMainSync NodeActionResult.failure(
                 "NO_FOCUSED_EDITABLE",
-                "没有获得输入焦点的可编辑节点",
+                "입력 포커스를 받은 편집 가능한 노드가 없습니다.",
             )
         if (node.performAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_IME_ENTER.id)) {
             NodeActionResult.success(method = "ACTION_IME_ENTER")
         } else {
-            NodeActionResult.failure("ACTION_FAILED", "输入节点拒绝回车动作")
+            NodeActionResult.failure("ACTION_FAILED", "입력 노드가 엔터 동작을 거부했습니다.")
         }
     }
 
@@ -832,13 +832,13 @@ class AgentAccessibilityService : AccessibilityService() {
             "RECENTS" -> GLOBAL_ACTION_RECENTS
             "NOTIFICATIONS" -> GLOBAL_ACTION_NOTIFICATIONS
             "QUICK_SETTINGS" -> GLOBAL_ACTION_QUICK_SETTINGS
-            else -> return NodeActionResult.failure("INVALID_ARGUMENT", "不支持的系统动作")
+            else -> return NodeActionResult.failure("INVALID_ARGUMENT", "지원하지 않는 시스템 동작입니다.")
         }
         return runNodeActionOnMainSync {
             if (performGlobalAction(action)) {
                 NodeActionResult.success(method = "GLOBAL_ACTION_${name.uppercase()}")
             } else {
-                NodeActionResult.failure("ACTION_FAILED", "系统拒绝全局动作")
+                NodeActionResult.failure("ACTION_FAILED", "시스템이 전체 동작을 거부했습니다.")
             }
         }
     }
@@ -1126,7 +1126,7 @@ class AgentAccessibilityService : AccessibilityService() {
             putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, text)
         }
         if (!node.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, setTextArgs)) {
-            return NodeActionResult.failure("ACTION_FAILED", "输入节点拒绝文本修改动作")
+            return NodeActionResult.failure("ACTION_FAILED", "입력 노드가 텍스트 수정 동작을 거부했습니다.")
         }
         val safeCursor = cursor.coerceIn(0, text.length)
         val selectionArgs = Bundle().apply {
@@ -1168,7 +1168,7 @@ class AgentAccessibilityService : AccessibilityService() {
         if (isPassword || currentText == null) {
             return NodeActionResult.failure(
                 "TEXT_CONTENT_UNAVAILABLE",
-                "当前输入框不允许可靠读取已有文本；请用 replace_text 提供完整值",
+                "현재 입력란에서 기존 텍스트를 안정적으로 읽을 수 없습니다. replace_text로 전체 값을 입력하세요.",
             )
         }
         if (
@@ -1182,7 +1182,7 @@ class AgentAccessibilityService : AccessibilityService() {
         ) {
             return NodeActionResult.failure(
                 "TEXT_SELECTION_UNAVAILABLE",
-                "当前输入框未提供可靠光标或选区；请用 replace_text 提供完整值",
+                "현재 입력란에서 신뢰할 수 있는 커서 또는 선택 영역이 제공되지 않습니다. replace_text로 전체 값을 입력하세요.",
             )
         }
         return null
@@ -1480,7 +1480,7 @@ class AgentAccessibilityService : AccessibilityService() {
         block: (IndexedNode) -> NodeActionResult,
     ): NodeActionResult {
         val validation = runOnMainSync { validateNode(snapshot, index) }
-            ?: return NodeActionResult.failure("SERVICE_TIMEOUT", "无障碍服务主线程无响应")
+            ?: return NodeActionResult.failure("SERVICE_TIMEOUT", "접근성 서비스 메인 스레드가 응답하지 않습니다.")
         return when (validation) {
             is NodeValidation.Invalid -> validation.result
             is NodeValidation.Valid -> block(validation.indexedNode)
@@ -1490,21 +1490,21 @@ class AgentAccessibilityService : AccessibilityService() {
     private fun validateNode(snapshot: NodeSnapshot, index: Int): NodeValidation {
         if (snapshot.serviceToken != serviceToken) {
             return NodeValidation.Invalid(
-                NodeActionResult.failure("SERVICE_RECONNECTED", "无障碍服务已重连，请重新观察屏幕"),
+                NodeActionResult.failure("SERVICE_RECONNECTED", "접근성 서비스가 다시 연결되었습니다. 화면을 다시 관찰하세요."),
             )
         }
         val indexed = snapshot.indexedNodes.firstOrNull { it.index == index }
             ?: return NodeValidation.Invalid(
-                NodeActionResult.failure("INVALID_NODE_INDEX", "观察快照中不存在节点 index=$index"),
+                NodeActionResult.failure("INVALID_NODE_INDEX", "관찰 스냅샷에 index=$index 노드가 없습니다."),
             )
         val activeRoot = rootInActiveWindow
             ?: return NodeValidation.Invalid(
-                NodeActionResult.failure("STALE_WINDOW", "当前活动窗口不可访问，请重新观察屏幕"),
+                NodeActionResult.failure("STALE_WINDOW", "현재 활성 창에 접근할 수 없습니다. 화면을 다시 관찰하세요."),
             )
         val activePackage = activeRoot.packageName?.toString().orEmpty()
         if (activeRoot.windowId != snapshot.windowId || activePackage != snapshot.packageName) {
             return NodeValidation.Invalid(
-                NodeActionResult.failure("STALE_WINDOW", "活动窗口已经变化，请重新观察屏幕"),
+                NodeActionResult.failure("STALE_WINDOW", "활성 창이 변경되었습니다. 화면을 다시 관찰하세요."),
             )
         }
         if (
@@ -1512,23 +1512,23 @@ class AgentAccessibilityService : AccessibilityService() {
             !snapshot.hasUnambiguousIdentity(indexed)
         ) {
             return NodeValidation.Invalid(
-                NodeActionResult.failure("STALE_CONTENT", "窗口内容已经变化，请重新观察屏幕"),
+                NodeActionResult.failure("STALE_CONTENT", "창 내용이 변경되었습니다. 화면을 다시 관찰하세요."),
             )
         }
         val node = indexed.node
         if (!runCatching { node.refresh() }.getOrDefault(false)) {
             return NodeValidation.Invalid(
-                NodeActionResult.failure("STALE_NODE", "目标节点已经失效，请重新观察屏幕"),
+                NodeActionResult.failure("STALE_NODE", "대상 노드가 더 이상 유효하지 않습니다. 화면을 다시 관찰하세요."),
             )
         }
         if (!indexed.identityMatches(node)) {
             return NodeValidation.Invalid(
-                NodeActionResult.failure("IDENTITY_CHANGED", "目标节点内容或身份已经变化，请重新观察屏幕"),
+                NodeActionResult.failure("IDENTITY_CHANGED", "대상 노드의 내용 또는 ID가 변경되었습니다. 화면을 다시 관찰하세요."),
             )
         }
         if (!node.isVisibleToUser || !node.isEnabled) {
             return NodeValidation.Invalid(
-                NodeActionResult.failure("NODE_NOT_ACTIONABLE", "目标节点当前不可见或不可用"),
+                NodeActionResult.failure("NODE_NOT_ACTIONABLE", "대상 노드가 현재 보이지 않거나 사용할 수 없습니다."),
             )
         }
         return NodeValidation.Valid(indexed)
@@ -1690,7 +1690,7 @@ class AgentAccessibilityService : AccessibilityService() {
         if (Looper.myLooper() == Looper.getMainLooper()) {
             return NodeActionResult.failure(
                 "GESTURE_NOT_DISPATCHED",
-                "不能在无障碍主线程同步等待手势",
+                "접근성 메인 스레드에서 동기식 제스처 대기는 지원되지 않습니다.",
             )
         }
         val latch = CountDownLatch(1)
@@ -1743,7 +1743,7 @@ class AgentAccessibilityService : AccessibilityService() {
             }
         }
         if (!posted) {
-            return NodeActionResult.failure("GESTURE_NOT_DISPATCHED", "无障碍主线程拒绝手势任务")
+            return NodeActionResult.failure("GESTURE_NOT_DISPATCHED", "접근성 메인 스레드가 제스처 작업을 거부했습니다.")
         }
         val finishedInTime = try {
             latch.await(durationMs + GESTURE_CALLBACK_GRACE_MS, TimeUnit.MILLISECONDS)
@@ -1755,7 +1755,7 @@ class AgentAccessibilityService : AccessibilityService() {
             if (gate.cancelIfPending()) {
                 return NodeActionResult.failure(
                     "GESTURE_NOT_DISPATCHED",
-                    "无障碍主线程繁忙，手势已在执行前取消",
+                    "접근성 메인 스레드가 바빠서 제스처가 실행 전에 취소되었습니다.",
                 )
             }
             return NodeActionResult.outcomeUnknown()
@@ -1765,16 +1765,16 @@ class AgentAccessibilityService : AccessibilityService() {
             GestureDispatch.CANCELLED -> NodeActionResult.outcomeUnknown()
             GestureDispatch.OUTCOME_UNKNOWN -> NodeActionResult.outcomeUnknown()
             GestureDispatch.NOT_DISPATCHED,
-            null -> NodeActionResult.failure("GESTURE_NOT_DISPATCHED", "系统拒绝手势任务")
+            null -> NodeActionResult.failure("GESTURE_NOT_DISPATCHED", "시스템이 제스처 작업을 거부했습니다.")
         }
     }
 
     private fun runNodeActionOnMainSync(block: () -> NodeActionResult): NodeActionResult =
         when (val result = callOnMainSync(block)) {
             is MainThreadCallResult.Completed -> result.value
-                ?: NodeActionResult.failure("ACTION_FAILED", "无障碍动作执行异常")
+                ?: NodeActionResult.failure("ACTION_FAILED", "접근성 동작 실행 중 오류가 발생했습니다.")
             MainThreadCallResult.NOT_STARTED ->
-                NodeActionResult.failure("SERVICE_TIMEOUT", "无障碍服务主线程无响应，动作未执行")
+                NodeActionResult.failure("SERVICE_TIMEOUT", "접근성 서비스 메인 스레드가 응답하지 않아 동작이 실행되지 않았습니다.")
             MainThreadCallResult.OUTCOME_UNKNOWN -> NodeActionResult.outcomeUnknown()
         }
 
@@ -1843,7 +1843,7 @@ class AgentAccessibilityService : AccessibilityService() {
 
             fun outcomeUnknown(): NodeActionResult = failure(
                 code = "ACTION_OUTCOME_UNKNOWN",
-                message = "动作可能已执行，但系统未在时限内返回结果；请先重新观察，避免重复操作",
+                message = "동작이 실행되었을 수 있으나 시스템이 시간 내에 결과를 반환하지 않았습니다. 먼저 화면을 다시 관찰하고 중복 작업을 피하세요.",
             )
         }
     }

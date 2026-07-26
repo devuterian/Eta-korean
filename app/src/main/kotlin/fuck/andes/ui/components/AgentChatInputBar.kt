@@ -119,7 +119,7 @@ fun AgentChatInputBar(
             ) {
                 if (input.isBlank()) {
                     Text(
-                        text = if (isStreaming) "Eta 正在执行…" else "交给 Eta 去完成",
+                        text = if (isStreaming) "Eta가 실행 중…" else "Eta에게 맡기기",
                         style = MiuixTheme.textStyles.body1,
                         color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
                     )
@@ -157,7 +157,7 @@ fun AgentChatInputBar(
                 ) {
                     Icon(
                         painter = painterResource(LucideR.drawable.lucide_ic_plus),
-                        contentDescription = "添加图片",
+                        contentDescription = "이미지 추가",
                         modifier = Modifier.size(InputIconSize + 2.dp),
                         tint = MiuixTheme.colorScheme.onSurface,
                     )
@@ -203,7 +203,7 @@ fun AgentChatInputBar(
                                     LucideR.drawable.lucide_ic_arrow_up
                                 }
                             ),
-                            contentDescription = if (isStreaming) "停止" else "发送",
+                            contentDescription = if (isStreaming) "중지" else "보내기",
                             modifier = Modifier.size(if (isStreaming) 12.dp else 17.dp),
                             tint = when {
                                 isStreaming -> MiuixTheme.colorScheme.surface
@@ -265,7 +265,7 @@ private fun ThinkingToggleChip(
         )
         Spacer(modifier = Modifier.width(5.dp))
         Text(
-            text = "思考",
+            text = "생각",
             style = MiuixTheme.textStyles.footnote1,
             color = contentColor,
         )
@@ -312,7 +312,7 @@ private fun PendingImageStrip(
                 ) {
                     Icon(
                         painter = painterResource(LucideR.drawable.lucide_ic_x),
-                        contentDescription = "移除图片",
+                        contentDescription = "이미지 제거",
                         modifier = Modifier.size(11.dp),
                         tint = Color.White,
                     )

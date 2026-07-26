@@ -57,7 +57,7 @@ fun AgentToolsScreen(
     modifier: Modifier = Modifier,
 ) {
     MiuixScaffoldPage(
-        title = "工具能力",
+        title = "도구",
         onBack = { onAction(AgentToolsAction.NavigateBack) },
         modifier = modifier,
     ) {

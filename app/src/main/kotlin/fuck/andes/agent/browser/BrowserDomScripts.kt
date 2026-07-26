@@ -321,7 +321,7 @@ internal object BrowserDomScripts {
             }
             if (tag === 'img') {
               var alt = cleanInline(node.getAttribute('alt'), 200);
-              if (alt) emit(state, '[图片：' + markdownEscape(alt) + ']');
+              if (alt) emit(state, '[이미지: ' + markdownEscape(alt) + ']');
               return;
             }
             if (tag === 'ul' || tag === 'ol') {

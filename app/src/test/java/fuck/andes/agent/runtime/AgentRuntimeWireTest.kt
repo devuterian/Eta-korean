@@ -337,7 +337,7 @@ class AgentRuntimeWireTest {
                 kind = AgentEvent.AssistantBlockKind.THINKING,
                 index = 0,
                 deltaChars = 4,
-                delta = "思考",
+                delta = "생각",
             ),
             AgentEvent.AssistantBlockEnd(
                 round = 2,

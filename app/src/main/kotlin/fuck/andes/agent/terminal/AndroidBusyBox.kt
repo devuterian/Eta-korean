@@ -11,7 +11,7 @@ internal object AndroidBusyBox {
     )
 
     fun discoveryScript(variable: String = "eta_busybox"): String {
-        require(variable.matches(Regex("[a-z_][a-z0-9_]*"))) { "非法 Shell 变量名" }
+        require(variable.matches(Regex("[a-z_][a-z0-9_]*"))) { "잘못된 Shell 변수명입니다." }
         val quotedCandidates = candidates.joinToString(" ") { shellQuote(it) }
         return "$variable=''; " +
             "for eta_candidate in $quotedCandidates; do " +

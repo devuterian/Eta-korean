@@ -19,7 +19,7 @@ fun MiuixBackButton(
     IconButton(onClick = onClick, modifier = modifier) {
         Icon(
             painter = painterResource(LucideR.drawable.lucide_ic_chevron_left),
-            contentDescription = "返回",
+            contentDescription = "뒤로",
         )
     }
 }

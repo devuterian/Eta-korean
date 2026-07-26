@@ -8,7 +8,7 @@ import java.util.TimeZone
 
 internal object ConversationTimeLabels {
     private const val DAY_MS = 24L * 60L * 60L * 1000L
-    private val weekdayLabels = arrayOf("周日", "周一", "周二", "周三", "周四", "周五", "周六")
+    private val weekdayLabels = arrayOf("일요일", "월요일", "화요일", "수요일", "목요일", "금요일", "토요일")
 
     fun label(
         timestampMillis: Long,
@@ -16,7 +16,7 @@ internal object ConversationTimeLabels {
         locale: Locale = Locale.getDefault(),
         timeZone: TimeZone = TimeZone.getDefault(),
     ): String {
-        if (timestampMillis <= 0L) return "最近"
+        if (timestampMillis <= 0L) return "최근"
 
         val nowStart = startOfDay(nowMillis, locale, timeZone)
         val targetStart = startOfDay(timestampMillis, locale, timeZone)
@@ -24,7 +24,7 @@ internal object ConversationTimeLabels {
 
         return when {
             dayDelta <= 0 -> format("HH:mm", timestampMillis, locale, timeZone)
-            dayDelta == 1 -> "昨天"
+            dayDelta == 1 -> "어제"
             dayDelta in 2..6 -> weekdayLabel(timestampMillis, locale, timeZone)
             sameYear(timestampMillis, nowMillis, locale, timeZone) ->
                 format("M-d", timestampMillis, locale, timeZone)

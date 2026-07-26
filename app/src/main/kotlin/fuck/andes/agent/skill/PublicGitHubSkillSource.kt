@@ -48,8 +48,8 @@ internal class GitHubSkillSourceException(
 internal object GitHubSkillRepositoryParser {
     fun parse(value: String): GitHubSkillRepository {
         val input = value.trim()
-        if (input.isBlank()) invalid("GitHub 仓库不能为空")
-        if (input.length > MAX_SOURCE_LENGTH) invalid("GitHub 仓库地址过长")
+        if (input.isBlank()) invalid("GitHub 저장소를 비워둘 수 없습니다.")
+        if (input.length > MAX_SOURCE_LENGTH) invalid("GitHub 저장소 주소가 너무 깁니다.")
         return if (input.contains("://")) parseUrl(input) else parseSlug(input)
     }
 
@@ -62,10 +62,10 @@ internal object GitHubSkillRepositoryParser {
         val normalizedRef = explicitRef?.trim()?.takeIf { it.isNotEmpty() }?.let(::normalizeRef)
         val normalizedPath = explicitPath?.let(::normalizeRelativePath)
         if (parsed.ref != null && normalizedRef != null && parsed.ref != normalizedRef) {
-            invalid("URL 中的 ref 与 ref 参数不一致")
+            invalid("URL의 ref와 ref 파라미터가 일치하지 않습니다.")
         }
         if (parsed.path != null && normalizedPath != null && parsed.path != normalizedPath) {
-            invalid("URL 中的路径与 path 参数不一致")
+            invalid("URL의 경로와 path 파라미터가 일치하지 않습니다.")
         }
         return parsed.copy(
             ref = normalizedRef ?: parsed.ref,
@@ -84,11 +84,11 @@ internal object GitHubSkillRepositoryParser {
             '\\' in normalized ||
             normalized.any { it.isISOControl() }
         ) {
-            invalid("Skill 路径必须是仓库内的相对路径")
+            invalid("스킬 경로는 저장소 내 상대 경로여야 합니다.")
         }
         val segments = normalized.trimEnd('/').split('/')
         if (segments.any { it.isBlank() || it == "." || it == ".." }) {
-            invalid("Skill 路径包含无效片段")
+            invalid("스킬 경로에 잘못된 부분이 포함되어 있습니다.")
         }
         return segments.joinToString("/")
     }
@@ -104,34 +104,34 @@ internal object GitHubSkillRepositoryParser {
             "@{" in normalized ||
             segments.any { it == "." || it == ".." || it.endsWith(".lock") }
         ) {
-            invalid("GitHub ref 无效")
+            invalid("GitHub ref가 올바르지 않습니다.")
         }
         return normalized
     }
 
     private fun parseUrl(input: String): GitHubSkillRepository {
         val uri = runCatching { URI(input) }
-            .getOrElse { invalid("GitHub URL 无效") }
+            .getOrElse { invalid("GitHub URL이 올바르지 않습니다.") }
         if (!uri.scheme.equals("https", ignoreCase = true)) {
-            invalid("仅支持 HTTPS GitHub URL")
+            invalid("HTTPS GitHub URL만 지원합니다.")
         }
         val host = uri.host?.lowercase(Locale.ROOT)
         if (host !in ALLOWED_GITHUB_HOSTS || uri.rawUserInfo != null || uri.port != -1) {
-            invalid("仅支持 github.com 公共仓库 URL")
+            invalid("github.com의 공개 저장소 URL만 지원합니다.")
         }
         if (uri.rawQuery != null || uri.rawFragment != null) {
-            invalid("GitHub URL 不能包含查询参数或片段")
+            invalid("GitHub URL에 쿼리 파라미터나 프래그먼트가 포함될 수 없습니다.")
         }
         if ("//" in uri.path.orEmpty() || '\\' in uri.path.orEmpty()) {
-            invalid("GitHub URL 路径无效")
+            invalid("GitHub URL 경로가 올바르지 않습니다.")
         }
         val segments = uri.path.orEmpty().trim('/').split('/').filter(String::isNotBlank)
-        if (segments.size < 2) invalid("GitHub URL 缺少 owner/repository")
+        if (segments.size < 2) invalid("GitHub URL에 owner/repository가 누락되었습니다.")
         val owner = validateOwner(segments[0])
         val repository = validateRepository(segments[1].removeSuffix(".git"))
         if (segments.size == 2) return GitHubSkillRepository(owner, repository)
         if (segments[2] !in setOf("tree", "blob") || segments.size < 4) {
-            invalid("仅支持 GitHub 仓库、tree 或 blob URL")
+            invalid("GitHub 저장소, tree 또는 blob URL만 지원합니다.")
         }
         val ref = normalizeRef(segments[3])
         var path = segments.drop(4).joinToString("/").takeIf { it.isNotBlank() }
@@ -144,7 +144,7 @@ internal object GitHubSkillRepositoryParser {
 
     private fun parseSlug(input: String): GitHubSkillRepository {
         val segments = input.removeSuffix(".git").split('/')
-        if (segments.size != 2) invalid("仓库应为 owner/repository 或 github.com URL")
+        if (segments.size != 2) invalid("저장소는 owner/repository 또는 github.com URL이어야 합니다.")
         return GitHubSkillRepository(
             owner = validateOwner(segments[0]),
             repository = validateRepository(segments[1]),
@@ -152,13 +152,13 @@ internal object GitHubSkillRepositoryParser {
     }
 
     private fun validateOwner(value: String): String {
-        if (!OWNER_PATTERN.matches(value)) invalid("GitHub owner 无效")
+        if (!OWNER_PATTERN.matches(value)) invalid("GitHub owner가 올바르지 않습니다.")
         return value
     }
 
     private fun validateRepository(value: String): String {
         if (!REPOSITORY_PATTERN.matches(value) || value == "." || value == "..") {
-            invalid("GitHub repository 无效")
+            invalid("GitHub 저장소가 올바르지 않습니다.")
         }
         return value
     }
@@ -221,7 +221,7 @@ internal class PublicGitHubSkillSource(
         if (tree.optBoolean("truncated", false)) {
             throw GitHubSkillSourceException(
                 "REPOSITORY_TREE_TOO_LARGE",
-                "仓库目录过大，GitHub 未返回完整结果；请提供明确的 Skill 路径",
+                "저장소 디렉터리가 너무 커서 GitHub에서 전체 결과를 반환하지 않았습니다. 스킬 경로를 명확히 입력해 주세요.",
             )
         }
         val prefix = repository.path?.takeUnless { it == "." }?.trimEnd('/')
@@ -248,7 +248,7 @@ internal class PublicGitHubSkillSource(
                 if (size > MAX_CANDIDATES) {
                     throw GitHubSkillSourceException(
                         "TOO_MANY_SKILL_CANDIDATES",
-                        "候选 Skill 超过 $MAX_CANDIDATES 个，请缩小仓库路径",
+                        "후보 스킬이 ${MAX_CANDIDATES}개를 초과했습니다. 저장소 경로를 더 좁혀 주세요.",
                     )
                 }
             }
@@ -272,7 +272,7 @@ internal class PublicGitHubSkillSource(
         ) {
             throw GitHubSkillSourceException(
                 "GITHUB_COMMIT_MISMATCH",
-                "GitHub 返回的 commit 与已检查版本不一致",
+                "GitHub에서 반환한 커밋이 확인된 버전과 다릅니다.",
             )
         }
         val commitSha = ref.takeIf(COMMIT_SHA_PATTERN::matches) ?: resolvedCommitSha
@@ -310,7 +310,7 @@ internal class PublicGitHubSkillSource(
             ?.let(GitHubSkillRepositoryParser::normalizeRef)
             ?: throw GitHubSkillSourceException(
                 "INVALID_GITHUB_RESPONSE",
-                "GitHub 未返回默认分支",
+                "GitHub에서 기본 브랜치를 반환하지 않았습니다.",
             )
     }
 
@@ -327,7 +327,7 @@ internal class PublicGitHubSkillSource(
         if (sha == null || treeSha == null) {
             throw GitHubSkillSourceException(
                 "INVALID_GITHUB_RESPONSE",
-                "GitHub 未返回有效 commit/tree SHA",
+                "GitHub에서 유효한 commit/tree SHA를 반환하지 않았습니다.",
             )
         }
         return CommitPointer(sha = sha, treeSha = treeSha)
@@ -355,7 +355,7 @@ internal class PublicGitHubSkillSource(
             .getOrElse { throwable ->
                 throw GitHubSkillSourceException(
                     "INVALID_GITHUB_RESPONSE",
-                    "GitHub 返回了无效 JSON",
+                    "GitHub에서 잘못된 JSON을 반환했습니다.",
                     throwable,
                 )
             }
@@ -401,7 +401,7 @@ internal class PublicGitHubSkillSource(
                 if (response.isRedirect) {
                     throw GitHubSkillSourceException(
                         "GITHUB_REDIRECT_REJECTED",
-                        "GitHub 下载发生重定向，已拒绝访问其他主机",
+                        "GitHub 다운로드 중 리디렉션이 발생하여 다른 호스트 접근이 거부되었습니다.",
                     )
                 }
                 if (!response.isSuccessful) {
@@ -411,9 +411,9 @@ internal class PublicGitHubSkillSource(
                         else -> "GITHUB_REQUEST_FAILED"
                     }
                     val message = when (code) {
-                        "GITHUB_RATE_LIMITED" -> "GitHub 请求受限，请稍后重试"
-                        "GITHUB_NOT_FOUND" -> "未找到公开 GitHub 仓库、ref 或路径"
-                        else -> "GitHub 请求失败（HTTP ${response.code}）"
+                        "GITHUB_RATE_LIMITED" -> "GitHub 요청이 제한되었습니다. 잠시 후 다시 시도하세요."
+                        "GITHUB_NOT_FOUND" -> "공개 GitHub 저장소, ref 또는 경로를 찾을 수 없습니다."
+                        else -> "GitHub 요청 실패 (HTTP ${response.code})"
                     }
                     throw GitHubSkillSourceException(code, message)
                 }
@@ -424,7 +424,7 @@ internal class PublicGitHubSkillSource(
         } catch (failure: IOException) {
             throw GitHubSkillSourceException(
                 code = if (closed.get()) "GITHUB_REQUEST_CANCELLED" else "GITHUB_NETWORK_ERROR",
-                message = if (closed.get()) "GitHub 请求已取消" else "无法访问 GitHub 公共仓库",
+                message = if (closed.get()) "GitHub 요청이 취소되었습니다." else "GitHub 공개 저장소에 접근할 수 없습니다.",
                 cause = failure,
             )
         } finally {
@@ -454,7 +454,7 @@ internal class PublicGitHubSkillSource(
 
     private fun ensureOpen() {
         if (closed.get()) {
-            throw GitHubSkillSourceException("GITHUB_REQUEST_CANCELLED", "GitHub 请求已取消")
+            throw GitHubSkillSourceException("GITHUB_REQUEST_CANCELLED", "GitHub 요청이 취소되었습니다.")
         }
     }
 
@@ -462,12 +462,12 @@ internal class PublicGitHubSkillSource(
         val path = cacheDirectory.toPath()
         if (Files.exists(path, LinkOption.NOFOLLOW_LINKS)) {
             if (Files.isSymbolicLink(path) || !Files.isDirectory(path, LinkOption.NOFOLLOW_LINKS)) {
-                throw GitHubSkillSourceException("CACHE_UNAVAILABLE", "Skill 下载缓存目录不安全")
+                throw GitHubSkillSourceException("CACHE_UNAVAILABLE", "스킬 다운로드 캐시 디렉터리가 안전하지 않습니다.")
             }
             return
         }
         if (!cacheDirectory.mkdirs() || Files.isSymbolicLink(path)) {
-            throw GitHubSkillSourceException("CACHE_UNAVAILABLE", "无法创建 Skill 下载缓存")
+            throw GitHubSkillSourceException("CACHE_UNAVAILABLE", "스킬 다운로드 캐시를 생성할 수 없습니다.")
         }
     }
 
@@ -485,12 +485,12 @@ internal class PublicGitHubSkillSource(
     }
 
     private fun responseTooLarge(): Nothing =
-        throw GitHubSkillSourceException("GITHUB_RESPONSE_TOO_LARGE", "GitHub 响应超过安全上限")
+        throw GitHubSkillSourceException("GITHUB_RESPONSE_TOO_LARGE", "GitHub 응답이 안전 한도를 초과했습니다.")
 
     private fun archiveTooLarge(): Nothing =
         throw GitHubSkillSourceException(
             "GITHUB_ARCHIVE_TOO_LARGE",
-            "GitHub 仓库归档超过 ${MAX_ARCHIVE_BYTES / 1024 / 1024} MiB 上限",
+            "GitHub 저장소 아카이브가 ${MAX_ARCHIVE_BYTES / 1024 / 1024} MiB 한도를 초과했습니다.",
         )
 
     internal data class DownloadedGitHubArchive(

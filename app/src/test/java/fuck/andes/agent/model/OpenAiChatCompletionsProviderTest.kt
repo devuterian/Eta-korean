@@ -125,7 +125,7 @@ class OpenAiChatCompletionsProviderTest {
             )
         val body = buildString {
             append(sseChunk(JSONObject().put("reasoning_content", "先分析")))
-            append(sseChunk(JSONObject().put("content", "结果"), finishReason = "stop"))
+            append(sseChunk(JSONObject().put("content", "결과"), finishReason = "stop"))
             append(usageChunk(usage))
             append("data: [DONE]\n\n")
         }
@@ -147,7 +147,7 @@ class OpenAiChatCompletionsProviderTest {
                 onEvent = events::add
             )
 
-            assertEquals("结果", response.assistantMessage.getString("content"))
+            assertEquals("결과", response.assistantMessage.getString("content"))
             assertEquals("先分析", response.assistantMessage.getString("reasoning_content"))
             val parsedUsage = events.filterIsInstance<ProviderEvent.Usage>().single().usage
             assertEquals(18, parsedUsage.contextTokens)

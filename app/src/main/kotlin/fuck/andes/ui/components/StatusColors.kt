@@ -50,10 +50,10 @@ fun RunStatusUi.color(): Color = when (this) {
 }
 
 fun RunStatusUi.label(): String = when (this) {
-    RunStatusUi.Running -> "运行中"
-    RunStatusUi.Success -> "已完成"
-    RunStatusUi.Failed -> "失败"
-    RunStatusUi.Cancelled -> "已取消"
+    RunStatusUi.Running -> "실행 중"
+    RunStatusUi.Success -> "완료됨"
+    RunStatusUi.Failed -> "실패"
+    RunStatusUi.Cancelled -> "취소됨"
 }
 
 // ── PermissionStatusUi 映射 ───────────────────────────────────────────
@@ -67,10 +67,10 @@ fun PermissionStatusUi.color(): Color = when (this) {
 }
 
 fun PermissionStatusUi.label(): String = when (this) {
-    PermissionStatusUi.Available -> "已就绪"
-    PermissionStatusUi.Warning -> "需注意"
-    PermissionStatusUi.Missing -> "未授权"
-    PermissionStatusUi.Disabled -> "已禁用"
+    PermissionStatusUi.Available -> "준비됨"
+    PermissionStatusUi.Warning -> "확인 필요"
+    PermissionStatusUi.Missing -> "허용되지 않음"
+    PermissionStatusUi.Disabled -> "사용 안 함"
 }
 
 // ── 共享 UI 组件 ──────────────────────────────────────────────────────
