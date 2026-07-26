@@ -152,3 +152,13 @@ app/src/main/kotlin/fuck/andes/
 - Operit
 
 제3자 자산과 라이선스 정보는 [docs/THIRD_PARTY_NOTICES.md](docs/THIRD_PARTY_NOTICES.md)에 있습니다.
+
+## 라이선스
+
+Eta 소스 코드는 개인 학습, 연구, 수정 및 비상업적 용도로 사용할 수 있습니다. 전체 조건은 [PolyForm Noncommercial License 1.0.0](LICENSE)을 따릅니다.
+
+저자의 서면 허가 없이 이 프로젝트, 소스 코드, APK 또는 수정 버전을 판매하거나 유료 배포·유료 설치 등 상업적 서비스를 제공할 수 없습니다. 상업적 사용 허가는 [Mangi-11](https://github.com/Mangi-11)에게 문의해야 합니다.
+
+제3자 의존성, 아이콘 및 브랜드 자료에는 각각의 라이선스가 적용됩니다. 자세한 내용은 [제3자 고지](docs/THIRD_PARTY_NOTICES.md)를 참고하세요.
+
+외부 코드 기여는 원본 프로젝트의 CLA 절차가 마련된 뒤 병합될 수 있습니다. 그전에는 Issue를 통한 제안과 문제 보고가 권장됩니다.
