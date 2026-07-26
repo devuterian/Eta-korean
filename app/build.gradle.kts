@@ -21,6 +21,7 @@ android {
         targetSdk = 36
         versionCode = 210
         versionName = "2.1.0"
+        versionNameSuffix = "-ko"
     }
 
     buildTypes {
