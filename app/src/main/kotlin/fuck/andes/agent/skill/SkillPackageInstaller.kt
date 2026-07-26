@@ -384,13 +384,13 @@ class SkillPackageInstaller internal constructor(
         if (name.length !in 1..MAX_SKILL_NAME_LENGTH || !SKILL_NAME_REGEX.matches(name)) {
             fail(
                 SkillInstallErrorCode.INVALID_SKILL,
-                "스킬 이름은 소문자, 숫자, 단일 하이픈만 사용하며 $MAX_SKILL_NAME_LENGTH자 이하여야 합니다.",
+                "스킬 이름은 소문자, 숫자, 단일 하이픈만 사용하며 ${MAX_SKILL_NAME_LENGTH}자 이하여야 합니다.",
             )
         }
         if (description.isBlank() || description.length > MAX_SKILL_DESCRIPTION_LENGTH) {
             fail(
                 SkillInstallErrorCode.INVALID_SKILL,
-                "스킬 설명은 필수이며 $MAX_SKILL_DESCRIPTION_LENGTH자 이하여야 합니다.",
+                "스킬 설명은 필수이며 ${MAX_SKILL_DESCRIPTION_LENGTH}자 이하여야 합니다.",
             )
         }
         return ValidatedSkillMetadata(name = name, description = description)

@@ -268,9 +268,9 @@ internal fun AgentWorkProcess(
             Spacer(modifier = Modifier.width(8.dp))
             Text(
                 text = when {
-                    running && toolCount > 0 -> "처리 중 · $toolCount단계"
+                    running && toolCount > 0 -> "처리 중 · ${toolCount}단계"
                     running -> "작업 분석 중"
-                    toolCount > 0 -> "$toolCount단계 완료"
+                    toolCount > 0 -> "${toolCount}단계 완료"
                     else -> "분석 완료"
                 },
                 style = MiuixTheme.textStyles.body2,

@@ -304,7 +304,7 @@ internal class RootShellDeviceController(
     fun inputText(text: String): String {
         if (text.isEmpty()) return errorJson("INVALID_ARGUMENT", "text는 비워둘 수 없습니다.")
         if (text.length > MAX_INPUT_TEXT_CHARS) {
-            return errorJson("TEXT_TOO_LONG", "input_text는 최대 $MAX_INPUT_TEXT_CHARS자까지 입력할 수 있습니다.")
+            return errorJson("TEXT_TOO_LONG", "input_text는 최대 ${MAX_INPUT_TEXT_CHARS}자까지 입력할 수 있습니다.")
         }
         AgentAccessibilityService.current()?.let { service ->
             val result = service.inputTextFocused(text)
@@ -326,7 +326,7 @@ internal class RootShellDeviceController(
         observation: ElementObservation?,
     ): String {
         if (text.length > MAX_REPLACE_TEXT_CHARS) {
-            return errorJson("TEXT_TOO_LONG", "replace_text는 최대 $MAX_REPLACE_TEXT_CHARS자까지 입력할 수 있습니다.")
+            return errorJson("TEXT_TOO_LONG", "replace_text는 최대 ${MAX_REPLACE_TEXT_CHARS}자까지 입력할 수 있습니다.")
         }
         AgentAccessibilityService.current()?.let { service ->
             val snapshot = observation?.accessibilitySnapshot
@@ -581,7 +581,7 @@ internal class RootShellDeviceController(
 
     fun clipboardSet(context: Context, text: String): String {
         if (text.length > MAX_CLIPBOARD_TEXT_CHARS) {
-            return errorJson("TEXT_TOO_LONG", "클립보드 텍스트는 최대 $MAX_CLIPBOARD_TEXT_CHARS자까지 지원합니다.")
+            return errorJson("TEXT_TOO_LONG", "클립보드 텍스트는 최대 ${MAX_CLIPBOARD_TEXT_CHARS}자까지 지원합니다.")
         }
         val serviceResult = AgentAccessibilityService.current()?.copyToClipboard(text)
         val ok = serviceResult?.ok ?: runCatching {
@@ -633,7 +633,7 @@ internal class RootShellDeviceController(
 
     fun pasteText(text: String): String {
         if (text.length > MAX_CLIPBOARD_TEXT_CHARS) {
-            return errorJson("TEXT_TOO_LONG", "paste_text는 최대 $MAX_CLIPBOARD_TEXT_CHARS자까지 입력할 수 있습니다.")
+            return errorJson("TEXT_TOO_LONG", "paste_text는 최대 ${MAX_CLIPBOARD_TEXT_CHARS}자까지 입력할 수 있습니다.")
         }
         AgentAccessibilityService.current()?.let { service ->
             val result = service.pasteText(text)

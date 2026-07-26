@@ -451,7 +451,7 @@ internal object AgentBrowserSession {
 
         refreshRiskState(view)
         currentHttpStatus?.takeIf { it >= 400 }?.let { code ->
-            throw BrowserFailure("HTTP_$code", "웹페이지가 HTTP $code를 반환했습니다.")
+            throw BrowserFailure("HTTP_$code", "웹페이지가 HTTP ${code}를 반환했습니다.")
         }
         return toolResult(
             baseEnvelope("navigate", ok = true, status = if (currentRisk == null) "ok" else "blocked")
@@ -518,7 +518,7 @@ internal object AgentBrowserSession {
         }
         val inputText = args.optString("text")
         if (inputText.length > MAX_INPUT_TEXT_CHARS) {
-            throw BrowserFailure("INPUT_TOO_LARGE", "한 번에 입력할 수 있는 글자 수는 $MAX_INPUT_TEXT_CHARS자를 초과할 수 없습니다.")
+            throw BrowserFailure("INPUT_TOO_LARGE", "한 번에 입력할 수 있는 글자 수는 ${MAX_INPUT_TEXT_CHARS}자를 초과할 수 없습니다.")
         }
         val view = requirePage()
         val target = targetFrom(args)

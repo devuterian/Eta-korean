@@ -750,7 +750,7 @@ internal object AssistantManager {
             constructor.isAccessible = true
             constructor.newInstance(userId) ?: error("UserHandle(int)가 null 반환")
         }.getOrElse {
-            error("user=$userId의 UserHandle 생성 불가")
+            error("user=${userId}의 UserHandle 생성 불가")
         }
 
     private fun resolveCurrentUserId(): Int =
@@ -782,7 +782,7 @@ internal object AssistantManager {
             hooks.missing(
                 id = "system.assistant-${methodName.removePrefix("on").lowercase()}",
                 description = "VoiceInteractionManagerService.$methodName",
-                detail = "VoiceInteractionManagerService.$methodName/$parameterCount를 찾을 수 없음"
+                detail = "VoiceInteractionManagerService.$methodName/${parameterCount}를 찾을 수 없음"
             )
             return
         }

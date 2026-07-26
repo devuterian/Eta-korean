@@ -751,7 +751,7 @@ internal class AgentLocalTools(
             )
             ObservationReferencePolicy.Status.STALE -> errorResult(
                 "STALE_OBSERVATION",
-                "observation_id=$requestedId가 만료되었습니다. 현재 observation_id는 ${current?.id}입니다. 화면을 다시 관찰하세요.",
+                "observation_id=${requestedId}가 만료되었습니다. 현재 observation_id는 ${current?.id}입니다. 화면을 다시 관찰하세요.",
             )
             ObservationReferencePolicy.Status.MATCH -> errorResult(
                 "OBSERVATION_ERROR",
@@ -1113,7 +1113,7 @@ internal class AgentLocalTools(
 
     private fun nextTurnRequired(skillId: String): String = errorResult(
         "NEXT_TURN_REQUIRED",
-        "스킬 $skillId가 이번 라운드에서 설치 또는 변경되었습니다. 다음 라운드부터 사용 가능합니다.",
+        "스킬 ${skillId}가 이번 라운드에서 설치 또는 변경되었습니다. 다음 라운드부터 사용 가능합니다.",
     )
 
     private fun installResult(

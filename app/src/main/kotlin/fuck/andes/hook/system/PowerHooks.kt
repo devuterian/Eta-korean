@@ -122,7 +122,7 @@ internal object PowerHooks {
         val context = HookSupport.getFieldValue(phoneWindowManager, "mContext") as? Context
         if (context == null) {
             logger.warnThrottled("${source}_missing_context") {
-                "$source에 mContext가 없어 기존 로직으로 복귀합니다"
+                "${source}에 mContext가 없어 기존 로직으로 복귀합니다"
             }
             return LaunchResult.NOT_HANDLED
         }
@@ -200,7 +200,7 @@ internal object PowerHooks {
             }
         if (!resolves) {
             logger.warnThrottled("${source}_${action}_missing") {
-                "$source: Google이 $action을 노출하지 않아 기존 로직으로 복귀합니다"
+                "$source: Google이 ${action}을 노출하지 않아 기존 로직으로 복귀합니다"
             }
             return false
         }
@@ -208,7 +208,7 @@ internal object PowerHooks {
         return runCatching {
             context.startActivity(intent)
             finalizeSuccessfulLaunch(logger, phoneWindowManager, source, now)
-            logger.debug { "$source: $action으로 Google을 실행했습니다" }
+            logger.debug { "$source: ${action}으로 Google을 실행했습니다" }
             true
         }.getOrElse { throwable ->
             logger.warnThrottled("${source}_${action}_failed") {

@@ -248,7 +248,7 @@ internal class PublicGitHubSkillSource(
                 if (size > MAX_CANDIDATES) {
                     throw GitHubSkillSourceException(
                         "TOO_MANY_SKILL_CANDIDATES",
-                        "후보 스킬이 $MAX_CANDIDATES개를 초과했습니다. 저장소 경로를 더 좁혀 주세요.",
+                        "후보 스킬이 ${MAX_CANDIDATES}개를 초과했습니다. 저장소 경로를 더 좁혀 주세요.",
                     )
                 }
             }

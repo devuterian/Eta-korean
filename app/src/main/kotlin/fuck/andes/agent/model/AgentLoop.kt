@@ -178,7 +178,7 @@ internal class AgentLoop(
             val content = assistantMessage.optString("content").trim()
             if (content.isBlank() || content == "null") {
                 val finishReason = assistantMessage.optString("finish_reason")
-                error("모델 인터페이스 $round번째 라운드 결과가 비어 있습니다${finishReason.takeIf { it.isNotBlank() }?.let { ": $it" }.orEmpty()}.")
+                error("모델 인터페이스 ${round}번째 라운드 결과가 비어 있습니다${finishReason.takeIf { it.isNotBlank() }?.let { ": $it" }.orEmpty()}.")
             }
 
             onEvent(AgentEvent.RunFinished(round = round, contentChars = content.length))

@@ -580,7 +580,7 @@ private fun ProviderModelsTab(
                                 message = if (!sync.applied) {
                                     "원격에서 사용 가능한 대화 모델을 반환하지 않아 기존 모델을 유지했습니다."
                                 } else if (filteredCount > 0) {
-                                    "모델 ${chatModels.size}개를 가져오고 비대화 모델 $filteredCount개를 제외했습니다."
+                                    "모델 ${chatModels.size}개를 가져오고 비대화 모델 ${filteredCount}개를 제외했습니다."
                                 } else {
                                     "모델 ${chatModels.size}개를 가져왔습니다."
                                 }
@@ -849,7 +849,7 @@ private fun ProviderModelsTab(
                             try {
                                 ModelRepository.deleteModels(provider.id, selectedModelIds)
                                 RuntimeConfigRepository.syncToRemotePreferences(FuckAndesApp.serviceInstance)
-                                message = "모델 $deletedCount개를 삭제했습니다."
+                                message = "모델 ${deletedCount}개를 삭제했습니다."
                                 showBatchDeleteDialog = false
                                 selectionMode = false
                                 selectedModelIds = emptySet()

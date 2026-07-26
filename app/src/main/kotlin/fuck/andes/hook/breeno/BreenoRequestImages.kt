@@ -318,7 +318,7 @@ internal object BreenoRequestImages {
         if (candidates.size > MAX_IMAGES) {
             return Resolution.Failure(
                 code = FailureCode.IMAGE_COUNT_LIMIT_EXCEEDED,
-                message = "최대 $MAX_IMAGES개 이미지 지원, 이미지 수를 줄이고 다시 시도하세요.",
+                message = "최대 ${MAX_IMAGES}개 이미지 지원, 이미지 수를 줄이고 다시 시도하세요.",
                 imageCount = candidates.size,
                 estimatedBytes = 0,
                 maxBytes = 0,

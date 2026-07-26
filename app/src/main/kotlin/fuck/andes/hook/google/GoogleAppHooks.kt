@@ -179,7 +179,7 @@ internal object GoogleAppHooks {
         val field = runCatching {
             clazz.getDeclaredField(fieldName).apply { isAccessible = true }
         }.getOrElse { throwable ->
-            logger.warn("GSA: Build.$fieldName을(를) 찾을 수 없음, type=${throwable.safeLogType()}")
+            logger.warn("GSA: Build.${fieldName}을(를) 찾을 수 없음, type=${throwable.safeLogType()}")
             return
         }
 

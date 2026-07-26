@@ -56,7 +56,7 @@ internal object AgentRuntimeImageTransfer {
         images: List<AgentModelClient.ModelImage>,
     ): PreparedImages {
         if (images.size > MAX_IMAGE_COUNT) {
-            throw ImageTransferException("최대 $MAX_IMAGE_COUNT개의 이미지만 지원합니다")
+            throw ImageTransferException("최대 ${MAX_IMAGE_COUNT}개의 이미지만 지원합니다")
         }
 
         val cacheDirectory = File(context.cacheDir, CACHE_DIRECTORY)
@@ -134,7 +134,7 @@ internal object AgentRuntimeImageTransfer {
         incoming: AgentRuntimeWire.IncomingRunRequest,
     ): AgentRuntimeWire.RunRequest = incoming.use { request ->
         if (request.images.size > MAX_IMAGE_COUNT) {
-            throw ImageTransferException("최대 $MAX_IMAGE_COUNT개의 이미지만 지원합니다")
+            throw ImageTransferException("최대 ${MAX_IMAGE_COUNT}개의 이미지만 지원합니다")
         }
 
         var totalBytes = 0L
