@@ -1,0 +1,409 @@
+name: Apply Korean localization
+
+on:
+  push:
+    branches: [agent/korean-localization]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+  models: read
+
+concurrency:
+  group: apply-korean-localization
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/korean-localization
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Download reviewed translation candidates
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/code-candidates /tmp/hook-candidates
+          curl -fsSL -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/8626712414/zip" \
+            -o /tmp/code.zip
+          curl -fsSL -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/8626754244/zip" \
+            -o /tmp/hooks.zip
+          unzip -q /tmp/code.zip -d /tmp/code-candidates
+          unzip -q /tmp/hooks.zip -d /tmp/hook-candidates
+
+      - name: Apply localization
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          README_B64: IyBFdGEg7ZWc6rWt7Ja07YyQ Cgo8cCBhbGlnbj0iY2VudGVyIj48c3Ryb25nPkFuZHJvaWTsmqkg7Iuc7Iqk7YWcIOyImeykgQUkg7JeQ7J207KCE7Yq4PC9zdHJvbmc+PC9wPgoKPHAgYWxpZ249ImNlbnRlciI+6rWs7KGw7ZmU65CcIOq4sOq4sCDrj4Tqtawg7YGs66Gc7IqkIOyVoSBHVUkg7KGw7J6RLCBSb290IFNoZWxsLCBMaW51eCDthLDrr7jrhJDsnYQg7ZWcIOufsO2DgOyehOyXkOyEnCDsobDtirDtlanDripQgQ29sb3JPU+y 용 Android AI 에이전트입니다.</p>
+
+> 이 저장소는 [Mangi-11/Eta](https://github.com/Mangi-11/Eta)의 한국어 현지화 포크입니다. 앱의 사용자 노출 문구와 에이전트 메시지를 한국어로 번역하며, 원본의 도구 식별자·프로토콜·외부 앱 자동화용 고정 문자열은 호환성을 위해 유지합니다.
+
+Eta는 libxposed API 102 기반 Xposed 모듈이며 ColorOS 16을 대상으로 합니다. Breeno 대화 요청을 가로채 같은 에이전트 런타임으로 전달하고, BYOK 방식으로 사용자가 선택한 모델을 연결합니다. 앱 본체가 기본 작업 공간이며 Gemini 호출과 서클 투 서치 관련 초기 훅도 포함합니다.
+
+## 화면
+
+| GUI 에이전트 | Breeno BYOK |
+| :---: | :---: |
+| ![GUI 에이전트](docs/Screenshots/demo_gui_agent.gif) | ![Breeno BYOK](docs/Screenshots/demo_tools.gif) |
+
+| 채팅 홈 | 시스템 분석 | 명령 실행 |
+| :---: | :---: | :---: |
+| ![채팅 홈](docs/Screenshots/chat_home.jpg) | ![시스템 분석](docs/Screenshots/chat_breeno_analysis.jpg) | ![명령 실행](docs/Screenshots/chat_command.jpg) |
+
+| 설정 | 도구 | 스킬 |
+| :---: | :---: | :---: |
+| ![설정](docs/Screenshots/settings.jpg) | ![도구](docs/Screenshots/tools.jpg) | ![스킬](docs/Screenshots/skills.jpg) |
+
+## 주요 기능
+
+Eta는 모델이 명령을 생성하고, 시스템이 실행 결과를 돌려주며, 모델이 다음 단계를 결정하는 에이전트 루프로 작동합니다.
+
+### GUI 조작
+
+- 화면 캡처와 접근성 노드 읽기
+- 노드 또는 좌표 탭, 길게 누르기, 방향 스크롤
+- 앱 실행, 외부 링크 열기, 키 입력, 알림창 제어
+- 텍스트 입력, 교체, 클립보드 작업
+- 실행 중 오버레이와 제스처 피드백 표시
+
+### 구조화된 기기 도구
+
+가능한 작업은 설정 화면을 직접 조작하지 않고 Android 시스템 인터페이스로 실행합니다.
+
+- 알람과 타이머 생성
+- 미디어 재생 제어와 채널별 음량 조절
+- 배터리, 메모리, 저장공간, 네트워크 상태 조회
+- Wi-Fi와 블루투스 제어
+- 메모리·저장공간 사용량이 큰 앱 조회
+- 알림, SMS 인증번호, 저장된 Wi-Fi 정보, 제한된 시스템 로그 조회
+- 보호 규칙 안에서 앱 중지·동결·복원 및 일부 Settings 수정
+- 정확한 연락처 일치 후 WeChat 메시지 입력 또는 전송
+
+민감 정보 읽기와 민감한 기기 조작은 별도 설정으로 기본 비활성화되어 있습니다. 도구 인수는 스키마와 실행기에서 검증되며, 핵심 시스템 패키지와 보안 관련 설정은 보호됩니다.
+
+### 내장 브라우저
+
+`browser_use`는 Eta 내부의 공유 WebView 세션을 사용합니다. JavaScript 페이지를 로드하고 본문과 링크를 추출하며, 요소 검색·조작·스크롤·캡처를 지원합니다.
+
+- HTTPS만 허용
+- SSL 오류를 무시하지 않음
+- URL, DNS, 호스트 수, Service Worker 제한 적용
+- 웹 콘텐츠를 신뢰할 수 없는 데이터로 취급
+- 자동 제어 중 비 GET 요청 차단
+- 로그인, 구매, 메시지 전송, 삭제 등은 사용자가 직접 인계받아 수행
+
+### 터미널과 파일
+
+사용자가 활성화한 경우 `user` 또는 `root` 권한으로 Shell 명령, 파일 작업, 로그 조회, 스크립트 실행을 지원합니다.
+
+- `android`: Android 시스템, 앱, 로그, Magisk와 기기 파일 작업
+- `linux`: 선택적으로 설치하는 Alpine 환경. Python, Git, Bash, jq, zip, OpenSSL, SQLite 등 제공
+
+Linux 환경은 격리된 보안 샌드박스가 아닙니다.
+
+### 스킬
+
+- 공개 GitHub 저장소와 선별 목록에서 스킬 탐색·설치
+- 단일 스킬 ZIP 가져오기
+- 기존 사용자 스킬 충돌 검증
+- 내장 스킬 덮어쓰기 금지
+- 필요한 시점에만 스킬 본문과 리소스 읽기
+
+설치는 파일 저장과 색인 생성만 수행하며 패키지 안의 스크립트를 자동 실행하지 않습니다.
+
+## 설치
+
+1. libxposed API 102를 지원하는 LSPosed 환경에 APK를 설치합니다.
+2. 모듈 범위에 `system`, `SystemUI`, Google 앱, Breeno 관련 프로세스를 포함합니다.
+3. 기기를 재부팅합니다.
+4. Eta 앱에서 모델 제공자, API Key, 사용할 모델을 설정합니다.
+5. 필요에 따라 오버레이, 접근성, 앱 목록, 위치, 백그라운드 권한을 부여합니다.
+6. 필요한 기능만 선택해 Breeno 연동, 민감 정보 조회, 민감 기기 조작, 터미널·파일 도구를 활성화합니다.
+
+## 지원 환경과 주의사항
+
+- 대상 시스템: ColorOS 16
+- Android 최소 버전: API 36
+- Xposed 훅 지점은 OPPO·Google 앱 구현에 의존하므로 시스템이나 앱의 큰 업데이트 후 재적응이 필요할 수 있습니다.
+- Root, Xposed, 접근성, 터미널 기능은 기기 제어 범위가 큽니다. 기능별 권한과 실행 결과를 확인한 뒤 사용해야 합니다.
+- 외부 앱의 로그인, 결제, 자동화 방지 정책은 Eta가 우회하지 않습니다.
+
+## 빌드
+
+이 포크는 GitHub Actions에서 다음 검사를 수행합니다.
+
+```text
+./gradlew testDebugUnitTest
+./gradlew lintDebug
+./gradlew assembleDebug
+```
+
+성공한 워크플로 실행의 Artifacts에서 설치 가능한 디버그 APK를 받을 수 있습니다.
+
+로컬 빌드 요구사항:
+
+- JDK 25
+- Gradle Wrapper 9.6.1
+- Android SDK 37
+
+```bash
+./gradlew assembleDebug
+```
+
+APK 경로:
+
+```text
+app/build/outputs/apk/debug/app-debug.apk
+```
+
+## 프로젝트 구조
+
+```text
+app/src/main/kotlin/fuck/andes/
+├── ModuleMain.kt          Xposed 모듈 진입점
+├── hook/                  시스템·Google·Breeno 훅
+├── agent/runtime/         에이전트 런타임과 IPC
+├── agent/model/           모델 제공자와 프로토콜
+├── agent/tool/            로컬 도구 실행기
+├── agent/browser/         내장 브라우저
+├── agent/device/          Root·접근성 기기 제어
+├── agent/terminal/        Android·Alpine 터미널
+├── agent/overlay/         실행 오버레이
+├── agent/skill/           스킬 설치·검증·색인
+├── data/                  Room과 저장소 계층
+└── ui/                    Compose UI
+```
+
+에이전트 루프와 런타임 설계는 [docs/AGENT_RUNTIME.md](docs/AGENT_RUNTIME.md), 시스템 훅과 RemotePreferences 구조는 [docs/TECHNICAL.md](docs/TECHNICAL.md)를 참고하세요. 기술 문서는 현재 원문을 유지합니다.
+
+## 원본과 크레딧
+
+- 원본 프로젝트: [Mangi-11/Eta](https://github.com/Mangi-11/Eta)
+- Pi Coding Agent
+- OpenOmniBot
+- Operit
+
+제3자 자산과 라이선스 정보는 [docs/THIRD_PARTY_NOTICES.md](docs/THIRD_PARTY_NOTICES.md)에 있습니다.
+          ANDROID_WORKFLOW_B64: bmFtZTogQW5kcm9pZCBBUEsKCm9uOgogIHB1c2g6CiAgICBicmFuY2hlczogW21haW4sIGFnZW50L2tvcmVhbi1sb2NhbGl6YXRpb25dCiAgcHVsbF9yZXF1ZXN0OgogICAgYnJhbmNoZXM6IFttYWluXQogIHdvcmtmbG93X2Rpc3BhdGNoOgoKcGVybWlzc2lvbnM6CiAgY29udGVudHM6IHJlYWQKCmNvbmN1cnJlbmN5OgogIGdyb3VwOiBhbmRyb2lkLWFway0ke3sgZ2l0aHViLndvcmtmbG93IH19LSR7eyBnaXRodWIucmVmIH19CiAgY2FuY2VsLWluLXByb2dyZXNzOiB0cnVlCgpqb2JzOgogIGJ1aWxkOgogICAgcnVucy1vbjogdWJ1bnR1LTI0LjA0CiAgICB0aW1lb3V0LW1pbnV0ZXM6IDQ1CgogICAgc3RlcHM6CiAgICAgIC0gbmFtZTogQ2hlY2sgb3V0IHJlcG9zaXRvcnkKICAgICAgICB1c2VzOiBhY3Rpb25zL2NoZWNrb3V0QHY0CgogICAgICAtIG5hbWU6IFNldCB1cCBKREsgMjUKICAgICAgICB1c2VzOiBhY3Rpb25zL3NldHVwLWphdmFAdjQKICAgICAgICB3aXRoOgogICAgICAgICAgZGlzdHJpYnV0aW9uOiB0ZW11cmluCiAgICAgICAgICBqYXZhLXZlcnNpb246ICcyNScKCiAgICAgIC0gbmFtZTogU2V0IHVwIEFuZHJvaWQgU0RLCiAgICAgICAgdXNlczogYW5kcm9pZC1hY3Rpb25zL3NldHVwLWFuZHJvaWRAdjMKCiAgICAgIC0gbmFtZTogU2V0IHVwIEdyYWRsZQogICAgICAgIHVzZXM6IGdyYWRsZS9hY3Rpb25zL3NldHVwLWdyYWRsZUB2NAogICAgICAgIHdpdGg6CiAgICAgICAgICBjYWNoZS1yZWFkLW9ubHk6ICR7eyBnaXRodWIuZXZlbnRfbmFtZSA9PSAncHVsbF9yZXF1ZXN0JyB9fQoKICAgICAgLSBuYW1lOiBJbnN0YWxsIEFuZHJvaWQgU0RLIDM3CiAgICAgICAgc2hlbGw6IGJhc2gKICAgICAgICBydW46IHwKICAgICAgICAgIHNldCAtZXVvIHBpcGVmYWlsCiAgICAgICAgICB5ZXMgfCBzZGttYW5hZ2VyIC0tbGljZW5zZXMgPi9kZXYvbnVsbCB8fCB0cnVlCiAgICAgICAgICBzZGttYW5hZ2VyICdwbGF0Zm9ybS10b29scycgJ3BsYXRmb3JtczthbmRyb2lkLTM3JyAnYnVpbGQtdG9vbHM7MzcuMC4wJwogICAgICAgICAgY2htb2QgK3ggZ3JhZGxldwoKICAgICAgLSBuYW1lOiBUZXN0LCBsaW50LCBhbmQgYnVpbGQgQVBL CiAgICAgICAgcnVuOiAuL2dyYWRsZXcgLS1uby1kYWVtb24gLS1zdGFja3RyYWNlIHRlc3REZWJ1Z1VuaXRUZXN0IGxpbnREZWJ1ZyBhc3NlbWJsZURlYnVnCgogICAgICAtIG5hbWU6IFVwbG9hZCBBUEsKICAgICAgICB1c2VzOiBhY3Rpb25zL3VwbG9hZC1hcnRpZmFjdEB2NAogICAgICAgIHdpdGg6CiAgICAgICAgICBuYW1lOiBFdGEta29yZWFuLWRlYnVnLSR7eyBnaXRodWIuc2hhIH19CiAgICAgICAgICBwYXRoOiBhcHAvYnVpbGQvb3V0cHV0cy9hcGsvZGVidWcvYXBwLWRlYnVnLmFwawogICAgICAgICAgaWYtbm8tZmlsZXMtZm91bmQ6IGVycm9yCiAgICAgICAgICBjb21wcmVzc2lvbi1sZXZlbDogMAogICAgICAgICAgcmV0ZW50aW9uLWRheXM6IDE0CgogICAgICAtIG5hbWU6IFVwbG9hZCBkaWFnbm9zdGljIHJlcG9ydHMgb24gZmFpbHVyZQogICAgICAgIGlmOiBmYWlsdXJlKCkKICAgICAgICB1c2VzOiBhY3Rpb25zL3VwbG9hZC1hcnRpZmFjdEB2NAogICAgICAgIHdpdGg6CiAgICAgICAgICBuYW1lOiBhbmRyb2lkLWJ1aWxkLXJlcG9ydHMtJHt7IGdpdGh1Yi5zaGEgfX0KICAgICAgICAgIHBhdGg6IHwKICAgICAgICAgICAgYXBwL2J1aWxkL3JlcG9ydHMvKioKICAgICAgICAgICAgYXBwL2J1aWxkL3Rlc3QtcmVzdWx0cy8qKgogICAgICAgICAgaWYtbm8tZmlsZXMtZm91bmQ6IGlnbm9yZQogICAgICAgICAgcmV0ZW50aW9uLWRheXM6IDcK
+          STRINGS_XML_B64: PHJlc291cmNlcz4KICAgIDxzdHJpbmcgbmFtZT0iYXBwX25hbWUiPkV0YTwvc3RyaW5nPgogICAgPHN0cmluZyBuYW1lPSJ4cG9zZWRfZGVzY3JpcHRpb24iPkNvbG9yT1Psl5DshJwg7Iuc7Iqk7YWcIOyImeykgQUkg7JeQ7J207KCE7Yq47JeQIOq1rO2VmOqzoCBCcmVlbm/rrLwg64yA7LK07ZWY66mwIEdlbWluaOyZgCDshJzsu7Qg7YisIOyEnOy5mOulvCDtmZzshLHtmZTri4jri6QuPC9zdHJpbmc+CiAgICA8c3RyaW5nIG5hbWU9ImFnZW50X2FjY2Vzc2liaWxpdHlfbGFiZWwiPkV0YSDquLDquLAg7KCc7Ja0PC9zdHJpbmc+CiAgICA8c3RyaW5nIG5hbWU9ImFnZW50X2FjY2Vzc2liaWxpdHlfZGVzY3JpcHRpb24iPkV0YeqwgCDtmZTrrbQg64K07Jqp7J2EIOydveqzoCDthK0sIOyKpOyZgOydtO2UhCwg7YWN7Iqk7Yq4IOyeheu  력, 시스템 작업을 수행할 수 있도록 합니다.</string>
+</resources>
+        shell: bash
+        run: |
+          cat > /tmp/apply.py <<'PY'
+          from __future__ import annotations
+
+          from collections import defaultdict
+          from pathlib import Path
+          import base64
+          import json
+          import os
+          import re
+          import time
+          import urllib.error
+          import urllib.request
+
+          ROOT = Path('.')
+          CJK = re.compile(r'[\u3400-\u4dbf\u4e00-\u9fff]')
+
+          def scan_strings(text: str):
+              n = len(text)
+              i = 0
+              while i < n:
+                  if text.startswith('//', i):
+                      end = text.find('\n', i + 2)
+                      i = n if end < 0 else end + 1
+                      continue
+                  if text.startswith('/*', i):
+                      depth = 1
+                      i += 2
+                      while i < n and depth:
+                          if text.startswith('/*', i):
+                              depth += 1
+                              i += 2
+                          elif text.startswith('*/', i):
+                              depth -= 1
+                              i += 2
+                          else:
+                              i += 1
+                      continue
+                  if text.startswith('"""', i):
+                      start = i
+                      end = text.find('"""', i + 3)
+                      if end < 0:
+                          break
+                      yield start, end + 3, text[i + 3:end], True
+                      i = end + 3
+                      continue
+                  if text[i] == "'":
+                      i += 1
+                      while i < n:
+                          if text[i] == '\\':
+                              i += 2
+                          elif text[i] == "'":
+                              i += 1
+                              break
+                          else:
+                              i += 1
+                      continue
+                  if text[i] != '"':
+                      i += 1
+                      continue
+                  start = i
+                  i += 1
+                  content_start = i
+                  interpolation_depth = 0
+                  while i < n:
+                      ch = text[i]
+                      if ch == '\\':
+                          i += 2
+                      elif interpolation_depth == 0 and text.startswith('${', i):
+                          interpolation_depth = 1
+                          i += 2
+                      elif interpolation_depth == 0 and ch == '"':
+                          yield start, i + 1, text[content_start:i], False
+                          i += 1
+                          break
+                      elif interpolation_depth > 0 and ch in {'"', "'"}:
+                          quote = ch
+                          i += 1
+                          while i < n:
+                              if text[i] == '\\':
+                                  i += 2
+                              elif text[i] == quote:
+                                  i += 1
+                                  break
+                              else:
+                                  i += 1
+                      elif interpolation_depth > 0 and ch == '{':
+                          interpolation_depth += 1
+                          i += 1
+                      elif interpolation_depth > 0 and ch == '}':
+                          interpolation_depth -= 1
+                          i += 1
+                      else:
+                          i += 1
+
+          def apply_mapping(paths, mapping):
+              changed = 0
+              for path in paths:
+                  text = path.read_text(encoding='utf-8')
+                  edits = []
+                  for start, end, value, triple in scan_strings(text):
+                      if value not in mapping:
+                          continue
+                      quote = '"""' if triple else '"'
+                      edits.append((start, end, quote + mapping[value] + quote))
+                  for start, end, replacement in reversed(edits):
+                      text = text[:start] + replacement + text[end:]
+                  if edits:
+                      path.write_text(text, encoding='utf-8')
+                      changed += len(edits)
+              return changed
+
+          code_rows = json.loads(Path('/tmp/code-candidates/korean-translation-candidates-github-models.json').read_text(encoding='utf-8'))
+          hook_rows = json.loads(Path('/tmp/hook-candidates/korean-hook-candidates.json').read_text(encoding='utf-8'))
+          code_mapping = {row['original']: row['korean'] for row in code_rows}
+          hook_mapping = {row['original']: row['korean'] for row in hook_rows}
+
+          all_kotlin = sorted(ROOT.rglob('*.kt'))
+          non_ui = [p for p in all_kotlin if p.as_posix().startswith('app/src/main/kotlin/fuck/andes/') and '/ui/' not in p.as_posix() and '/hook/' not in p.as_posix() and not p.as_posix().endswith('/agent/browser/BrowserDomScripts.kt')]
+          hooks = [p for p in all_kotlin if '/app/src/main/kotlin/fuck/andes/hook/' in '/' + p.as_posix()]
+          tests = [p for p in all_kotlin if '/src/test/' in p.as_posix() or '/src/androidTest/' in p.as_posix()]
+
+          print('code translations:', apply_mapping(non_ui, code_mapping))
+          print('hook translations:', apply_mapping(hooks, hook_mapping))
+          print('test expectations:', apply_mapping(tests, {**code_mapping, **hook_mapping}))
+
+          ui_locations = defaultdict(list)
+          ui_paths = [p for p in all_kotlin if '/app/src/main/kotlin/fuck/andes/ui/' in '/' + p.as_posix()]
+          for path in ui_paths:
+              text = path.read_text(encoding='utf-8')
+              for start, _, value, _ in scan_strings(text):
+                  if CJK.search(value):
+                      ui_locations[value].append({'path': path.as_posix(), 'line': text.count('\n', 0, start) + 1})
+          ui_originals = sorted(ui_locations, key=lambda value: (ui_locations[value][0]['path'], ui_locations[value][0]['line']))
+
+          system_prompt = '\n'.join([
+              'You are a senior Korean Android UI localizer.',
+              'Translate Simplified Chinese UI labels, descriptions, dialogs, status text, and preview text into concise natural Korean.',
+              'Return valid JSON only: {"translations":[{"source":"...","target":"..."}]}.',
+              'Return every input exactly once in the original order and preserve each source field byte-for-byte.',
+              'Preserve Kotlin interpolation, escaped sequences, markdown, URLs, package names, API names, tool IDs, argument names, enum values, file paths, and technical tokens exactly.',
+              'Terminology: Agent=에이전트, Provider=제공자, Skill=스킬, 小布=Breeno, 一圈即搜=서클 투 서치, 微信=WeChat.',
+              'Use standard Korean Android UI wording. Do not add explanations or markdown outside translated source content.',
+          ])
+          endpoint = 'https://models.github.ai/inference/chat/completions'
+          token = os.environ['GITHUB_TOKEN']
+
+          def translate_batch(batch):
+              payload = {'model': 'openai/gpt-4.1', 'temperature': 0, 'response_format': {'type': 'json_object'}, 'messages': [{'role': 'system', 'content': system_prompt}, {'role': 'user', 'content': json.dumps({'strings': batch}, ensure_ascii=False)}]}
+              request = urllib.request.Request(endpoint, data=json.dumps(payload, ensure_ascii=False).encode('utf-8'), method='POST', headers={'Authorization': f'Bearer {token}', 'Content-Type': 'application/json', 'Accept': 'application/vnd.github+json', 'X-GitHub-Api-Version': '2026-03-10'})
+              last_error = None
+              for attempt in range(6):
+                  try:
+                      with urllib.request.urlopen(request, timeout=180) as response:
+                          envelope = json.loads(response.read().decode('utf-8'))
+                      rows = json.loads(envelope['choices'][0]['message']['content'])['translations']
+                      if [row.get('source') for row in rows] != batch:
+                          raise ValueError('UI translation source/order mismatch')
+                      return rows
+                  except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError, ValueError, KeyError, json.JSONDecodeError) as exc:
+                      last_error = exc
+                      if isinstance(exc, urllib.error.HTTPError) and exc.code not in {408, 429, 500, 502, 503, 504}:
+                          raise
+                      time.sleep(min(60, 3 * (2 ** attempt)))
+              raise RuntimeError(f'UI translation failed: {last_error}')
+
+          ui_mapping = {}
+          for start in range(0, len(ui_originals), 28):
+              batch = ui_originals[start:start + 28]
+              for row in translate_batch(batch):
+                  ui_mapping[row['source']] = row['target']
+              print(f'UI {min(start + 28, len(ui_originals))}/{len(ui_originals)}', flush=True)
+              time.sleep(1)
+          print('UI translations:', apply_mapping(ui_paths, ui_mapping))
+
+          db = Path('app/src/main/kotlin/fuck/andes/data/db/FuckAndesDatabase.kt')
+          db.write_text(db.read_text(encoding='utf-8').replace("WHERE title = '새 대화' ", "WHERE title = '新对话' "), encoding='utf-8')
+          overlay = Path('app/src/main/kotlin/fuck/andes/agent/overlay/AgentOverlayContent.kt')
+          overlay.write_text(overlay.read_text(encoding='utf-8').replace('text = "发送",', 'text = "전송",'), encoding='utf-8')
+          browser = Path('app/src/main/kotlin/fuck/andes/agent/browser/BrowserDomScripts.kt')
+          browser.write_text(browser.read_text(encoding='utf-8').replace("'[图片：' + markdownEscape(alt) + ']'", "'[이미지: ' + markdownEscape(alt) + ']'"), encoding='utf-8')
+          settings = Path('app/src/main/kotlin/fuck/andes/ui/SettingsScreen.kt')
+          settings.write_text(settings.read_text(encoding='utf-8').replace('$message：$it', '$message: $it'), encoding='utf-8')
+          loop = Path('app/src/main/kotlin/fuck/andes/agent/model/AgentLoop.kt')
+          loop.write_text(loop.read_text(encoding='utf-8').replace('"：$it"', '": $it"'), encoding='utf-8')
+          breeno = Path('app/src/main/kotlin/fuck/andes/hook/breeno/BreenoHooks.kt')
+          breeno.write_text(breeno.read_text(encoding='utf-8').replace("Eta 설정에서 '小布自定义模型'을 먼저 활성화하세요.", "Eta 설정에서 'Breeno 사용자 지정 모델'을 먼저 활성화하세요."), encoding='utf-8')
+
+          Path('.github/workflows/android-apk.yml').write_bytes(base64.b64decode(os.environ['ANDROID_WORKFLOW_B64']))
+          Path('app/src/main/res/values/strings.xml').write_bytes(base64.b64decode(os.environ['STRINGS_XML_B64']))
+          PY
+          python /tmp/apply.py
+
+      - name: Remove temporary localization machinery
+        run: |
+          rm -f .github/workflows/apply-korean-localization.yml .github/workflows/generate-korean-github-models.yml .github/workflows/generate-korean-hook-translations.yml .github/workflows/generate-korean-translations.yml .github/workflows/generate-korean-translations-nllb.yml .github/workflows/localization-inventory.yml localization-payload.part00 localization-payload.part01 localization.patch
+
+      - name: Commit localized source
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git diff --cached --check
+          git commit -m 'localize app in Korean and build APK'
+          git push origin HEAD:agent/korean-localization
