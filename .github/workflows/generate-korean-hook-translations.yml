@@ -1,0 +1,121 @@
+name: Generate Korean hook translations
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  models: read
+
+concurrency:
+  group: hook-translation-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  translate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Generate hook translation candidates
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cat > /tmp/translate.py <<'PY'
+          from collections import defaultdict
+          from pathlib import Path
+          import json, os, re, time, urllib.request, urllib.error
+
+          cjk = re.compile(r'[\u3400-\u4dbf\u4e00-\u9fff]')
+          protected = {'深度思考'}
+
+          def scan(text):
+              n=len(text); i=0
+              while i<n:
+                  if text.startswith('//',i):
+                      e=text.find('\n',i+2); i=n if e<0 else e+1; continue
+                  if text.startswith('/*',i):
+                      e=text.find('*/',i+2); i=n if e<0 else e+2; continue
+                  if text.startswith('"""',i):
+                      e=text.find('"""',i+3)
+                      if e<0: break
+                      i=e+3; continue
+                  if text[i]=="'":
+                      i+=1
+                      while i<n:
+                          if text[i]=='\\': i+=2
+                          elif text[i]=="'": i+=1; break
+                          else:i+=1
+                      continue
+                  if text[i]!='"': i+=1; continue
+                  s=i; i+=1; cs=i; depth=0
+                  while i<n:
+                      ch=text[i]
+                      if ch=='\\': i+=2
+                      elif depth==0 and text.startswith('${',i): depth=1; i+=2
+                      elif depth==0 and ch=='"':
+                          yield s,i+1,text[cs:i]; i+=1; break
+                      elif depth>0 and ch in {'"',"'"}:
+                          q=ch; i+=1
+                          while i<n:
+                              if text[i]=='\\': i+=2
+                              elif text[i]==q: i+=1; break
+                              else:i+=1
+                      elif depth>0 and ch=='{': depth+=1; i+=1
+                      elif depth>0 and ch=='}': depth-=1; i+=1
+                      else:i+=1
+
+          locations=defaultdict(list)
+          root=Path('app/src/main/kotlin/fuck/andes/hook')
+          for path in sorted(root.rglob('*.kt')):
+              text=path.read_text('utf-8')
+              for start,_,value in scan(text):
+                  if cjk.search(value) and value not in protected:
+                      locations[value].append({'path':path.as_posix(),'line':text.count('\n',0,start)+1})
+          originals=sorted(locations,key=lambda s:(locations[s][0]['path'],locations[s][0]['line']))
+
+          system='\n'.join([
+              'You are a senior Korean software localizer for an Android Xposed AI-agent app.',
+              'Translate Simplified Chinese runtime logs, injected assistant messages, status labels, and error messages into concise natural Korean.',
+              'Return JSON only: {"translations":[{"source":"...","target":"..."}]}.',
+              'Return every input once in the original order and preserve the source field exactly.',
+              'Preserve Kotlin interpolation, escapes, class/method names, package names, action names, tool IDs, enum values, and protocol tokens exactly.',
+              'Use Breeno for 小布, 에이전트 for Agent, 서클 투 서치 for 一圈即搜/Circle to Search, and keep technical English terms when clearer.',
+              'Do not add explanations or markdown.',
+          ])
+          endpoint='https://models.github.ai/inference/chat/completions'
+          token=os.environ['GITHUB_TOKEN']
+
+          def call(batch):
+              payload={'model':'openai/gpt-4.1','temperature':0,'response_format':{'type':'json_object'},'messages':[{'role':'system','content':system},{'role':'user','content':json.dumps({'strings':batch},ensure_ascii=False)}]}
+              req=urllib.request.Request(endpoint,data=json.dumps(payload,ensure_ascii=False).encode(),method='POST',headers={'Authorization':f'Bearer {token}','Content-Type':'application/json','Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2026-03-10'})
+              for attempt in range(6):
+                  try:
+                      with urllib.request.urlopen(req,timeout=180) as r: envelope=json.loads(r.read())
+                      rows=json.loads(envelope['choices'][0]['message']['content'])['translations']
+                      if [x.get('source') for x in rows]!=batch: raise ValueError('source/order mismatch')
+                      return rows
+                  except (urllib.error.HTTPError,urllib.error.URLError,TimeoutError,ValueError,KeyError,json.JSONDecodeError) as e:
+                      if isinstance(e,urllib.error.HTTPError) and e.code not in {408,429,500,502,503,504}: raise
+                      time.sleep(min(60,3*(2**attempt)))
+              raise RuntimeError('translation failed')
+
+          out=[]
+          for i in range(0,len(originals),30):
+              batch=originals[i:i+30]
+              for row in call(batch): out.append({'original':row['source'],'korean':row['target'],'locations':locations[row['source']]})
+              print(f'{min(i+30,len(originals))}/{len(originals)}',flush=True)
+              time.sleep(1)
+          Path('korean-hook-candidates.json').write_text(json.dumps(out,ensure_ascii=False,indent=2),encoding='utf-8')
+          PY
+          python /tmp/translate.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: korean-hook-candidates
+          path: korean-hook-candidates.json
+          retention-days: 3
