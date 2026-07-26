@@ -37,12 +37,12 @@ jobs:
         with:
           cache-read-only: ${{ github.event_name == 'pull_request' }}
 
-      - name: Install Android SDK 37
+      - name: Accept licenses and install stable SDK baseline
         shell: bash
         run: |
           set -euo pipefail
           yes | sdkmanager --licenses >/dev/null || true
-          sdkmanager --channel=3 'platform-tools' 'platforms;android-37'
+          sdkmanager 'platform-tools' 'platforms;android-36'
 
       - name: Run unit tests
         run: ./gradlew --no-daemon --stacktrace testDebugUnitTest
