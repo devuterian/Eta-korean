@@ -29,6 +29,9 @@ jobs:
           distribution: temurin
           java-version: '25'
 
+      - name: Set up Android SDK tools
+        uses: android-actions/setup-android@v3
+
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
@@ -39,7 +42,7 @@ jobs:
         run: |
           set -euo pipefail
           yes | sdkmanager --licenses >/dev/null || true
-          sdkmanager 'platform-tools' 'platforms;android-37'
+          sdkmanager --channel=3 'platform-tools' 'platforms;android-37'
 
       - name: Run unit tests
         run: ./gradlew --no-daemon --stacktrace testDebugUnitTest
