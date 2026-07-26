@@ -8,172 +8,135 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: korean-translation-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   translate:
-    runs-on: ubuntu-latest
-    timeout-minutes: 90
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
 
-      - name: Cache translation model
-        uses: actions/cache@v4
+      - uses: actions/cache@v4
         with:
           path: ~/.cache/huggingface
           key: m2m100-418m-v1
 
-      - name: Install translation dependencies
-        shell: bash
+      - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           python -m pip install --index-url https://download.pytorch.org/whl/cpu torch
           python -m pip install 'transformers<5' sentencepiece
 
-      - name: Generate translation candidates
+      - name: Translate app source strings
         shell: bash
         run: |
-          cat > /tmp/generate_translations.py <<'PY'
-          from __future__ import annotations
-
+          cat > /tmp/translate.py <<'PY'
           from collections import defaultdict
           from pathlib import Path
-          import json
-          import re
-
-          import torch
+          import json, re, torch
           from transformers import M2M100ForConditionalGeneration, M2M100Tokenizer
 
-          ROOT = Path('.')
-          CJK = re.compile(r'[\u3400-\u4dbf\u4e00-\u9fff]')
-          TRIPLE = re.compile(r'"""(.*?)"""', re.S)
-          NORMAL = re.compile(r'(?<!")"(?:\\.|[^"\\])*"')
-          PLACEHOLDER = re.compile(
-              r'https?://[^\s"<>]+|'
-              r'\$\{[^{}]*\}|\$[A-Za-z_][A-Za-z0-9_]*|'
-              r'`[^`]+`|'
-              r'%\d*\$?[a-zA-Z]|'
-              r'\\[nrt"\\]|'
+          root = Path('.')
+          cjk = re.compile(r'[\u3400-\u4dbf\u4e00-\u9fff]')
+          normal = re.compile(r'(?<!")"(?:\\.|[^"\\])*"')
+          triple = re.compile(r'""".*?"""', re.S)
+          token = re.compile(
+              r'https?://[^\s"<>]+|\$\{[^{}]*\}|\$[A-Za-z_][A-Za-z0-9_]*|'
+              r'`[^`]+`|%\d*\$?[a-zA-Z]|\\[nrt"\\]|'
               r'\b[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)+\b'
           )
+          excluded = {
+              'app/src/main/kotlin/fuck/andes/agent/tool/WeChatMessageSender.kt',
+              'app/src/main/kotlin/fuck/andes/agent/browser/BrowserDomScripts.kt',
+          }
 
-          def selected(path: Path) -> bool:
-              s = path.as_posix()
-              if any(part in {'.git', '.gradle', 'build'} for part in path.parts):
+          def selected(path):
+              rel = path.as_posix()
+              if rel in excluded:
                   return False
               return (
-                  s.startswith('app/src/main/')
-                  or s == 'README.md'
-                  or s.startswith('docs/')
-              ) and path.suffix.lower() in {'.kt', '.xml', '.json', '.md'}
+                  rel.startswith('app/src/main/kotlin/fuck/andes/ui/')
+                  or rel.startswith('app/src/main/kotlin/fuck/andes/agent/')
+                  or rel.startswith('app/src/main/kotlin/fuck/andes/data/')
+                  or rel.startswith('app/src/main/kotlin/fuck/andes/systemizer/')
+                  or rel == 'app/src/main/kotlin/fuck/andes/config/Prefs.kt'
+              )
 
-          entries: dict[str, list[dict[str, object]]] = defaultdict(list)
-
-          def add(path: Path, line: int, raw: str, kind: str) -> None:
-              if not CJK.search(raw):
-                  return
-              entries[raw].append({'path': path.as_posix(), 'line': line, 'kind': kind})
-
-          for path in sorted(ROOT.rglob('*')):
-              if not path.is_file() or not selected(path):
+          locations = defaultdict(list)
+          for path in sorted(root.rglob('*.kt')):
+              if not selected(path):
                   continue
-              try:
-                  text = path.read_text(encoding='utf-8')
-              except (UnicodeDecodeError, OSError):
-                  continue
+              text = path.read_text('utf-8')
+              spans = [m.span() for m in triple.finditer(text)]
+              for match in normal.finditer(text):
+                  if any(a <= match.start() < b for a, b in spans):
+                      continue
+                  value = match.group(0)[1:-1]
+                  if cjk.search(value):
+                      locations[value].append({
+                          'path': path.as_posix(),
+                          'line': text.count('\n', 0, match.start()) + 1,
+                      })
 
-              if path.suffix == '.kt':
-                  triple_spans = []
-                  for match in TRIPLE.finditer(text):
-                      triple_spans.append(match.span())
-                      add(path, text.count('\n', 0, match.start()) + 1, match.group(1), 'kotlin_triple')
-                  masked = list(text)
-                  for start, end in triple_spans:
-                      masked[start:end] = ' ' * (end - start)
-                  masked_text = ''.join(masked)
-                  for match in NORMAL.finditer(masked_text):
-                      add(path, text.count('\n', 0, match.start()) + 1, match.group(0)[1:-1], 'kotlin_string')
-              else:
-                  for line_no, line in enumerate(text.splitlines(), 1):
-                      if CJK.search(line):
-                          add(path, line_no, line, 'text_line')
-
-          originals = sorted(entries, key=lambda value: (len(value), value))
+          originals = sorted(locations, key=lambda s: (len(s), s))
           tokenizer = M2M100Tokenizer.from_pretrained('facebook/m2m100_418M')
           model = M2M100ForConditionalGeneration.from_pretrained('facebook/m2m100_418M')
           tokenizer.src_lang = 'zh'
           model.eval()
+          torch.set_num_threads(4)
 
-          def protect(text: str) -> tuple[str, dict[str, str]]:
-              saved: dict[str, str] = {}
-              def repl(match: re.Match[str]) -> str:
+          def protect(value):
+              saved = {}
+              def repl(match):
                   key = f'ZXQPH{len(saved)}QXZ'
                   saved[key] = match.group(0)
                   return key
-              return PLACEHOLDER.sub(repl, text), saved
+              return token.sub(repl, value), saved
 
-          def restore(text: str, saved: dict[str, str]) -> str:
-              for key, value in saved.items():
-                  variants = {key, key.replace('Q', ' Q '), key.lower(), key.upper()}
-                  for variant in variants:
-                      text = text.replace(variant, value)
-                  text = re.sub(r'\s*'.join(map(re.escape, key)), value, text, flags=re.I)
-              return text
+          def restore(value, saved):
+              for key, original in saved.items():
+                  value = re.sub(r'\s*'.join(map(re.escape, key)), original, value, flags=re.I)
+              return value.strip()
 
-          def translate_batch(values: list[str]) -> list[str]:
-              protected = []
-              saved_items = []
-              for value in values:
-                  masked, saved = protect(value)
-                  protected.append(masked)
-                  saved_items.append(saved)
+          result = []
+          batch_size = 32
+          for start in range(0, len(originals), batch_size):
+              batch = originals[start:start + batch_size]
+              protected, saved = zip(*(protect(value) for value in batch))
               encoded = tokenizer(
-                  protected,
-                  return_tensors='pt',
-                  padding=True,
-                  truncation=True,
-                  max_length=384,
+                  list(protected), return_tensors='pt', padding=True,
+                  truncation=True, max_length=256,
               )
               with torch.inference_mode():
                   generated = model.generate(
                       **encoded,
                       forced_bos_token_id=tokenizer.get_lang_id('ko'),
-                      max_new_tokens=384,
-                      num_beams=4,
-                      renormalize_logits=True,
+                      max_new_tokens=256,
+                      num_beams=1,
                   )
-              decoded = tokenizer.batch_decode(generated, skip_special_tokens=True)
-              return [restore(text, saved).strip() for text, saved in zip(decoded, saved_items)]
-
-          results = []
-          batch_size = 12
-          for start in range(0, len(originals), batch_size):
-              batch = originals[start:start + batch_size]
-              try:
-                  translated = translate_batch(batch)
-              except Exception as exc:
-                  translated = [f'__TRANSLATION_ERROR__ {type(exc).__name__}: {exc}'] * len(batch)
-              for original, korean in zip(batch, translated):
-                  results.append({
+              translated = tokenizer.batch_decode(generated, skip_special_tokens=True)
+              for original, korean, placeholders in zip(batch, translated, saved):
+                  result.append({
                       'original': original,
-                      'korean': korean,
-                      'locations': entries[original],
+                      'korean': restore(korean, placeholders),
+                      'locations': locations[original],
                   })
               print(f'{min(start + batch_size, len(originals))}/{len(originals)}', flush=True)
 
           Path('korean-translation-candidates.json').write_text(
-              json.dumps(results, ensure_ascii=False, indent=2),
-              encoding='utf-8',
+              json.dumps(result, ensure_ascii=False, indent=2), encoding='utf-8'
           )
           PY
-          python /tmp/generate_translations.py
+          python /tmp/translate.py
 
-      - name: Upload translation candidates
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: korean-translation-candidates
           path: korean-translation-candidates.json
