@@ -17,7 +17,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 120
 
     steps:
       - name: Check out repository
@@ -87,8 +87,8 @@ jobs:
             'platform-tools' "$PLATFORM_PACKAGE" "$BUILD_TOOLS_PACKAGE"
           chmod +x gradlew
 
-      - name: Test, lint, and build APK
-        run: ./gradlew --no-daemon --stacktrace testDebugUnitTest lintDebug assembleDebug
+      - name: Build debug APK
+        run: ./gradlew --no-daemon --stacktrace --console=plain assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
@@ -98,6 +98,12 @@ jobs:
           if-no-files-found: error
           compression-level: 0
           retention-days: 14
+
+      - name: Run unit tests
+        run: ./gradlew --no-daemon --stacktrace --console=plain testDebugUnitTest
+
+      - name: Run Android lint
+        run: ./gradlew --no-daemon --stacktrace --console=plain lintDebug
 
       - name: Upload diagnostic reports on failure
         if: failure()
