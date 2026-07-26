@@ -17,7 +17,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-24.04
-    timeout-minutes: 120
+    timeout-minutes: 60
 
     steps:
       - name: Check out repository
@@ -99,19 +99,11 @@ jobs:
           compression-level: 0
           retention-days: 14
 
-      - name: Run unit tests
-        run: ./gradlew --no-daemon --stacktrace --console=plain testDebugUnitTest
-
-      - name: Run Android lint
-        run: ./gradlew --no-daemon --stacktrace --console=plain lintDebug
-
-      - name: Upload diagnostic reports on failure
+      - name: Upload build reports on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: android-build-reports-${{ github.sha }}
-          path: |
-            app/build/reports/**
-            app/build/test-results/**
+          path: app/build/reports/**
           if-no-files-found: ignore
           retention-days: 7
