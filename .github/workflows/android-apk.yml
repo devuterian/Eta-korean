@@ -1,0 +1,71 @@
+name: Android APK
+
+on:
+  push:
+    branches: [main, agent/korean-localization]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-apk-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: ${{ github.event_name == 'pull_request' }}
+
+      - name: Install Android SDK 37
+        shell: bash
+        run: |
+          set -euo pipefail
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager 'platform-tools' 'platforms;android-37'
+
+      - name: Run unit tests
+        run: ./gradlew --no-daemon --stacktrace testDebugUnitTest
+
+      - name: Run Android lint
+        run: ./gradlew --no-daemon --stacktrace lintDebug
+
+      - name: Build installable debug APK
+        run: ./gradlew --no-daemon --stacktrace assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Eta-korean-debug-${{ github.sha }}
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
+
+      - name: Upload diagnostic reports on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-build-reports-${{ github.sha }}
+          path: |
+            app/build/reports/**
+            app/build/test-results/**
+          if-no-files-found: ignore
+          retention-days: 7
