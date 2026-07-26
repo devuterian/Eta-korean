@@ -41,15 +41,15 @@ jobs:
                   rows.append('')
           Path('localization-inventory.txt').write_text('\n'.join(rows), encoding='utf-8')
           PY
-          tar --exclude=.git --exclude=.gradle --exclude='**/build' --exclude=localization-inventory.txt -czf /tmp/source-snapshot.tar.gz .
-          mv /tmp/source-snapshot.tar.gz source-snapshot.tar.gz
+          git archive --format=tar.gz --output=source-snapshot.tar.gz HEAD
 
       - name: Upload inventory
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: localization-inventory
           path: |
             localization-inventory.txt
             source-snapshot.tar.gz
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 3
