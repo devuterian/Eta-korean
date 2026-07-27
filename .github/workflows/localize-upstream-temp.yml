@@ -1,0 +1,104 @@
+name: Temporary upstream localization
+
+on:
+  push:
+    branches: [agent/upstream-2.2.0-ko]
+
+permissions:
+  contents: write
+
+jobs:
+  localize:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out update branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Localize new user-facing strings and clean temporary workflows
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          python3 - <<'PY'
+          from pathlib import Path
+
+          replacements = {
+              Path('app/src/main/kotlin/fuck/andes/hook/xiaoai/XiaoAiHandoff.kt'): {
+                  '超级小爱对话': '슈퍼 샤오아이 대화',
+                  '超级小爱：': '슈퍼 샤오아이: ',
+              },
+              Path('app/src/main/kotlin/fuck/andes/hook/xiaoai/XiaoAiHookState.kt'): {
+                  '请分析这张图片': '이 이미지를 분석해 줘',
+              },
+              Path('app/src/main/kotlin/fuck/andes/hook/xiaoai/XiaoAiStreamRenderer.kt'): {
+                  'Eta 正在思考…': 'Eta가 생각하고 있어요…',
+                  'Eta 正在执行任务…': 'Eta가 작업을 실행하고 있어요…',
+                  'Eta 已完成本轮任务': 'Eta가 이번 작업을 완료했어요',
+                  'Eta 处理失败，请稍后重试': 'Eta 처리에 실패했어요. 잠시 후 다시 시도해 주세요.',
+              },
+              Path('app/src/main/kotlin/fuck/andes/ui/SettingsScreen.kt'): {
+                  'SmallTitle("Breeno 연동")': 'SmallTitle("시스템 어시스턴트 연동")',
+                  'title = "Breeno 맞춤 모델 사용"': 'title = "시스템 어시스턴트에서 맞춤 모델 사용"',
+              },
+          }
+
+          for path, mapping in replacements.items():
+              text = path.read_text(encoding='utf-8')
+              for old, new in mapping.items():
+                  if old not in text:
+                      raise SystemExit(f'Missing localization source in {path}: {old}')
+                  text = text.replace(old, new)
+              path.write_text(text, encoding='utf-8')
+
+          technical = Path('docs/TECHNICAL.md')
+          text = technical.read_text(encoding='utf-8')
+          old = '''## 超级小爱
+
+超级小爱入口当前锁定包名 `com.miui.voiceassist`、版本 `7.13.32.0016`（versionCode `507013032`），并且只在主进程与 `:core` 进程保留模块生命周期。版本不匹配或无法读取版本时不安装业务 Hook。
+
+适配器在 `OperationManager.setQueryInfo(String, String, JSONObject)` 原方法执行前暂存对话 ID、查询文本和可选的 `extra_image_file_id`，同时从 `z10.a.processed(Instruction)` 记录终态 `SpeechRecognizer.RecognizeResult`。`y00.r0.C0(Event): boolean` 收到 `Nlp.Request` 时，小爱已经通过 `APIUtils.buildEvent` 生成了新的 Event ID，因此适配器按查询文本关联输入上下文，不能要求它与 `setQueryInfo` 的对话 ID 相等。只有配置、前缀、图片引用和后台队列全部通过检查后才认领请求并返回发送成功；否则只调用一次原方法，让超级小爱继续原生处理。
+
+终态 ASR 会在 `setQueryInfo` 之前建立短时轮次状态。当前轮次确定由 Eta 接管时，`kh0.s0` 的 `execute` / `executeActionsAsync` 原生 Agent Action 会被跳过，避免本地动作链在模型请求认领前抢先打开设置或执行其他动作。轮次状态有时效并在小爱会话清理时释放；文档输入不会进入这条接管链路。
+
+图片 ID 只解析为当前小爱进程可读的单个本地图片文件，认领前校验存在性、大小和文件头，不扫描目录，也不记录文件路径。图片正文继续通过 Eta 现有的文件描述符传输链路进入 Agent Runtime。文档理解、多图片以及无法解析的图片不在当前接管范围内。
+
+结果使用超级小爱的 `FlowTemplateToastCard` 在主线程流式更新，完成后通过其原生 TTS 入口朗读。卡片、取消、结果恢复和 Runtime handoff 都绑定已认领的对话 ID 与独立的 `xiaoai` source；不会全局屏蔽小爱的卡片、RN 数据或 TTS，也不共享小布适配器的状态。
+
+该版本目前只完成指定 APK 的静态云适配，尚未经过小米真机验证。构建、单元测试和目标签名存在只能证明静态兼容，不能替代 LSPosed 日志、真实进程、UI、TTS 与图片链路验证。
+'''
+          new = '''## 슈퍼 샤오아이
+
+슈퍼 샤오아이 진입점은 현재 패키지 `com.miui.voiceassist`, 버전 `7.13.32.0016`(versionCode `507013032`)에 맞춰져 있으며, 기본 프로세스와 `:core` 프로세스에서만 모듈 수명주기를 유지합니다. 버전이 다르거나 버전을 읽지 못하면 관련 Hook을 설치하지 않습니다.
+
+어댑터는 `OperationManager.setQueryInfo(String, String, JSONObject)` 원본 메서드 실행 전에 대화 ID, 질의문과 선택적인 `extra_image_file_id`를 임시 저장하고, `z10.a.processed(Instruction)`에서 최종 `SpeechRecognizer.RecognizeResult`를 기록합니다. `y00.r0.C0(Event): boolean`이 `Nlp.Request`를 받을 때는 샤오아이가 `APIUtils.buildEvent`를 통해 새 Event ID를 만든 상태이므로, 입력 문맥은 질의문으로 연결하며 `setQueryInfo`의 대화 ID와 같다고 가정하지 않습니다. 설정, 접두사, 이미지 참조와 백그라운드 큐 검사를 모두 통과한 요청만 Eta가 인계합니다. 나머지는 원본 메서드를 한 번 호출해 슈퍼 샤오아이가 그대로 처리하게 합니다.
+
+최종 ASR은 `setQueryInfo`보다 먼저 짧은 수명의 현재 요청 상태를 만듭니다. Eta가 현재 요청을 인계하기로 결정하면 `kh0.s0`의 `execute` / `executeActionsAsync`가 수행하는 원래 Agent Action을 건너뛰어, 모델 요청이 인계되기 전에 설정 화면이나 다른 작업이 먼저 실행되지 않게 합니다. 요청 상태는 만료 시간이 있으며 샤오아이 세션 정리 시 해제됩니다. 문서 입력은 이 인계 경로에서 제외됩니다.
+
+이미지 ID는 현재 샤오아이 프로세스에서 읽을 수 있는 단일 로컬 이미지 파일로만 해석합니다. 인계 전에 파일 존재 여부, 크기와 파일 헤더를 확인하며 디렉터리를 탐색하거나 경로를 기록하지 않습니다. 이미지는 Eta의 기존 파일 디스크립터 전송 경로를 통해 Agent Runtime으로 전달됩니다. 문서 분석, 여러 이미지와 해석할 수 없는 이미지는 현재 지원 범위에서 제외됩니다.
+
+결과는 슈퍼 샤오아이의 `FlowTemplateToastCard`에서 메인 스레드로 스트리밍 갱신되고, 완료 후 기본 TTS 진입점으로 읽어 줍니다. 카드, 취소, 결과 복구와 Runtime handoff는 인계한 대화 ID와 독립적인 `xiaoai` source에 연결됩니다. 샤오아이의 카드, RN 데이터나 TTS를 전역 차단하지 않으며 Breeno 어댑터 상태도 공유하지 않습니다.
+
+현재 버전은 지정된 APK를 기준으로 정적 호환 작업만 완료됐으며 Xiaomi 실제 기기에서는 검증되지 않았습니다. 빌드·단위 테스트 통과와 대상 시그니처 존재만으로는 정적 호환성만 확인할 수 있습니다. LSPosed 로그, 실제 프로세스, UI, TTS와 이미지 전달 경로는 실제 기기에서 별도로 검증해야 합니다.
+'''
+          if old not in text:
+              raise SystemExit('Could not find new XiaoAi technical section')
+          technical.write_text(text.replace(old, new), encoding='utf-8')
+
+          readme = Path('README.md')
+          readme_text = readme.read_text(encoding='utf-8')
+          marker = '## 2.2.0-ko 변경 사항'
+          if marker not in readme_text:
+              addition = '''\n\n## 2.2.0-ko 변경 사항\n\n- Xiaomi HyperOS의 슈퍼 샤오아이 진입점에서 Eta Agent Runtime으로 텍스트와 단일 이미지 요청을 전달할 수 있습니다.\n- 슈퍼 샤오아이 `7.13.32.0016`(versionCode `507013032`)에 한해 동작하며, 버전이 다르면 원래 동작을 유지합니다.\n- 채팅의 스트리밍 Markdown 표시, 스크롤 추적과 메시지 펼치기 동작을 개선했습니다.\n- 최소 지원 버전을 Android 14(API 34)로 낮추고 Android Gradle Plugin을 9.3.1로 갱신했습니다.\n- 슈퍼 샤오아이 연동은 아직 Xiaomi 실제 기기에서 검증되지 않았습니다.\n'''
+              readme.write_text(readme_text.rstrip() + addition + '\n', encoding='utf-8')
+          PY
+
+          rm -f .github/workflows/sync-upstream-temp.yml
+          rm -f .github/workflows/localize-upstream-temp.yml
+          git add -A
+          git commit -m "원본 2.2.0 신규 문자열 한국어화 [skip ci]"
+          git push origin HEAD:agent/upstream-2.2.0-ko
