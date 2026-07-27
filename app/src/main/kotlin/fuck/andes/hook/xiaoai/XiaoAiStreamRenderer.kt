@@ -30,7 +30,7 @@ internal class XiaoAiStreamRenderer(
         when (event) {
             is AgentEvent.RunStarted,
             is AgentEvent.ProviderRequestStarted,
-            is AgentEvent.ProviderResponseStarted -> render("Eta 正在思考…")
+            is AgentEvent.ProviderResponseStarted -> render("Eta가 생각하고 있어요…")
 
             is AgentEvent.AssistantBlockStart -> {
                 if (event.kind == AgentEvent.AssistantBlockKind.TEXT) {
@@ -49,7 +49,7 @@ internal class XiaoAiStreamRenderer(
 
             is AgentEvent.ToolStarted -> {
                 if (synchronized(streamedText) { streamedText.isEmpty() }) {
-                    render("Eta 正在执行任务…")
+                    render("Eta가 작업을 실행하고 있어요…")
                 }
             }
 
@@ -59,7 +59,7 @@ internal class XiaoAiStreamRenderer(
 
     fun complete(content: String) {
         if (cancelled.get()) return
-        val finalText = content.trim().ifBlank { "Eta 已完成本轮任务" }
+        val finalText = content.trim().ifBlank { "Eta가 이번 작업을 완료했어요" }
         render(finalText, immediate = true)
         mainHandler.post {
             if (!cancelled.get()) speak(finalText)
@@ -68,7 +68,7 @@ internal class XiaoAiStreamRenderer(
 
     fun fail() {
         if (cancelled.get()) return
-        render("Eta 处理失败，请稍后重试", immediate = true)
+        render("Eta 처리에 실패했어요. 잠시 후 다시 시도해 주세요.", immediate = true)
     }
 
     fun cancel(loader: ClassLoader = classLoader) {
