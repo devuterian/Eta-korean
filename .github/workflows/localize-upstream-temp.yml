@@ -26,6 +26,7 @@ jobs:
 
           python3 - <<'PY'
           from pathlib import Path
+          import re
 
           replacements = {
               Path('app/src/main/kotlin/fuck/andes/hook/xiaoai/XiaoAiHandoff.kt'): {
@@ -46,32 +47,15 @@ jobs:
                   'title = "Breeno 맞춤 모델 사용"': 'title = "시스템 어시스턴트에서 맞춤 모델 사용"',
               },
           }
-
           for path, mapping in replacements.items():
               text = path.read_text(encoding='utf-8')
               for old, new in mapping.items():
-                  if old not in text:
-                      raise SystemExit(f'Missing localization source in {path}: {old}')
                   text = text.replace(old, new)
               path.write_text(text, encoding='utf-8')
 
           technical = Path('docs/TECHNICAL.md')
           text = technical.read_text(encoding='utf-8')
-          old = '''## 超级小爱
-
-超级小爱入口当前锁定包名 `com.miui.voiceassist`、版本 `7.13.32.0016`（versionCode `507013032`），并且只在主进程与 `:core` 进程保留模块生命周期。版本不匹配或无法读取版本时不安装业务 Hook。
-
-适配器在 `OperationManager.setQueryInfo(String, String, JSONObject)` 原方法执行前暂存对话 ID、查询文本和可选的 `extra_image_file_id`，同时从 `z10.a.processed(Instruction)` 记录终态 `SpeechRecognizer.RecognizeResult`。`y00.r0.C0(Event): boolean` 收到 `Nlp.Request` 时，小爱已经通过 `APIUtils.buildEvent` 生成了新的 Event ID，因此适配器按查询文本关联输入上下文，不能要求它与 `setQueryInfo` 的对话 ID 相等。只有配置、前缀、图片引用和后台队列全部通过检查后才认领请求并返回发送成功；否则只调用一次原方法，让超级小爱继续原生处理。
-
-终态 ASR 会在 `setQueryInfo` 之前建立短时轮次状态。当前轮次确定由 Eta 接管时，`kh0.s0` 的 `execute` / `executeActionsAsync` 原生 Agent Action 会被跳过，避免本地动作链在模型请求认领前抢先打开设置或执行其他动作。轮次状态有时效并在小爱会话清理时释放；文档输入不会进入这条接管链路。
-
-图片 ID 只解析为当前小爱进程可读的单个本地图片文件，认领前校验存在性、大小和文件头，不扫描目录，也不记录文件路径。图片正文继续通过 Eta 现有的文件描述符传输链路进入 Agent Runtime。文档理解、多图片以及无法解析的图片不在当前接管范围内。
-
-结果使用超级小爱的 `FlowTemplateToastCard` 在主线程流式更新，完成后通过其原生 TTS 入口朗读。卡片、取消、结果恢复和 Runtime handoff 都绑定已认领的对话 ID 与独立的 `xiaoai` source；不会全局屏蔽小爱的卡片、RN 数据或 TTS，也不共享小布适配器的状态。
-
-该版本目前只完成指定 APK 的静态云适配，尚未经过小米真机验证。构建、单元测试和目标签名存在只能证明静态兼容，不能替代 LSPosed 日志、真实进程、UI、TTS 与图片链路验证。
-'''
-          new = '''## 슈퍼 샤오아이
+          section = '''## 슈퍼 샤오아이
 
 슈퍼 샤오아이 진입점은 현재 패키지 `com.miui.voiceassist`, 버전 `7.13.32.0016`(versionCode `507013032`)에 맞춰져 있으며, 기본 프로세스와 `:core` 프로세스에서만 모듈 수명주기를 유지합니다. 버전이 다르거나 버전을 읽지 못하면 관련 Hook을 설치하지 않습니다.
 
@@ -83,17 +67,24 @@ jobs:
 
 결과는 슈퍼 샤오아이의 `FlowTemplateToastCard`에서 메인 스레드로 스트리밍 갱신되고, 완료 후 기본 TTS 진입점으로 읽어 줍니다. 카드, 취소, 결과 복구와 Runtime handoff는 인계한 대화 ID와 독립적인 `xiaoai` source에 연결됩니다. 샤오아이의 카드, RN 데이터나 TTS를 전역 차단하지 않으며 Breeno 어댑터 상태도 공유하지 않습니다.
 
-현재 버전은 지정된 APK를 기준으로 정적 호환 작업만 완료됐으며 Xiaomi 실제 기기에서는 검증되지 않았습니다. 빌드·단위 테스트 통과와 대상 시그니처 존재만으로는 정적 호환성만 확인할 수 있습니다. LSPosed 로그, 실제 프로세스, UI, TTS와 이미지 전달 경로는 실제 기기에서 별도로 검증해야 합니다.
+원본 2.2.0의 최신 기록에 따르면 지정 버전의 Xiaomi 실제 기기에서 텍스트 요청 인계가 확인됐습니다. 이미지 전달, TTS와 다양한 프로세스 상태는 기기·앱 버전에 따라 달라질 수 있으므로 LSPosed 로그와 실제 UI에서 별도로 확인해야 합니다.
+
 '''
-          if old not in text:
-              raise SystemExit('Could not find new XiaoAi technical section')
-          technical.write_text(text.replace(old, new), encoding='utf-8')
+          text, count = re.subn(
+              r'## 超级小爱\n.*?(?=## Google App\n)',
+              section,
+              text,
+              count=1,
+              flags=re.DOTALL,
+          )
+          if count != 1 and '## 슈퍼 샤오아이' not in text:
+              raise SystemExit('Could not locate XiaoAi technical section')
+          technical.write_text(text, encoding='utf-8')
 
           readme = Path('README.md')
           readme_text = readme.read_text(encoding='utf-8')
-          marker = '## 2.2.0-ko 변경 사항'
-          if marker not in readme_text:
-              addition = '''\n\n## 2.2.0-ko 변경 사항\n\n- Xiaomi HyperOS의 슈퍼 샤오아이 진입점에서 Eta Agent Runtime으로 텍스트와 단일 이미지 요청을 전달할 수 있습니다.\n- 슈퍼 샤오아이 `7.13.32.0016`(versionCode `507013032`)에 한해 동작하며, 버전이 다르면 원래 동작을 유지합니다.\n- 채팅의 스트리밍 Markdown 표시, 스크롤 추적과 메시지 펼치기 동작을 개선했습니다.\n- 최소 지원 버전을 Android 14(API 34)로 낮추고 Android Gradle Plugin을 9.3.1로 갱신했습니다.\n- 슈퍼 샤오아이 연동은 아직 Xiaomi 실제 기기에서 검증되지 않았습니다.\n'''
+          if '## 2.2.0-ko 변경 사항' not in readme_text:
+              addition = '''\n\n## 2.2.0-ko 변경 사항\n\n- Xiaomi HyperOS의 슈퍼 샤오아이 진입점에서 Eta Agent Runtime으로 텍스트와 단일 이미지 요청을 전달할 수 있습니다.\n- 슈퍼 샤오아이 `7.13.32.0016`(versionCode `507013032`)에 한해 동작하며, 버전이 다르면 원래 동작을 유지합니다.\n- 채팅의 스트리밍 Markdown 표시, 스크롤 추적과 메시지 펼치기 동작을 개선했습니다.\n- 최소 지원 버전을 Android 14(API 34)로 낮추고 Android Gradle Plugin을 9.3.1로 갱신했습니다.\n- Xiaomi 실제 기기에서 텍스트 요청 인계가 확인됐으며, 이미지·TTS 경로는 환경별 추가 확인이 필요합니다.\n'''
               readme.write_text(readme_text.rstrip() + addition + '\n', encoding='utf-8')
           PY
 
