@@ -17,7 +17,7 @@ android {
 
     defaultConfig {
         applicationId = "fuck.andes"
-        minSdk = 36
+        minSdk = 34
         targetSdk = 36
         versionCode = 210
         versionName = "2.1.0"
@@ -71,6 +71,7 @@ dependencies {
     // Hook 侧用 XposedInterface.getRemotePreferences 读取当前进程持有的配置缓存。
     implementation(libs.libxposed.service)
     implementation(libs.miuix.ui)
+    implementation(libs.miuix.blur)
     implementation(libs.miuix.preference)
     implementation(libs.miuix.navigation3.ui)
     implementation(libs.lucide.icons)

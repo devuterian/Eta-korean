@@ -141,8 +141,12 @@ internal class SmoothTextRevealCoordinator {
             // 流式文本只追加不修改，但行内语法闭合（**粗体**、`code`、链接折叠等）会让
             // 渲染文本丢掉标记字符而变短或错位。此时进度只能保持单调前进：一旦回退，
             // 已显现的文字会消失并重新打字，表现为输出反复闪烁。
+            record.boundaries = updateGraphemeBoundaries(
+                previousText = record.text,
+                previousBoundaries = record.boundaries,
+                text = text,
+            )
             record.text = text
-            record.boundaries = graphemeBoundaries(text)
             record.targetCount = record.boundaries.lastIndex.toFloat()
             record.progress = record.progress.coerceAtMost(record.targetCount)
         }
@@ -419,6 +423,66 @@ internal fun graphemeBoundaries(text: String): IntArray {
     return result.toIntArray()
 }
 
+/**
+ * 为只追加文本增量维护字素边界。
+ *
+ * 新内容可能把旧文本的最后一个字素继续延长，例如组合音标、ZWJ emoji、旗帜和 CRLF。
+ * 因此保留倒数第二个边界之前的结果，只重算最后一个旧字素和新增后缀，避免每个流式
+ * 分片都从头扫描整条回答。
+ */
+internal fun updateGraphemeBoundaries(
+    previousText: String,
+    previousBoundaries: IntArray,
+    text: String,
+): IntArray {
+    if (
+        previousText.isEmpty() ||
+        !text.startsWith(previousText) ||
+        previousBoundaries.isEmpty() ||
+        previousBoundaries.first() != 0 ||
+        previousBoundaries.last() != previousText.length
+    ) {
+        return graphemeBoundaries(text)
+    }
+    if (text == previousText) return previousBoundaries
+
+    val restartBoundaryIndex = (previousBoundaries.lastIndex - 1).coerceAtLeast(0)
+    val restartOffset = previousBoundaries[restartBoundaryIndex]
+    val suffixBoundaries = graphemeBoundaries(text.substring(restartOffset))
+    return IntArray(restartBoundaryIndex + suffixBoundaries.size).also { merged ->
+        for (index in 0 until restartBoundaryIndex) {
+            merged[index] = previousBoundaries[index]
+        }
+        suffixBoundaries.forEachIndexed { index, boundary ->
+            merged[restartBoundaryIndex + index] = restartOffset + boundary
+        }
+    }
+}
+
+internal class AppendOnlyGraphemeIndex {
+    private var indexedText = ""
+    private var boundaries = intArrayOf(0)
+
+    fun update(text: String) {
+        boundaries = updateGraphemeBoundaries(
+            previousText = indexedText,
+            previousBoundaries = boundaries,
+            text = text,
+        )
+        indexedText = text
+    }
+
+    fun endAfter(start: Int, maxGraphemes: Int): Int {
+        val clampedStart = start.coerceIn(0, indexedText.length)
+        if (clampedStart == indexedText.length || maxGraphemes <= 0) return clampedStart
+
+        val foundIndex = boundaries.binarySearch(clampedStart)
+        val firstEndIndex = if (foundIndex >= 0) foundIndex + 1 else -foundIndex - 1
+        val endIndex = (firstEndIndex + maxGraphemes - 1).coerceAtMost(boundaries.lastIndex)
+        return boundaries[endIndex]
+    }
+}
+
 internal fun commonUtf16PrefixLength(first: String, second: String): Int {
     val limit = minOf(first.length, second.length)
     var index = 0
@@ -452,6 +516,6 @@ internal fun advanceSmoothReveal(
 
 private const val NANOS_PER_SECOND = 1_000_000_000f
 private const val MAX_FRAME_DELTA_SECONDS = 0.05f
-private const val BASE_REVEAL_GRAPHEMES_PER_SECOND = 48f
+private const val BASE_REVEAL_GRAPHEMES_PER_SECOND = 36f
 private const val MAX_REVEAL_GRAPHEMES_PER_SECOND = 240f
 private const val TARGET_CATCH_UP_SECONDS = 0.20f
