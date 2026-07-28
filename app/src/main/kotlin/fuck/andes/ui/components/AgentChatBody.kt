@@ -519,7 +519,7 @@ private fun AgentChatMessages(
             ) {
                 Icon(
                     painter = painterResource(LucideR.drawable.lucide_ic_arrow_down),
-                    contentDescription = "回到底部",
+                    contentDescription = "맨 아래로 이동",
                     modifier = Modifier.size(17.dp),
                     tint = MiuixTheme.colorScheme.onSurface,
                 )

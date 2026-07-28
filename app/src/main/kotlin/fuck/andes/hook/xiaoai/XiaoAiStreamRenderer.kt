@@ -125,7 +125,7 @@ internal class XiaoAiStreamRenderer(
             val floatManager = floatManagerProvider()
             if (floatManager == null) {
                 logger.warnThrottled("xiaoai_card_sink_unavailable") {
-                    "超级小爱结果卡片管理器暂不可用"
+                    "슈퍼 샤오아이 결과 카드 관리자를 현재 사용할 수 없습니다"
                 }
                 return null
             }
@@ -134,7 +134,7 @@ internal class XiaoAiStreamRenderer(
             card.get()
         } catch (exception: Exception) {
             logger.warnThrottled("xiaoai_card_create_failed") {
-                "超级小爱结果卡创建失败: type=${exception.safeLogType()}"
+                "슈퍼 샤오아이 결과 카드 생성 실패: type=${exception.safeLogType()}"
             }
             null
         }
@@ -147,7 +147,7 @@ internal class XiaoAiStreamRenderer(
                 ?.invoke(player, text)
         } catch (exception: Exception) {
             logger.warnThrottled("xiaoai_tts_failed") {
-                "超级小爱 Eta 结果朗读失败: type=${exception.safeLogType()}"
+                "슈퍼 샤오아이 Eta 결과 읽기 실패: type=${exception.safeLogType()}"
             }
         }
     }
