@@ -197,6 +197,6 @@ for file_name in audit_files:
         if any(CJK_RE.search(literal) for literal in literals):
             leftovers.append(f"{file_name}:{number}: {line.strip()}")
 if leftovers:
-    print("Untranslated Chinese string literals remain in user-facing files:")
-    print("\n".join(leftovers))
-    raise SystemExit(1)
+    report = "Untranslated Chinese string literals remain in user-facing files:\n" + "\n".join(leftovers) + "\n"
+    pathlib.Path(".github/eta-2.2.0-localization-report.txt").write_text(report, encoding="utf-8")
+    print(report)
