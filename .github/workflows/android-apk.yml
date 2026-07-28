@@ -175,10 +175,10 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
-  sync_eta_2_2_0:
+  patch_eta_2_2_0_localization:
     if: github.event_name == 'pull_request' && github.head_ref == 'agent/update-eta-2.2.0-ko' && github.actor != 'github-actions[bot]'
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 10
     steps:
       - name: Check out update branch
         uses: actions/checkout@v4
@@ -186,35 +186,43 @@ jobs:
           ref: ${{ github.event.pull_request.head.ref }}
           fetch-depth: 0
 
-      - name: Merge upstream and preserve Korean localization
+      - name: Translate remaining user-facing strings
         shell: bash
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git remote add upstream https://github.com/Mangi-11/Eta.git
-          git fetch upstream main
 
-          set +e
-          git merge --no-commit --no-ff upstream/main
-          merge_status=$?
-          set -e
-          if [[ $merge_status -ne 0 && -z "$(git diff --name-only --diff-filter=U)" ]]; then
-            echo "Upstream merge failed without resolvable file conflicts." >&2
-            exit $merge_status
-          fi
+          python3 <<'PY'
+          from pathlib import Path
 
-          python3 .github/scripts/sync_upstream_2_2_0.py
+          replacements = {
+              Path("app/src/main/kotlin/fuck/andes/ui/components/AgentChatBody.kt"): {
+                  'contentDescription = "回到底部"': 'contentDescription = "맨 아래로 이동"',
+              },
+              Path("app/src/main/kotlin/fuck/andes/hook/xiaoai/XiaoAiStreamRenderer.kt"): {
+                  '"超级小爱结果卡片管理器暂不可用"': '"슈퍼 샤오아이 결과 카드 관리자를 현재 사용할 수 없습니다"',
+                  '"超级小爱结果卡创建失败: type=${exception.safeLogType()}"': '"슈퍼 샤오아이 결과 카드 생성 실패: type=${exception.safeLogType()}"',
+                  '"超级小爱 Eta 结果朗读失败: type=${exception.safeLogType()}"': '"슈퍼 샤오아이 Eta 결과 읽기 실패: type=${exception.safeLogType()}"',
+              },
+          }
 
-          if [[ -n "$(git diff --name-only --diff-filter=U)" ]]; then
-            echo "Unresolved merge conflicts remain:" >&2
-            git diff --name-only --diff-filter=U >&2
-            exit 1
-          fi
+          for path, mapping in replacements.items():
+              text = path.read_text(encoding="utf-8")
+              for source, target in mapping.items():
+                  if source not in text:
+                      raise SystemExit(f"Expected localization source was not found: {path}: {source}")
+                  text = text.replace(source, target)
+              path.write_text(text, encoding="utf-8")
 
-          rm -f .github/workflows/sync-upstream-2.2.0.yml
-          rm -f .github/scripts/sync_upstream_2_2_0.py
+          Path(".github/eta-2.2.0-localization-report.txt").unlink(missing_ok=True)
+          Path(".github/eta-2.2.0-patch-trigger").unlink(missing_ok=True)
+          PY
+
           git add -A
-          git status --short
-          git commit -m "Eta 2.2.0-ko 업데이트"
+          if git diff --cached --quiet; then
+            echo 'No localization changes were needed.'
+            exit 0
+          fi
+          git commit -m "남은 Eta 2.2.0 한국어 문구 정리"
           git push origin HEAD:agent/update-eta-2.2.0-ko
