@@ -34,6 +34,18 @@ class EntrySurfaceGuardTest {
     }
 
     @Test
+    fun xiaoAiGuardUsesOnlyTheXiaoAiPackage() {
+        val guard = EntrySurfaceGuard.from(
+            handoff = handoff(source = "xiaoai", dismiss = true),
+            logger = NoOpLogger,
+        )
+
+        assertNotNull(guard)
+        assertEquals("com.miui.voiceassist", guard?.targetPackageName)
+        assertEquals(setOf("com.miui.voiceassist"), guard?.consumeScreenshotExcludedPackages())
+    }
+
+    @Test
     fun unknownEntryStillCreatesDismissGuardWithoutGuessingAPackage() {
         val guard = EntrySurfaceGuard.from(
             handoff = handoff(source = "future_entry", dismiss = true),

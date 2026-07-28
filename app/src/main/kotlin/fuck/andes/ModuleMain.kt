@@ -16,6 +16,7 @@ import fuck.andes.hook.google.GoogleAppHooks
 import fuck.andes.hook.google.GoogleEligibilityHooks
 import fuck.andes.hook.system.SystemServerHooks
 import fuck.andes.hook.system.SystemUiHooks
+import fuck.andes.hook.xiaoai.XiaoAiHooks
 
 class ModuleMain : XposedModule() {
 
@@ -82,6 +83,18 @@ class ModuleMain : XposedModule() {
                     recordInstallation(BreenoHooks.install(this, logger, param.classLoader))
                 }
             }
+
+            ModuleConfig.XIAOAI_PACKAGE -> {
+                if (isCurrentXiaoAiProcess()) {
+                    recordInstallation(
+                        XiaoAiHooks.install(
+                            module = this,
+                            rootLogger = logger,
+                            classLoader = param.classLoader,
+                        )
+                    )
+                }
+            }
         }
     }
 
@@ -101,7 +114,15 @@ class ModuleMain : XposedModule() {
         return processName == ModuleConfig.SYSTEM_UI_PACKAGE ||
             isPackageProcess(processName, ModuleConfig.GOOGLE_PACKAGE) ||
             isPackageProcess(processName, ModuleConfig.COLOR_DIRECT_PACKAGE) ||
-            isPackageProcess(processName, ModuleConfig.BREENO_PACKAGE)
+            isPackageProcess(processName, ModuleConfig.BREENO_PACKAGE) ||
+            processName == ModuleConfig.XIAOAI_PACKAGE ||
+            processName == ModuleConfig.XIAOAI_CORE_PROCESS
+    }
+
+    private fun isCurrentXiaoAiProcess(): Boolean {
+        val processName = currentProcessName ?: return false
+        return processName == ModuleConfig.XIAOAI_PACKAGE ||
+            processName == ModuleConfig.XIAOAI_CORE_PROCESS
     }
 
     private fun isPackageProcess(processName: String, packageName: String): Boolean =

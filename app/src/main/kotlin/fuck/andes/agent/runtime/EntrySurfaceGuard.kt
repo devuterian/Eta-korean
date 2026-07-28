@@ -101,6 +101,7 @@ internal class EntrySurfaceGuard private constructor(
             if (handoff?.dismissEntrySurfaceOnForegroundOperation != true) return null
             val packageName = when (handoff.source) {
                 BREENO_HANDOFF_SOURCE -> BREENO_PACKAGE_NAME
+                XIAOAI_HANDOFF_SOURCE -> XIAOAI_PACKAGE_NAME
                 else -> null
             }
             return EntrySurfaceGuard(packageName, logger)
@@ -108,6 +109,8 @@ internal class EntrySurfaceGuard private constructor(
 
         private const val BREENO_HANDOFF_SOURCE = "breeno"
         private const val BREENO_PACKAGE_NAME = "com.heytap.speechassist"
+        private const val XIAOAI_HANDOFF_SOURCE = "xiaoai"
+        private const val XIAOAI_PACKAGE_NAME = "com.miui.voiceassist"
     }
 }
 

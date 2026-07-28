@@ -258,14 +258,15 @@ internal fun SettingsScreen(
                 }
             }
 
-            // ── 小布接管 ──────────────────────────────────────────────────
-            item(key = "section_breeno_takeover") {
-                SmallTitle("Breeno 연동")
+            // ── 系统助手接管 ──────────────────────────────────────────────
+            item(key = "section_assistant_takeover") {
+                SmallTitle("시스템 어시스턴트 연동")
                 Card(modifier = Modifier.padding(horizontal = 12.dp).padding(bottom = 12.dp)) {
                     SwitchPref(
                         context = context,
                         prefs = prefs,
-                        title = "Breeno 맞춤 모델 사용",
+                        title = "시스템 어시스턴트에서 사용자 지정 모델 사용",
+                        summary = "Breeno와 슈퍼 샤오아이가 이 설정을 함께 사용합니다",
                         key = Prefs.Keys.AGENT_CUSTOM_MODEL,
                         icon = LucideR.drawable.lucide_ic_cpu,
                         iconTint = ColorOSOrangeRed,
@@ -275,6 +276,7 @@ internal fun SettingsScreen(
                         context = context,
                         prefs = prefs,
                         title = "/agent 접두사에서만 연동",
+                        summary = "Breeno와 슈퍼 샤오아이에 모두 적용됩니다",
                         key = Prefs.Keys.AGENT_REQUIRE_PREFIX,
                         icon = LucideR.drawable.lucide_ic_message_square,
                         iconTint = ColorOSAmberYellow,
@@ -677,6 +679,6 @@ private fun SystemizerInstallResult.toToastMessage(): String =
             .lineSequence()
             .map { it.trim() }
             .lastOrNull { it.isNotEmpty() }
-            ?.let { "$message: $it" }
+            ?.let { "$message：$it" }
             ?: message
     }

@@ -6,7 +6,7 @@ import io.github.libxposed.service.XposedService
 /**
  * 模块配置中枢。
  *
- * - Hook 进程（system_server / SystemUI / Google / ColorDirect）在模块加载时调用
+ * - Hook 进程（system_server / SystemUI / Google / 系统助手等）在模块加载时调用
  *   [attachRemote]，缓存框架提供的只读 [SharedPreferences]；之后所有拦截回调用 [isEnabled]
  *   读取当前进程持有的 remote preferences。
  * - UI 进程（模块自身）通过 [remotePreferencesForUi] 拿到可写的 [SharedPreferences]

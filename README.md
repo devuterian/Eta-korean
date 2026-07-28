@@ -6,7 +6,7 @@
 
 > 이 저장소는 [Mangi-11/Eta](https://github.com/Mangi-11/Eta)의 한국어 현지화 포크입니다. 앱의 사용자 노출 문구와 에이전트 메시지를 한국어로 번역하며, 원본의 도구 식별자·프로토콜·외부 앱 자동화용 고정 문자열은 호환성을 위해 유지합니다.
 
-Eta는 libxposed API 102 기반 Xposed 모듈이며 ColorOS 16을 대상으로 합니다. Breeno 대화 요청을 가로채 같은 에이전트 런타임으로 전달하고, BYOK 방식으로 사용자가 선택한 모델을 연결합니다. 앱 본체가 기본 작업 공간이며 Gemini 호출과 서클 투 서치 관련 초기 훅도 포함합니다.
+Eta는 libxposed API 102 기반 Xposed 모듈이며 ColorOS 16을 대상으로 합니다. Breeno와 Xiaomi 슈퍼 샤오아이의 대화 요청을 같은 에이전트 런타임으로 전달하고, BYOK 방식으로 사용자가 선택한 모델을 연결합니다. 앱 본체가 기본 작업 공간이며 Gemini 호출과 서클 투 서치 관련 초기 훅도 포함합니다.
 
 ## 화면
 
@@ -14,9 +14,9 @@ Eta는 libxposed API 102 기반 Xposed 모듈이며 ColorOS 16을 대상으로 �
 | :---: | :---: |
 | ![GUI 에이전트](docs/Screenshots/demo_gui_agent.gif) | ![Breeno BYOK](docs/Screenshots/demo_tools.gif) |
 
-| 채팅 홈 | 시스템 분석 | 명령 실행 |
+| 채팅 홈 | 시스템 분석 | 기기 직접 제어 |
 | :---: | :---: | :---: |
-| ![채팅 홈](docs/Screenshots/chat_home.jpg) | ![시스템 분석](docs/Screenshots/chat_breeno_analysis.jpg) | ![명령 실행](docs/Screenshots/chat_command.jpg) |
+| ![채팅 홈](docs/Screenshots/chat_home.jpg) | ![시스템 분석](docs/Screenshots/chat_breeno_analysis.jpg) | ![기기 직접 제어](docs/Screenshots/chat_device_direct.jpg) |
 
 | 설정 | 도구 | 스킬 |
 | :---: | :---: | :---: |
@@ -48,6 +48,10 @@ Eta는 모델이 명령을 생성하고, 시스템이 실행 결과를 돌려주
 - 정확한 연락처 일치 후 WeChat 메시지 입력 또는 전송
 
 민감 정보 읽기와 민감한 기기 조작은 별도 설정으로 기본 비활성화되어 있습니다. 도구 인수는 스키마와 실행기에서 검증되며, 핵심 시스템 패키지와 보안 관련 설정은 보호됩니다.
+
+### Xiaomi 슈퍼 샤오아이
+
+지원되는 슈퍼 샤오아이 버전에서는 시스템 어시스턴트 요청을 Eta 모델로 전달하고, 텍스트·이미지 입력과 스트리밍 결과 카드 및 음성 읽기를 연동합니다. 정확한 앱 버전이 맞지 않으면 원래 동작을 유지합니다.
 
 ### 내장 브라우저
 
@@ -82,7 +86,7 @@ Linux 환경은 격리된 보안 샌드박스가 아닙니다.
 ## 설치
 
 1. libxposed API 102를 지원하는 LSPosed 환경에 APK를 설치합니다.
-2. 모듈 범위에 `system`, `SystemUI`, Google 앱, Breeno 관련 프로세스를 포함합니다.
+2. 모듈 범위에 `system`, `SystemUI`, Google 앱, Breeno 및 지원되는 Xiaomi 슈퍼 샤오아이 프로세스를 포함합니다.
 3. 기기를 재부팅합니다.
 4. Eta 앱에서 모델 제공자, API Key, 사용할 모델을 설정합니다.
 5. 필요에 따라 오버레이, 접근성, 앱 목록, 위치, 백그라운드 권한을 부여합니다.
@@ -91,7 +95,7 @@ Linux 환경은 격리된 보안 샌드박스가 아닙니다.
 ## 지원 환경과 주의사항
 
 - 대상 시스템: ColorOS 16
-- Android 최소 버전: API 36
+- Android 최소 버전: API 34
 - Xposed 훅 지점은 OPPO·Google 앱 구현에 의존하므로 시스템이나 앱의 큰 업데이트 후 재적응이 필요할 수 있습니다.
 - Root, Xposed, 접근성, 터미널 기능은 기기 제어 범위가 큽니다. 기능별 권한과 실행 결과를 확인한 뒤 사용해야 합니다.
 - 외부 앱의 로그인, 결제, 자동화 방지 정책은 Eta가 우회하지 않습니다.
@@ -129,7 +133,7 @@ app/build/outputs/apk/debug/app-debug.apk
 ```text
 app/src/main/kotlin/fuck/andes/
 ├── ModuleMain.kt          Xposed 모듈 진입점
-├── hook/                  시스템·Google·Breeno 훅
+├── hook/                  시스템·Google·Breeno·슈퍼 샤오아이 훅
 ├── agent/runtime/         에이전트 런타임과 IPC
 ├── agent/model/           모델 제공자와 프로토콜
 ├── agent/tool/            로컬 도구 실행기
