@@ -4,6 +4,16 @@ import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -26,11 +36,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.dropShadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.shadow.Shadow
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -50,6 +63,7 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 private val InputIconSize = 20.dp
 private val SendButtonVisualSize = 32.dp
 private val ThinkingChipShape = RoundedCornerShape(percent = 50)
+private val InputContainerShape = RoundedCornerShape(20.dp)
 
 /**
  * Agent 输入器始终保持同一空间结构，聚焦、输入和执行过程只改变状态，不搬动操作入口。
@@ -88,7 +102,11 @@ fun AgentChatInputBar(
         modifier = modifier
             .fillMaxWidth(),
     ) {
-        if (pendingImages.isNotEmpty()) {
+        AnimatedVisibility(
+            visible = pendingImages.isNotEmpty(),
+            enter = fadeIn(tween(160)),
+            exit = fadeOut(tween(100)) + shrinkVertically(tween(160)),
+        ) {
             PendingImageStrip(
                 images = pendingImages,
                 onRemoveImage = onRemoveImage,
@@ -99,6 +117,14 @@ fun AgentChatInputBar(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .dropShadow(
+                    shape = InputContainerShape,
+                    shadow = Shadow(
+                        radius = 8.dp,
+                        color = Color.Black,
+                        alpha = 0.08f,
+                    ),
+                )
                 .squircleSurface(
                     color = MiuixTheme.colorScheme.surfaceContainer,
                     cornerRadius = 20.dp,
@@ -182,35 +208,49 @@ fun AgentChatInputBar(
                     // The 38dp outer button remains easy to hit; only the visible
                     // circle is reduced so it has the same optical weight as the
                     // adjacent toolbar icons.
+                    val sendButtonColor by animateColorAsState(
+                        targetValue = when {
+                            isStreaming -> MiuixTheme.colorScheme.onSurface
+                            canSend -> MiuixTheme.colorScheme.primary
+                            else -> MiuixTheme.colorScheme.surfaceContainerHigh
+                        },
+                        animationSpec = tween(durationMillis = 160),
+                        label = "send_button_color",
+                    )
                     Box(
                         modifier = Modifier
                             .size(SendButtonVisualSize)
                             .clip(CircleShape)
-                            .background(
-                                when {
-                                    isStreaming -> MiuixTheme.colorScheme.onSurface
-                                    canSend -> MiuixTheme.colorScheme.primary
-                                    else -> MiuixTheme.colorScheme.surfaceContainerHigh
-                                }
-                            ),
+                            .background(sendButtonColor),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Icon(
-                            painter = painterResource(
-                                if (isStreaming) {
-                                    LucideR.drawable.lucide_ic_square
-                                } else {
-                                    LucideR.drawable.lucide_ic_arrow_up
-                                }
-                            ),
-                            contentDescription = if (isStreaming) "중지" else "보내기",
-                            modifier = Modifier.size(if (isStreaming) 12.dp else 17.dp),
-                            tint = when {
-                                isStreaming -> MiuixTheme.colorScheme.surface
-                                canSend -> MiuixTheme.colorScheme.onPrimary
-                                else -> MiuixTheme.colorScheme.onSurfaceVariantActions
+                        AnimatedContent(
+                            targetState = isStreaming,
+                            transitionSpec = {
+                                (fadeIn(tween(130)) + scaleIn(tween(160), initialScale = 0.72f))
+                                    .togetherWith(
+                                        fadeOut(tween(90)) + scaleOut(tween(110), targetScale = 0.72f)
+                                    )
                             },
-                        )
+                            label = "send_stop_icon",
+                        ) { streaming ->
+                            Icon(
+                                painter = painterResource(
+                                    if (streaming) {
+                                        LucideR.drawable.lucide_ic_square
+                                    } else {
+                                        LucideR.drawable.lucide_ic_arrow_up
+                                    }
+                                ),
+                                contentDescription = if (streaming) "중지" else "보내기",
+                                modifier = Modifier.size(if (streaming) 12.dp else 17.dp),
+                                tint = when {
+                                    streaming -> MiuixTheme.colorScheme.surface
+                                    canSend -> MiuixTheme.colorScheme.onPrimary
+                                    else -> MiuixTheme.colorScheme.onSurfaceVariantActions
+                                },
+                            )
+                        }
                     }
                 }
             }
@@ -228,31 +268,38 @@ private fun ThinkingToggleChip(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val contentColor = when {
-        checked -> MiuixTheme.colorScheme.primary
-        else -> MiuixTheme.colorScheme.onSurfaceVariantSummary
-    }
+    val contentColor by animateColorAsState(
+        targetValue = if (checked) {
+            MiuixTheme.colorScheme.primary
+        } else {
+            MiuixTheme.colorScheme.onSurfaceVariantSummary
+        },
+        animationSpec = tween(durationMillis = 160),
+        label = "thinking_content",
+    )
+    val backgroundColor by animateColorAsState(
+        targetValue = if (checked) {
+            MiuixTheme.colorScheme.primary.copy(alpha = 0.10f)
+        } else {
+            Color.Transparent
+        },
+        animationSpec = tween(durationMillis = 160),
+        label = "thinking_background",
+    )
+    val outlineColor by animateColorAsState(
+        targetValue = if (checked) {
+            Color.Transparent
+        } else {
+            MiuixTheme.colorScheme.outline.copy(alpha = 0.6f)
+        },
+        animationSpec = tween(durationMillis = 160),
+        label = "thinking_outline",
+    )
     Row(
         modifier = modifier
             .clip(ThinkingChipShape)
-            .background(
-                if (checked) {
-                    MiuixTheme.colorScheme.primary.copy(alpha = 0.10f)
-                } else {
-                    Color.Transparent
-                }
-            )
-            .then(
-                if (checked) {
-                    Modifier
-                } else {
-                    Modifier.border(
-                        0.5.dp,
-                        MiuixTheme.colorScheme.outline.copy(alpha = 0.6f),
-                        ThinkingChipShape,
-                    )
-                }
-            )
+            .background(backgroundColor)
+            .border(0.5.dp, outlineColor, ThinkingChipShape)
             .clickable(enabled = enabled, onClick = onClick)
             .padding(horizontal = 11.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,

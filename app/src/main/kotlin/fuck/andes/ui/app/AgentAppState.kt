@@ -878,7 +878,7 @@ internal class AgentAppState(
             }
 
             is AgentEvent.AssistantBlockDelta -> {
-                updateMessages(runId) { messages ->
+                updateMessages(runId, updateTimestamp = false) { messages ->
                     when (event.kind) {
                         AgentEvent.AssistantBlockKind.TEXT ->
                             runMessageProjector.appendTextDelta(runId, event.round, event.delta, messages)
@@ -1001,7 +1001,7 @@ internal class AgentAppState(
         runId: String,
         transform: (List<AgentChatMessageUi>) -> List<AgentChatMessageUi>,
     ) {
-        updateMessages(runId, transform)
+        updateMessages(runId, transform = transform)
         refreshConversationSummaries()
     }
 
@@ -1113,11 +1113,16 @@ internal class AgentAppState(
 
     private fun updateMessages(
         runId: String,
+        updateTimestamp: Boolean = true,
         transform: (List<AgentChatMessageUi>) -> List<AgentChatMessageUi>,
     ) {
         val conversationId = conversationIdForRun(runId) ?: return
         val state = conversationsById[conversationId] ?: return
-        updateConversation(conversationId, state.copy(messages = transform(state.messages)))
+        updateConversation(
+            conversationId = conversationId,
+            state = state.copy(messages = transform(state.messages)),
+            updateTimestamp = updateTimestamp,
+        )
     }
 
     private fun applyConversationHistoryResult(
@@ -1150,9 +1155,15 @@ internal class AgentAppState(
         conversationPaneState = conversationPaneState.copy(selectedConversationId = null)
     }
 
-    private fun updateConversation(conversationId: String, state: AgentChatHomeUiState) {
+    private fun updateConversation(
+        conversationId: String,
+        state: AgentChatHomeUiState,
+        updateTimestamp: Boolean = true,
+    ) {
         conversationsById = conversationsById + (conversationId to state)
-        conversationUpdatedAt = conversationUpdatedAt + (conversationId to System.currentTimeMillis())
+        if (updateTimestamp) {
+            conversationUpdatedAt = conversationUpdatedAt + (conversationId to System.currentTimeMillis())
+        }
         if (conversationId == selectedConversationId) {
             homeState = state
         }
@@ -1244,7 +1255,9 @@ internal class AgentAppState(
         const val HANDOFF_SOURCE = "agent_ui"
         const val MAX_TITLE_CHARS = 24
         const val MAX_PREVIEW_CHARS = 48
-        const val STREAM_UI_UPDATE_INTERVAL_MS = 50L
+        // 数据状态以较粗粒度发布，文字显现由独立的帧时钟连续推进。
+        // 这与 Kimi 将流式数据和视觉动画分层的做法一致。
+        const val STREAM_UI_UPDATE_INTERVAL_MS = 80L
 
         fun emptyChatState(thinkingEnabled: Boolean): AgentChatHomeUiState =
             AgentChatHomeUiState(

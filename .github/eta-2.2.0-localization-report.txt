@@ -1,0 +1,5 @@
+Untranslated Chinese string literals remain in user-facing files:
+app/src/main/kotlin/fuck/andes/ui/components/AgentChatBody.kt:522: contentDescription = "回到底部",
+app/src/main/kotlin/fuck/andes/hook/xiaoai/XiaoAiStreamRenderer.kt:128: "超级小爱结果卡片管理器暂不可用"
+app/src/main/kotlin/fuck/andes/hook/xiaoai/XiaoAiStreamRenderer.kt:137: "超级小爱结果卡创建失败: type=${exception.safeLogType()}"
+app/src/main/kotlin/fuck/andes/hook/xiaoai/XiaoAiStreamRenderer.kt:150: "超级小爱 Eta 结果朗读失败: type=${exception.safeLogType()}"
