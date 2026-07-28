@@ -11,6 +11,104 @@ java {
     }
 }
 
+val verifyPublishedEtaRelease = tasks.register("verifyPublishedEtaRelease") {
+    val reportFile = layout.projectDirectory.file("src/main/assets/eta-release-verification.txt")
+    outputs.file(reportFile)
+
+    doLast {
+        fun readUrl(url: String): ByteArray {
+            val connection = java.net.URI(url).toURL().openConnection() as java.net.HttpURLConnection
+            connection.instanceFollowRedirects = true
+            connection.connectTimeout = 30_000
+            connection.readTimeout = 120_000
+            connection.setRequestProperty("Accept", "application/vnd.github+json")
+            connection.setRequestProperty("User-Agent", "Eta-korean-release-verifier")
+            val status = connection.responseCode
+            require(status in 200..299) { "HTTP $status while reading $url" }
+            return connection.inputStream.use { it.readBytes() }
+        }
+
+        fun jsonString(key: String, json: String): String? =
+            Regex("\\\"${Regex.escape(key)}\\\"\\s*:\\s*\\\"([^\\\"]*)\\\"")
+                .find(json)
+                ?.groupValues
+                ?.get(1)
+
+        fun jsonNumber(key: String, json: String): String? =
+            Regex("\\\"${Regex.escape(key)}\\\"\\s*:\\s*(\\d+)")
+                .find(json)
+                ?.groupValues
+                ?.get(1)
+
+        val tag = "2.2.0-ko"
+        val expectedAsset = "Eta-2.2.0-ko.apk"
+        val expectedMainCommit = "daf31f8d8d9505fd4f3a1369aacbdf6e86c81702"
+        val releaseJson = readUrl(
+            "https://api.github.com/repos/devuterian/Eta-korean/releases/tags/$tag"
+        ).toString(Charsets.UTF_8)
+
+        val releaseTag = jsonString("tag_name", releaseJson)
+        val releaseName = jsonString("name", releaseJson)
+        val releaseTarget = jsonString("target_commitish", releaseJson)
+        val assetUrl = Regex(
+            "\\\"browser_download_url\\\"\\s*:\\s*\\\"([^\\\"]*Eta-2\\.2\\.0-ko\\.apk)\\\""
+        ).find(releaseJson)?.groupValues?.get(1)
+
+        require(releaseTag == tag) { "Unexpected release tag: $releaseTag" }
+        require(releaseName == "Eta 2.2.0-ko") { "Unexpected release name: $releaseName" }
+        require(releaseTarget == expectedMainCommit) {
+            "Unexpected release target: $releaseTarget"
+        }
+        require(!assetUrl.isNullOrBlank()) { "Release asset $expectedAsset is missing" }
+
+        val assetBytes = readUrl(assetUrl)
+        val assetSha256 = java.security.MessageDigest.getInstance("SHA-256")
+            .digest(assetBytes)
+            .joinToString("") { byte -> "%02x".format(byte.toInt() and 0xff) }
+
+        val runsJson = readUrl(
+            "https://api.github.com/repos/devuterian/Eta-korean/actions/runs" +
+                "?head_sha=$expectedMainCommit&per_page=10"
+        ).toString(Charsets.UTF_8)
+        val firstRun = runsJson.substringAfter("\"workflow_runs\"", "")
+        val runId = jsonNumber("id", firstRun)
+        val runNumber = jsonNumber("run_number", firstRun)
+        val runName = jsonString("name", firstRun)
+        val runEvent = jsonString("event", firstRun)
+        val runStatus = jsonString("status", firstRun)
+        val runConclusion = jsonString("conclusion", firstRun)
+
+        require(runName == "Android APK") { "Unexpected workflow name: $runName" }
+        require(runEvent == "push") { "Unexpected workflow event: $runEvent" }
+        require(runStatus == "completed") { "Main workflow is not completed: $runStatus" }
+        require(runConclusion == "success") { "Main workflow failed: $runConclusion" }
+
+        reportFile.asFile.parentFile.mkdirs()
+        reportFile.asFile.writeText(
+            """
+            release_tag=$releaseTag
+            release_name=$releaseName
+            release_target=$releaseTarget
+            asset_name=$expectedAsset
+            asset_size=${assetBytes.size}
+            asset_sha256=$assetSha256
+            actions_run_id=$runId
+            actions_run_number=$runNumber
+            actions_name=$runName
+            actions_event=$runEvent
+            actions_status=$runStatus
+            actions_conclusion=$runConclusion
+            main_commit=$expectedMainCommit
+            """.trimIndent() + "\n",
+            Charsets.UTF_8,
+        )
+    }
+}
+
+tasks.matching { it.name == "preDebugBuild" }.configureEach {
+    dependsOn(verifyPublishedEtaRelease)
+}
+
 android {
     namespace = "fuck.andes"
     compileSdk = 37
