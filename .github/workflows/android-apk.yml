@@ -174,3 +174,47 @@ jobs:
           path: app/build/reports/**
           if-no-files-found: ignore
           retention-days: 7
+
+  sync_eta_2_2_0:
+    if: github.event_name == 'pull_request' && github.head_ref == 'agent/update-eta-2.2.0-ko' && github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Check out update branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+
+      - name: Merge upstream and preserve Korean localization
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote add upstream https://github.com/Mangi-11/Eta.git
+          git fetch upstream main
+
+          set +e
+          git merge --no-commit --no-ff upstream/main
+          merge_status=$?
+          set -e
+          if [[ $merge_status -ne 0 && -z "$(git diff --name-only --diff-filter=U)" ]]; then
+            echo "Upstream merge failed without resolvable file conflicts." >&2
+            exit $merge_status
+          fi
+
+          python3 .github/scripts/sync_upstream_2_2_0.py
+
+          if [[ -n "$(git diff --name-only --diff-filter=U)" ]]; then
+            echo "Unresolved merge conflicts remain:" >&2
+            git diff --name-only --diff-filter=U >&2
+            exit 1
+          fi
+
+          rm -f .github/workflows/sync-upstream-2.2.0.yml
+          rm -f .github/scripts/sync_upstream_2_2_0.py
+          git add -A
+          git status --short
+          git commit -m "Eta 2.2.0-ko 업데이트"
+          git push origin HEAD:agent/update-eta-2.2.0-ko
