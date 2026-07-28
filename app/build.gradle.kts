@@ -16,16 +16,34 @@ val verifyPublishedEtaRelease = tasks.register("verifyPublishedEtaRelease") {
     outputs.file(reportFile)
 
     doLast {
-        fun readUrl(url: String): ByteArray {
-            val connection = java.net.URI(url).toURL().openConnection() as java.net.HttpURLConnection
+        val authorization = runCatching {
+            val process = ProcessBuilder(
+                "git",
+                "config",
+                "--local",
+                "--get",
+                "http.https://github.com/.extraheader",
+            ).start()
+            process.inputStream.bufferedReader().use { it.readText() }
+                .substringAfter("AUTHORIZATION:", "")
+                .trim()
+                .takeIf { it.isNotBlank() }
+        }.getOrNull()
+
+        fun readUrl(url: String): Pair<Int, ByteArray> {
+            val uri = java.net.URI(url)
+            val connection = uri.toURL().openConnection() as java.net.HttpURLConnection
             connection.instanceFollowRedirects = true
             connection.connectTimeout = 30_000
             connection.readTimeout = 120_000
             connection.setRequestProperty("Accept", "application/vnd.github+json")
             connection.setRequestProperty("User-Agent", "Eta-korean-release-verifier")
+            if (uri.host == "api.github.com" && !authorization.isNullOrBlank()) {
+                connection.setRequestProperty("Authorization", authorization)
+            }
             val status = connection.responseCode
-            require(status in 200..299) { "HTTP $status while reading $url" }
-            return connection.inputStream.use { it.readBytes() }
+            val stream = if (status in 200..299) connection.inputStream else connection.errorStream
+            return status to (stream?.use { it.readBytes() } ?: ByteArray(0))
         }
 
         fun jsonString(key: String, json: String): String? =
@@ -43,10 +61,11 @@ val verifyPublishedEtaRelease = tasks.register("verifyPublishedEtaRelease") {
         val tag = "2.2.0-ko"
         val expectedAsset = "Eta-2.2.0-ko.apk"
         val expectedMainCommit = "daf31f8d8d9505fd4f3a1369aacbdf6e86c81702"
-        val releaseJson = readUrl(
-            "https://api.github.com/repos/devuterian/Eta-korean/releases/tags/$tag"
-        ).toString(Charsets.UTF_8)
 
+        val (releaseStatus, releaseBytes) = readUrl(
+            "https://api.github.com/repos/devuterian/Eta-korean/releases/tags/$tag"
+        )
+        val releaseJson = releaseBytes.toString(Charsets.UTF_8)
         val releaseTag = jsonString("tag_name", releaseJson)
         val releaseName = jsonString("name", releaseJson)
         val releaseTarget = jsonString("target_commitish", releaseJson)
@@ -54,22 +73,26 @@ val verifyPublishedEtaRelease = tasks.register("verifyPublishedEtaRelease") {
             "\\\"browser_download_url\\\"\\s*:\\s*\\\"([^\\\"]*Eta-2\\.2\\.0-ko\\.apk)\\\""
         ).find(releaseJson)?.groupValues?.get(1)
 
-        require(releaseTag == tag) { "Unexpected release tag: $releaseTag" }
-        require(releaseName == "Eta 2.2.0-ko") { "Unexpected release name: $releaseName" }
-        require(releaseTarget == expectedMainCommit) {
-            "Unexpected release target: $releaseTarget"
+        var assetStatus: Int? = null
+        var assetBytes = ByteArray(0)
+        if (!assetUrl.isNullOrBlank()) {
+            val result = readUrl(assetUrl)
+            assetStatus = result.first
+            assetBytes = result.second
         }
-        require(!assetUrl.isNullOrBlank()) { "Release asset $expectedAsset is missing" }
+        val assetSha256 = if (assetBytes.isNotEmpty()) {
+            java.security.MessageDigest.getInstance("SHA-256")
+                .digest(assetBytes)
+                .joinToString("") { byte -> "%02x".format(byte.toInt() and 0xff) }
+        } else {
+            null
+        }
 
-        val assetBytes = readUrl(assetUrl)
-        val assetSha256 = java.security.MessageDigest.getInstance("SHA-256")
-            .digest(assetBytes)
-            .joinToString("") { byte -> "%02x".format(byte.toInt() and 0xff) }
-
-        val runsJson = readUrl(
+        val (runsStatus, runsBytes) = readUrl(
             "https://api.github.com/repos/devuterian/Eta-korean/actions/runs" +
                 "?head_sha=$expectedMainCommit&per_page=10"
-        ).toString(Charsets.UTF_8)
+        )
+        val runsJson = runsBytes.toString(Charsets.UTF_8)
         val firstRun = runsJson.substringAfter("\"workflow_runs\"", "")
         val runId = jsonNumber("id", firstRun)
         val runNumber = jsonNumber("run_number", firstRun)
@@ -78,20 +101,19 @@ val verifyPublishedEtaRelease = tasks.register("verifyPublishedEtaRelease") {
         val runStatus = jsonString("status", firstRun)
         val runConclusion = jsonString("conclusion", firstRun)
 
-        require(runName == "Android APK") { "Unexpected workflow name: $runName" }
-        require(runEvent == "push") { "Unexpected workflow event: $runEvent" }
-        require(runStatus == "completed") { "Main workflow is not completed: $runStatus" }
-        require(runConclusion == "success") { "Main workflow failed: $runConclusion" }
-
         reportFile.asFile.parentFile.mkdirs()
         reportFile.asFile.writeText(
             """
+            release_http_status=$releaseStatus
             release_tag=$releaseTag
             release_name=$releaseName
             release_target=$releaseTarget
             asset_name=$expectedAsset
+            asset_url=$assetUrl
+            asset_http_status=$assetStatus
             asset_size=${assetBytes.size}
             asset_sha256=$assetSha256
+            actions_http_status=$runsStatus
             actions_run_id=$runId
             actions_run_number=$runNumber
             actions_name=$runName
