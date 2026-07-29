@@ -7,7 +7,6 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.SystemClock
 import fuck.andes.agent.browser.AgentBrowserSession
-import fuck.andes.agent.browser.BrowserUrlPolicy
 import fuck.andes.agent.accessibility.AgentAccessibilityService
 import fuck.andes.agent.device.RootShellDeviceController
 import fuck.andes.agent.device.BoundedRootCommandExecutor
@@ -593,7 +592,7 @@ internal class AgentLocalTools(
             .put("scheme", uri.scheme?.lowercase(Locale.ROOT))
             .also { result ->
                 if (uri.scheme.equals("https", true)) {
-                    result.put("display_uri", BrowserUrlPolicy.originForModel(uriText))
+                    result.put("display_uri", uriText)
                 }
             }
             .toString()

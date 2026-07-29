@@ -9,6 +9,39 @@ internal object OfficialModelCatalog {
     private val modelsByCatalogId: Map<String, List<Model>> = mapOf(
         ProviderSourceTypes.OPENAI to listOf(
             officialModel(
+                id = "builtin-openai-gpt-5-6-sol",
+                modelId = "gpt-5.6-sol",
+                displayName = "GPT-5.6 Sol",
+                ownedBy = "openai",
+                inputModalities = listOf(Model.TEXT_MODALITY, Model.IMAGE_MODALITY),
+                toolCall = true,
+                reasoning = true,
+                structuredOutput = true,
+                contextWindow = 1_050_000,
+            ),
+            officialModel(
+                id = "builtin-openai-gpt-5-6-terra",
+                modelId = "gpt-5.6-terra",
+                displayName = "GPT-5.6 Terra",
+                ownedBy = "openai",
+                inputModalities = listOf(Model.TEXT_MODALITY, Model.IMAGE_MODALITY),
+                toolCall = true,
+                reasoning = true,
+                structuredOutput = true,
+                contextWindow = 1_050_000,
+            ),
+            officialModel(
+                id = "builtin-openai-gpt-5-6-luna",
+                modelId = "gpt-5.6-luna",
+                displayName = "GPT-5.6 Luna",
+                ownedBy = "openai",
+                inputModalities = listOf(Model.TEXT_MODALITY, Model.IMAGE_MODALITY),
+                toolCall = true,
+                reasoning = true,
+                structuredOutput = true,
+                contextWindow = 1_050_000,
+            ),
+            officialModel(
                 id = "builtin-openai-gpt-5-5",
                 modelId = "gpt-5.5",
                 displayName = "GPT-5.5",
@@ -67,6 +100,7 @@ internal object OfficialModelCatalog {
                 modelId = "kimi-k2.7-code",
                 displayName = "Kimi K2.7 Code",
                 ownedBy = "moonshot",
+                inputModalities = listOf(Model.TEXT_MODALITY, Model.IMAGE_MODALITY, "video"),
                 toolCall = true,
                 reasoning = true,
                 contextWindow = 256_000,
@@ -76,7 +110,7 @@ internal object OfficialModelCatalog {
                 modelId = "kimi-k2.6",
                 displayName = "Kimi K2.6",
                 ownedBy = "moonshot",
-                inputModalities = listOf(Model.TEXT_MODALITY, Model.IMAGE_MODALITY),
+                inputModalities = listOf(Model.TEXT_MODALITY, Model.IMAGE_MODALITY, "video"),
                 toolCall = true,
                 reasoning = true,
                 contextWindow = 256_000,
@@ -103,6 +137,17 @@ internal object OfficialModelCatalog {
             ),
         ),
         ProviderSourceTypes.MOONSHOT to listOf(
+            officialModel(
+                id = "builtin-kimi-k3",
+                modelId = "kimi-k3",
+                displayName = "Kimi K3",
+                ownedBy = "moonshot",
+                inputModalities = listOf(Model.TEXT_MODALITY, Model.IMAGE_MODALITY, "video"),
+                toolCall = true,
+                reasoning = true,
+                structuredOutput = true,
+                contextWindow = 1_048_576,
+            ),
             officialModel(
                 id = "builtin-kimi-k2-7-code",
                 modelId = "kimi-k2.7-code",
@@ -217,12 +262,8 @@ internal object OfficialModelCatalog {
                     ?: official.displayName,
                 ownedBy = model.ownedBy ?: official.ownedBy,
                 contextWindow = model.contextWindow ?: official.contextWindow,
-                inputModalities = model.inputModalities.takeUnless {
-                    it.isEmpty() || (it == listOf(Model.TEXT_MODALITY) && official.inputModalities != it)
-                } ?: official.inputModalities,
-                outputModalities = model.outputModalities.takeUnless {
-                    it.isEmpty() || (it == listOf(Model.TEXT_MODALITY) && official.outputModalities != it)
-                } ?: official.outputModalities,
+                inputModalities = model.inputModalities.ifEmpty { official.inputModalities },
+                outputModalities = model.outputModalities.ifEmpty { official.outputModalities },
                 attachment = model.attachment ?: official.attachment,
                 toolCall = model.toolCall ?: official.toolCall,
                 reasoning = model.reasoning ?: official.reasoning,

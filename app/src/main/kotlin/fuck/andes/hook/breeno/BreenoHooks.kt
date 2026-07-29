@@ -121,6 +121,12 @@ internal object BreenoHooks {
         maxEstimatedChars = CDM_IMAGE_CACHE_ESTIMATED_CHARS,
         ttlMillis = CDM_IMAGE_CACHE_TTL_MS,
     )
+    private val pendingClientImageCache = BreenoRequestImages.SnapshotCache(
+        maxEntries = CDM_IMAGE_CACHE_ENTRIES,
+        maxAliases = CDM_IMAGE_CACHE_ALIASES,
+        maxEstimatedChars = CDM_IMAGE_CACHE_ESTIMATED_CHARS,
+        ttlMillis = CDM_IMAGE_CACHE_TTL_MS,
+    )
     private val handledRuntimeRunIds = BoundedRunIdSet(
         capacity = HANDLED_RUN_ID_CAPACITY,
         ttlMillis = HANDLED_RUN_ID_TTL_MS,
@@ -380,29 +386,52 @@ internal object BreenoHooks {
     ) {
         if (bean == null) return
         val text = invokeString(bean, "getContent")?.trim().orEmpty()
-        if (text.isBlank()) return
-        val roomId = invokeString(bean, "getRoomId").orEmpty()
+        val roomId = invokeString(bean, "getRoomId")
+            .orEmpty()
+            .ifBlank { currentRoomId(classLoader) }
         val recordId = invokeString(bean, "getRecordId").orEmpty()
+        val clientResult = HookSupport.invokeNoArgs(bean, "getClientResult")
+        if (BreenoRequestImages.isMultiImageClientResult(clientResult)) {
+            cachePendingClientImages(
+                logger = logger,
+                recordId = recordId,
+                roomId = roomId,
+                snapshot = BreenoRequestImages.captureClientResult(clientResult),
+            )
+            return
+        }
+        if (text.isBlank()) return
         val prompt = resolveCustomModelPrompt(text)
         if (prompt.isNullOrBlank()) {
             if (roomId.isNotBlank()) claimedAgentRooms.remove(roomId)
             return
         }
         val stableRecordId = recordId.ifBlank { newCompactId() }
+        val pendingImages = pendingClientImageSnapshotFor(recordId, roomId)
 
         val request = TextRequest(
             runId = newCompactId(),
             text = text,
-            imageSnapshot = cachedImageSnapshotFor(recordId, roomId),
+            imageSnapshot = if (pendingImages.isEmpty) {
+                cachedImageSnapshotFor(recordId, roomId)
+            } else {
+                pendingImages
+            },
             recordId = stableRecordId,
             originalRecordId = stableRecordId,
             sessionId = "",
             roomId = roomId,
+            history = currentBreenoHistory(
+                classLoader = classLoader,
+                roomId = roomId,
+                currentRecordId = stableRecordId,
+                currentContent = text,
+            ),
             thinkingEnabledOverride = currentBreenoThinkingEnabledOverride(classLoader),
             queryPayload = invokeString(bean, "getPayload"),
             queryClientResult = serializeForBreenoHistory(
                 classLoader,
-                HookSupport.invokeNoArgs(bean, "getClientResult"),
+                clientResult,
             ),
         )
         val handled = startAgentRequest(
@@ -522,7 +551,15 @@ internal object BreenoHooks {
         classLoader: ClassLoader,
         message: Any?
     ): Boolean {
-        val request = extractTextRequest(classLoader, message) ?: return false
+        val extractedRequest = extractTextRequest(classLoader, message) ?: return false
+        val request = extractedRequest.copy(
+            history = currentBreenoHistory(
+                classLoader = classLoader,
+                roomId = extractedRequest.roomId,
+                currentRecordId = extractedRequest.recordId,
+                currentContent = extractedRequest.text,
+            ),
+        )
         val prompt = resolveCustomModelPrompt(request.text) ?: return false
         if (prompt.isBlank()) return false
 
@@ -595,6 +632,7 @@ internal object BreenoHooks {
                             prompt = prompt,
                             config = config,
                             images = images,
+                            history = request.history,
                             handoff = request.toRuntimeHandoff(prompt)
                         )
                     ) { event ->
@@ -695,6 +733,7 @@ internal object BreenoHooks {
             logger.info(
                 "Breeno custom model takeover: source=$logSource, promptChars=${prompt.length}, " +
                     "imageInputs=${request.imageSnapshot.inputCount}, " +
+                    "historyMessages=${request.history.size}, " +
                     "thinking=${request.thinkingEnabledOverride}"
             )
             true
@@ -1168,13 +1207,21 @@ internal object BreenoHooks {
             ?: lastBreenoThinkingEnabledOverride
             ?: currentBreenoThinkingEnabledOverride(classLoader)
         val requestText = text ?: return null
+        val pendingClientImages = pendingClientImageSnapshotFor(
+            recordId,
+            originalRecordId,
+            sessionId,
+            roomId,
+        )
+        val cdmImages = cachedImageSnapshotFor(recordId, originalRecordId, sessionId, roomId)
         return TextRequest(
             runId = newCompactId(),
             text = requestText,
-            imageSnapshot = BreenoRequestImages.merge(
-                imageSnapshot,
-                cachedImageSnapshotFor(recordId, originalRecordId, sessionId, roomId),
-            ),
+            imageSnapshot = when {
+                !pendingClientImages.isEmpty -> pendingClientImages
+                !imageSnapshot.isEmpty -> imageSnapshot
+                else -> cdmImages
+            },
             recordId = recordId,
             originalRecordId = originalRecordId,
             sessionId = sessionId,
@@ -1746,6 +1793,37 @@ internal object BreenoHooks {
             ?.let { manager -> invokeCompatible(manager, "v") as? String }
             .orEmpty()
 
+    private fun currentBreenoHistory(
+        classLoader: ClassLoader,
+        roomId: String,
+        currentRecordId: String,
+        currentContent: String,
+    ): List<AgentModelClient.ConversationMessage> {
+        if (roomId.isBlank()) return emptyList()
+        return runCatching {
+            val dataCenter = singletonInstance(classLoader, AI_CHAT_DATA_CENTER_CLASS)
+                ?: return@runCatching emptyList()
+            val beans = invokeCompatible(dataCenter, "g0", roomId, false) as? Iterable<*>
+                ?: return@runCatching emptyList()
+            BreenoConversationHistory.build(
+                entries = beans.mapNotNull { bean ->
+                    bean ?: return@mapNotNull null
+                    val clientResult = HookSupport.invokeNoArgs(bean, "getClientResult")
+                    if (BreenoRequestImages.isMultiImageClientResult(clientResult)) {
+                        return@mapNotNull null
+                    }
+                    BreenoConversationHistory.Entry(
+                        chatType = invokeInt(bean, "getChatType") ?: return@mapNotNull null,
+                        recordId = invokeString(bean, "getRecordId").orEmpty(),
+                        content = invokeString(bean, "getContent").orEmpty(),
+                    )
+                },
+                currentRecordId = currentRecordId,
+                currentContent = currentContent,
+            )
+        }.getOrDefault(emptyList())
+    }
+
     private fun singletonInstance(classLoader: ClassLoader, className: String): Any? =
         runCatching {
             Class.forName(className, false, classLoader)
@@ -1889,6 +1967,44 @@ internal object BreenoHooks {
     private fun cachedImageSnapshotFor(vararg keys: String): BreenoRequestImages.Snapshot =
         cdmImageCache.consume(keys.asList())
 
+    private fun pendingClientImageSnapshotFor(
+        vararg keys: String,
+    ): BreenoRequestImages.Snapshot =
+        pendingClientImageCache.consume(keys.asList())
+
+    private fun cachePendingClientImages(
+        logger: ModuleLogger,
+        recordId: String,
+        roomId: String,
+        snapshot: BreenoRequestImages.Snapshot,
+    ) {
+        val aliases = listOf(recordId, roomId)
+            .filter { it.isNotBlank() }
+            .distinct()
+        when (pendingClientImageCache.store(aliases, snapshot)) {
+            BreenoRequestImages.SnapshotCache.StoreResult.STORED -> logger.debug {
+                "Breeno multi-image query staged: keys=${aliases.size}, " +
+                    "inputs=${snapshot.inputCount}"
+            }
+            BreenoRequestImages.SnapshotCache.StoreResult.STORED_FAILURE ->
+                logger.warnThrottled("breeno_pending_image_cache_size_limit") {
+                    "Breeno: 多图查询引用超过暂存上限，已保存显式失败状态"
+                }
+            BreenoRequestImages.SnapshotCache.StoreResult.EMPTY ->
+                logger.warnThrottled("breeno_pending_image_missing") {
+                    "Breeno: 多图查询中没有可暂存的图片引用"
+                }
+            BreenoRequestImages.SnapshotCache.StoreResult.TOO_MANY_ALIASES ->
+                logger.warnThrottled("breeno_pending_image_alias_limit") {
+                    "Breeno: 多图查询缓存别名超过上限，已拒绝缓存"
+                }
+            BreenoRequestImages.SnapshotCache.StoreResult.TOO_LARGE ->
+                logger.warnThrottled("breeno_pending_image_cache_size_limit") {
+                    "Breeno: 多图查询缓存容量不足，无法保存失败状态"
+                }
+        }
+    }
+
     private fun invokeString(target: Any?, methodName: String): String? =
         HookSupport.invokeNoArgs(target ?: return null, methodName) as? String
 
@@ -1964,6 +2080,7 @@ internal object BreenoHooks {
         val originalRecordId: String,
         val sessionId: String,
         val roomId: String,
+        val history: List<AgentModelClient.ConversationMessage> = emptyList(),
         val thinkingEnabledOverride: Boolean? = null,
         val queryPayload: String? = null,
         val queryClientResult: String? = null,

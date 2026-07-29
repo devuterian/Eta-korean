@@ -1,182 +1,76 @@
 package fuck.andes.agent.accessibility
 
-import android.accessibilityservice.AccessibilityServiceInfo
-import android.content.ComponentName
 import android.content.Context
-import android.content.Intent
-import android.os.Process
 import android.os.SystemClock
-import android.view.accessibility.AccessibilityManager
 import fuck.andes.core.AndroidAgentLogger
-import java.util.concurrent.Executors
-import java.util.concurrent.TimeUnit
 
 /**
- * 审计并按需恢复 Eta 无障碍服务。
+ * 在 GUI 工具执行前确认 Eta 无障碍服务已经真实连接。
  *
- * 开机和升级广播只审计状态；只有用户主动发起 GUI Agent 操作时，才允许使用
- * 已授予的 Root 能力补齐 Secure Settings，并且始终保留其他无障碍服务。
+ * 持久保护、Secure Settings 写入与断连重绑均由 system_server 后端负责。这里不申请
+ * Root，也不直接改系统设置；保护关闭或后端不可用时 fail closed。
  */
 object AgentAccessibilityKeeper {
-    private val executor = Executors.newSingleThreadExecutor { runnable ->
-        Thread(runnable, "agent-accessibility-audit").apply { isDaemon = true }
-    }
-    private val enableLock = Any()
-
-    fun auditAsync(
-        context: Context,
-        reason: String,
-        onComplete: (() -> Unit)? = null,
-    ) {
-        val appContext = context.applicationContext
-        executor.execute {
-            try {
-                audit(appContext, reason)
-            } finally {
-                onComplete?.invoke()
-            }
-        }
-    }
-
     internal fun ensureEnabledForGuiOperation(context: Context): AccessibilityEnableResult {
-        if (AgentAccessibilityService.isAvailable()) {
-            return AccessibilityEnableResult.available(rootAttempted = false)
-        }
         val startedAt = SystemClock.elapsedRealtime()
-        val targetComponent = ComponentName(context, AgentAccessibilityService::class.java)
-        val result = synchronized(enableLock) {
-            ensureEnabled(
-                targetComponent = targetComponent.flattenToString(),
-                shortComponent = targetComponent.flattenToShortString(),
-                // Android 把 userId 编码在 uid 的高位；公开 SDK 没有暴露 getUserId。
-                userId = Process.myUid() / ANDROID_UIDS_PER_USER,
-                serviceAvailable = AgentAccessibilityService::isAvailable,
-                runRootCommand = ::runRootCommand,
-                awaitServiceBinding = ::awaitServiceBinding,
-            )
-        }
+        val result = ensureAvailable(
+            serviceAvailable = AgentAccessibilityService::isAvailable,
+            protectionEnabled = { AccessibilityProtectionClient.isEnabled(context) },
+            requestRecovery = {
+                AccessibilityProtectionClient.requestRecoveryBlocking(context) ==
+                    AccessibilityProtectionClient.ControlStatus.APPLIED
+            },
+            awaitServiceBinding = ::awaitServiceBinding,
+        )
         val elapsedMs = SystemClock.elapsedRealtime() - startedAt
         if (result.available) {
             AndroidAgentLogger.info(
-                "Agent accessibility action=enable_for_gui outcome=completed " +
-                    "rootAttempted=${result.rootAttempted} settingChanged=${result.settingChanged} " +
+                "Agent accessibility action=ensure_for_gui outcome=completed " +
+                    "recoveryRequested=${result.recoveryRequested} " +
                     "elapsed_ms=$elapsedMs"
             )
         } else {
             AndroidAgentLogger.warn(
-                "Agent accessibility action=enable_for_gui outcome=failed " +
-                    "code=${result.code} rootAttempted=${result.rootAttempted} elapsed_ms=$elapsedMs"
+                "Agent accessibility action=ensure_for_gui outcome=failed " +
+                    "code=${result.code} recoveryRequested=${result.recoveryRequested} " +
+                    "elapsed_ms=$elapsedMs"
             )
         }
         return result
     }
 
-    private fun audit(context: Context, reason: String) {
-        val targetComponent = ComponentName(context, AgentAccessibilityService::class.java)
-        val target = AccessibilityServiceIdentity(
-            packageName = targetComponent.packageName,
-            className = targetComponent.className,
-        )
-        val enabledComponents = runCatching {
-            val manager = context.getSystemService(Context.ACCESSIBILITY_SERVICE) as AccessibilityManager
-            manager
-                .getEnabledAccessibilityServiceList(AccessibilityServiceInfo.FEEDBACK_ALL_MASK)
-                .mapNotNull { info ->
-                    info.resolveInfo?.serviceInfo?.let { serviceInfo ->
-                        AccessibilityServiceIdentity(serviceInfo.packageName, serviceInfo.name)
-                    }
-                }
-        }.getOrElse { throwable ->
-            AndroidAgentLogger.warn(
-                "Agent accessibility action=audit outcome=failed " +
-                    "reason=${reason.toSafeReason()} error=${throwable.javaClass.simpleName}"
-            )
-            return
-        }
-        val state = if (isServiceEnabled(enabledComponents, target)) "enabled" else "disabled"
-        AndroidAgentLogger.info(
-            "Agent accessibility action=audit outcome=completed state=$state " +
-                "reason=${reason.toSafeReason()} enabledServices=${enabledComponents.size}"
-        )
-    }
-
-    internal fun ensureEnabled(
-        targetComponent: String,
-        shortComponent: String,
-        userId: Int,
+    internal fun ensureAvailable(
         serviceAvailable: () -> Boolean,
-        runRootCommand: (String) -> RootCommandResult,
+        protectionEnabled: () -> Boolean,
+        requestRecovery: () -> Boolean,
         awaitServiceBinding: () -> Boolean,
     ): AccessibilityEnableResult {
         if (serviceAvailable()) {
-            return AccessibilityEnableResult.available(rootAttempted = false)
+            return AccessibilityEnableResult.available(recoveryRequested = false)
         }
-        val command = buildEnableCommand(targetComponent, shortComponent, userId)
-        val rootResult = runRootCommand(command)
-        val settingChanged = rootResult.output == ROOT_RESULT_CHANGED
-        if (rootResult.exitCode != 0 || rootResult.output !in ROOT_SUCCESS_RESULTS) {
+        if (!protectionEnabled()) {
             return AccessibilityEnableResult.failure(
-                code = "ACCESSIBILITY_ROOT_ENABLE_FAILED",
-                message = "Root에서 Eta 접근성 서비스를 활성화할 수 없습니다. 이번 GUI 작업은 실행되지 않았습니다.",
-                rootAttempted = true,
+                code = "ACCESSIBILITY_UNAVAILABLE",
+                message = "Eta 접근성 서비스가 연결되지 않았습니다. 설정에서 서비스를 켜거나 ‘접근성 강제 유지’를 활성화해 주세요.",
+                recoveryRequested = false,
+            )
+        }
+        if (!requestRecovery()) {
+            return AccessibilityEnableResult.failure(
+                code = "ACCESSIBILITY_PROTECTION_UNAVAILABLE",
+                message = "접근성 보호 백엔드를 사용할 수 없어 이번 GUI 작업을 실행하지 않았습니다.",
+                recoveryRequested = true,
             )
         }
         if (!awaitServiceBinding()) {
             return AccessibilityEnableResult.failure(
-                code = "ACCESSIBILITY_BIND_TIMEOUT",
-                message = "Eta 접근성 서비스가 시스템 설정에 저장되었지만, 시간 내에 연결되지 않았습니다. 이번 GUI 작업은 실행되지 않았습니다.",
-                rootAttempted = true,
-                settingChanged = settingChanged,
+                code = "ACCESSIBILITY_REPAIR_TIMEOUT",
+                message = "복구 제한 시간 안에 Eta 접근성 서비스가 연결되지 않아 이번 GUI 작업을 실행하지 않았습니다.",
+                recoveryRequested = true,
             )
         }
-        return AccessibilityEnableResult.available(
-            rootAttempted = true,
-            settingChanged = settingChanged,
-        )
+        return AccessibilityEnableResult.available(recoveryRequested = true)
     }
-
-    internal fun buildEnableCommand(
-        targetComponent: String,
-        shortComponent: String,
-        userId: Int,
-    ): String =
-        """
-        user_id=${shellQuote(userId.toString())}
-        target=${shellQuote(targetComponent)}
-        short_target=${shellQuote(shortComponent)}
-        services=${'$'}(settings --user "${'$'}user_id" get secure enabled_accessibility_services 2>/dev/null)
-        if [ "${'$'}services" = "null" ]; then services=""; fi
-        changed=0
-        case ":${'$'}services:" in
-          *":${'$'}target:"*|*":${'$'}short_target:"*)
-            kept=""
-            old_ifs="${'$'}IFS"
-            IFS=:
-            for service in ${'$'}services; do
-              [ "${'$'}service" = "${'$'}target" ] && continue
-              [ "${'$'}service" = "${'$'}short_target" ] && continue
-              if [ -z "${'$'}kept" ]; then kept="${'$'}service"; else kept="${'$'}kept:${'$'}service"; fi
-            done
-            IFS="${'$'}old_ifs"
-            settings --user "${'$'}user_id" put secure enabled_accessibility_services "${'$'}kept" || exit 20
-            sleep 0.15
-            new_services="${'$'}services"
-            changed=1
-            ;;
-          "::") new_services="${'$'}target"; changed=1 ;;
-          *) new_services="${'$'}services:${'$'}target"; changed=1 ;;
-        esac
-        enabled=${'$'}(settings --user "${'$'}user_id" get secure accessibility_enabled 2>/dev/null)
-        if [ "${'$'}enabled" != "1" ]; then changed=1; fi
-        settings --user "${'$'}user_id" put secure enabled_accessibility_services "${'$'}new_services" || exit 21
-        settings --user "${'$'}user_id" put secure accessibility_enabled 1 || exit 22
-        echo "ok:${'$'}changed"
-        """.trimIndent()
-
-    internal fun isServiceEnabled(
-        enabledComponents: List<AccessibilityServiceIdentity>,
-        target: AccessibilityServiceIdentity,
-    ): Boolean = enabledComponents.any { component -> component == target }
 
     private fun awaitServiceBinding(): Boolean {
         repeat(SERVICE_BIND_ATTEMPTS) {
@@ -186,86 +80,33 @@ object AgentAccessibilityKeeper {
         return AgentAccessibilityService.isAvailable()
     }
 
-    private fun runRootCommand(command: String): RootCommandResult {
-        val process = runCatching {
-            ProcessBuilder("su", "-c", command)
-                .redirectErrorStream(true)
-                .start()
-        }.getOrElse {
-            return RootCommandResult(exitCode = -1)
-        }
-        val finished = runCatching {
-            process.waitFor(ROOT_COMMAND_TIMEOUT_SECONDS, TimeUnit.SECONDS)
-        }.getOrDefault(false)
-        if (!finished) {
-            process.destroyForcibly()
-            return RootCommandResult(exitCode = -2)
-        }
-        val output = runCatching {
-            process.inputStream.bufferedReader().use { reader -> reader.readText().trim().take(64) }
-        }.getOrDefault("")
-        return RootCommandResult(
-            exitCode = process.exitValue(),
-            output = output,
-        )
-    }
-
-    private fun shellQuote(value: String): String =
-        "'" + value.replace("'", "'\\''") + "'"
-
-    private fun String.toSafeReason(): String = when (this) {
-        Intent.ACTION_BOOT_COMPLETED -> "boot"
-        Intent.ACTION_MY_PACKAGE_REPLACED -> "package_replaced"
-        else -> "unknown"
-    }
-
-    private const val ROOT_COMMAND_TIMEOUT_SECONDS = 6L
-    private const val ANDROID_UIDS_PER_USER = 100_000
     private const val SERVICE_BIND_ATTEMPTS = 60
     private const val SERVICE_BIND_POLL_MS = 100L
-    private const val ROOT_RESULT_UNCHANGED = "ok:0"
-    private const val ROOT_RESULT_CHANGED = "ok:1"
-    private val ROOT_SUCCESS_RESULTS = setOf(ROOT_RESULT_UNCHANGED, ROOT_RESULT_CHANGED)
 }
 
 internal data class AccessibilityEnableResult(
     val available: Boolean,
     val code: String = "",
     val message: String = "",
-    val rootAttempted: Boolean,
-    val settingChanged: Boolean = false,
+    val recoveryRequested: Boolean,
 ) {
     companion object {
         fun available(
-            rootAttempted: Boolean,
-            settingChanged: Boolean = false,
+            recoveryRequested: Boolean,
         ): AccessibilityEnableResult = AccessibilityEnableResult(
             available = true,
-            rootAttempted = rootAttempted,
-            settingChanged = settingChanged,
+            recoveryRequested = recoveryRequested,
         )
 
         fun failure(
             code: String,
             message: String,
-            rootAttempted: Boolean,
-            settingChanged: Boolean = false,
+            recoveryRequested: Boolean,
         ): AccessibilityEnableResult = AccessibilityEnableResult(
             available = false,
             code = code,
             message = message,
-            rootAttempted = rootAttempted,
-            settingChanged = settingChanged,
+            recoveryRequested = recoveryRequested,
         )
     }
 }
-
-internal data class RootCommandResult(
-    val exitCode: Int,
-    val output: String = "",
-)
-
-internal data class AccessibilityServiceIdentity(
-    val packageName: String,
-    val className: String,
-)

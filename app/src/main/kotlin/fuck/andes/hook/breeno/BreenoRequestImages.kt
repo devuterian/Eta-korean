@@ -9,6 +9,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 internal object BreenoRequestImages {
+    private const val BREENO_MULTI_IMAGE_TYPE = 104
     private const val MAX_IMAGES = 4
     private const val MAX_INPUTS = 16
     private const val MAX_CANDIDATES = 32
@@ -265,6 +266,42 @@ internal object BreenoRequestImages {
         return Snapshot(inputs.toList(), failure)
     }
 
+    /**
+     * 小布 12.9.6 的图片输入先进入 AIChatViewBean.clientResult(type=104)，
+     * 不保证同时出现 Nlp.Doc。这里只读取已确认的多图结构，不遍历未知对象。
+     */
+    fun isMultiImageClientResult(clientResult: Any?): Boolean =
+        clientResult != null &&
+            (invokeKnownNoArgs(clientResult, "getType") as? Number)?.toInt() ==
+            BREENO_MULTI_IMAGE_TYPE
+
+    fun captureClientResult(clientResult: Any?): Snapshot {
+        if (!isMultiImageClientResult(clientResult)) return Empty
+        checkNotNull(clientResult)
+
+        val inputs = ArrayList<Input>(4)
+        val multiImageList = invokeKnownNoArgs(clientResult, "getExtraWithType")
+        val failure = collectBreenoMultiImageItems(
+            value = multiImageList?.let { invokeKnownNoArgs(it, "getMImageList") },
+            inputs = inputs,
+        )
+        if (failure == null && inputs.isEmpty()) {
+            val fallback = captureText(
+                text = invokeKnownNoArgs(clientResult, "getExtra") as? String,
+                source = "aichat.multiImage.extra",
+            )
+            return if (fallback.isEmpty) {
+                Snapshot(
+                    inputs = emptyList(),
+                    failure = unreadableReferenceFailure(1),
+                )
+            } else {
+                fallback
+            }
+        }
+        return Snapshot(inputs.toList(), failure)
+    }
+
     /** 保存可能包含图片引用的文本，JSON 解析延迟到 Agent 后台线程。 */
     fun captureText(text: String?, source: String): Snapshot {
         if (text.isNullOrEmpty()) return Empty
@@ -393,6 +430,75 @@ internal object BreenoRequestImages {
         }
         return if (items.hasNext()) inputLimitFailure(index + 1) else null
     }
+
+    private fun collectBreenoMultiImageItems(
+        value: Any?,
+        inputs: MutableList<Input>,
+    ): Resolution.Failure? {
+        val items = when (value) {
+            is Iterable<*> -> value.iterator()
+            is Array<*> -> value.iterator()
+            else -> return null
+        }
+        var index = 0
+        while (items.hasNext() && index < MAX_NESTED_IMAGE_ITEMS) {
+            val item = items.next()
+            if (item != null) {
+                val docEntity = invokeKnownNoArgs(item, "getDocEntity")
+                val uploadData = docEntity?.let { invokeKnownNoArgs(it, "getData") }
+                val reference = firstReference(
+                    firstCompletedPreProcessUrl(uploadData),
+                    uploadData?.let { invokeKnownNoArgs(it, "getUrl") },
+                    invokeKnownNoArgs(item, "getUri"),
+                    invokeKnownNoArgs(item, "getOriginUri"),
+                    docEntity?.let { invokeKnownNoArgs(it, "getOriginFilePath") },
+                    docEntity?.let { invokeKnownNoArgs(it, "getFilePath") },
+                    docEntity?.let { invokeKnownNoArgs(it, "getImageMediaUriForChatQueryMsg") },
+                )
+                val failure = addInput(
+                    inputs = inputs,
+                    value = reference,
+                    source = "aichat.multiImage.items[$index]",
+                )
+                if (failure != null) return failure
+            }
+            index++
+        }
+        return if (items.hasNext()) inputLimitFailure(index + 1) else null
+    }
+
+    /**
+     * 图片选择器的 originUri 可能只带给小布进程一次性读取权限。
+     * 上传完成后的预处理 URL 是小布实际填入 Nlp.Doc 的引用，优先级应高于本地 Uri。
+     */
+    private fun firstCompletedPreProcessUrl(uploadData: Any?): String? {
+        if (uploadData == null) return null
+        val value = invokeKnownNoArgs(uploadData, "getImagePreProcessResult")
+        val items = when (value) {
+            is Iterable<*> -> value.asSequence()
+            is Array<*> -> value.asSequence()
+            else -> return null
+        }
+        return items
+            .take(MAX_NESTED_IMAGE_ITEMS)
+            .filterNotNull()
+            .filter { item ->
+                (invokeKnownNoArgs(item, "getCompleted") as? Boolean) != false
+            }
+            .mapNotNull { item -> invokeKnownNoArgs(item, "getUrl") as? String }
+            .firstOrNull { it.isNotBlank() }
+    }
+
+    private fun firstReference(vararg values: Any?): String? =
+        values.asSequence()
+            .mapNotNull { value ->
+                when (value) {
+                    is String -> value
+                    null -> null
+                    else -> value.toString()
+                }
+            }
+            .firstOrNull { it.isNotBlank() }
 
     private fun oversizedReferenceFailure(valueChars: Int, source: String): Resolution.Failure =
         Resolution.Failure(

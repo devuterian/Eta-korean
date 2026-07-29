@@ -33,6 +33,7 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 @Composable
 fun AgentAppShell(
     currentRoute: AppRoute?,
+    isCurrentRoute: Boolean,
     conversationPaneState: ConversationPaneUiState?,
     isConversationPaneOpen: Boolean,
     onBack: () -> Unit,
@@ -77,6 +78,7 @@ fun AgentAppShell(
             ConversationSidePaneScaffold(
                 state = conversationPaneState,
                 visible = isConversationPaneOpen,
+                backHandlerEnabled = isCurrentRoute,
                 onOpen = onOpenConversationPane,
                 onDismiss = onDismissConversationPane,
                 onSearchChange = onSearchConversations,

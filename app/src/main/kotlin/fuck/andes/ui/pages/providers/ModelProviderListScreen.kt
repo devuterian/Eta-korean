@@ -6,10 +6,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -31,16 +29,15 @@ import fuck.andes.data.model.ProviderSourceTypes
 import fuck.andes.data.model.typeLabel
 import fuck.andes.data.repository.ProviderRepository
 import fuck.andes.data.repository.RuntimeConfigRepository
+import fuck.andes.ui.components.MiuixDialogActions
 import fuck.andes.ui.components.MiuixScaffoldPage
 import fuck.andes.ui.navigation.AppRoute
 import fuck.andes.ui.navigation.NewProviderType
 import kotlinx.coroutines.launch
-import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.InputField
 import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.overlay.OverlayDialog
 import top.yukonga.miuix.kmp.preference.ArrowPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
@@ -152,26 +149,23 @@ internal fun ModelProviderListScreen(
         OverlayDialog(
             show = true,
             title = "제공자 삭제",
-            onDismissRequest = { providerToDelete = null }
+            summary = "‘${providerToDelete?.name}’을 삭제하면 복구할 수 없습니다.",
+            onDismissRequest = { providerToDelete = null },
         ) {
-            Text("「${providerToDelete?.name}」 제공자를 삭제할까요? 이 작업은 되돌릴 수 없습니다.")
-            Row(modifier = Modifier.fillMaxWidth().padding(top = 16.dp), horizontalArrangement = Arrangement.End) {
-                TextButton(text = "취소", onClick = { providerToDelete = null })
-                Spacer(modifier = Modifier.width(8.dp))
-                TextButton(
-                    text = "삭제",
-                    colors = ButtonDefaults.textButtonColorsPrimary(),
-                    onClick = {
-                        scope.launch {
-                            providerToDelete?.let { p ->
-                                ProviderRepository.deleteProvider(p.id)
-                                RuntimeConfigRepository.syncToRemotePreferences(FuckAndesApp.serviceInstance)
-                            }
-                            providerToDelete = null
+            MiuixDialogActions(
+                confirmText = "삭제",
+                destructive = true,
+                onCancel = { providerToDelete = null },
+                onConfirm = {
+                    scope.launch {
+                        providerToDelete?.let { provider ->
+                            ProviderRepository.deleteProvider(provider.id)
+                            RuntimeConfigRepository.syncToRemotePreferences(FuckAndesApp.serviceInstance)
                         }
-                    },
-                )
-            }
+                        providerToDelete = null
+                    }
+                },
+            )
         }
     }
 }

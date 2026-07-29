@@ -47,7 +47,7 @@ pending steering
 - 最终 steering 检查会原子关闭接收入口；Loop 返回后不会再把无人消费的补充指令误报为已接收。补充指令也不会解除 pause。
 - 新 run 替换旧 run、用户取消和正常完成都通过 `AgentRuntimeSession` 的 `RUNNING → COMMITTING → TERMINAL` 状态机竞争唯一终态；提交胜者独占 outbox、归档和最终发布，客户端另有 30 分钟兜底超时。
 - 入口请求只能缩小工具能力，不能自行授权。Runtime 在开始 run 时裁剪配置，在每次浏览器、终端和设备工具执行前重新读取用户开关，并在 thinking 关闭时移除自定义请求体中的 reasoning/thinking 覆盖字段。
-- 设备工具分为默认开启的直达工具、默认关闭的敏感读取工具和默认关闭的敏感操作工具。Runtime 在每次执行前重新读取用户开关；开关允许且参数通过 schema 与执行器校验后即可执行，不再用固定关键词二次匹配用户原话。
+- 设备工具分为直达工具、敏感读取工具和敏感操作工具，当前均默认开启。Runtime 在每次执行前重新读取用户开关；开关允许且参数通过 schema 与执行器校验后即可执行，不再用固定关键词二次匹配用户原话。
 - 微信发送只接受精确联系人匹配。同名、页面状态不明确或发送结果无法验证时停止；发送按钮最多点击一次，禁止自动重试或回退为通用点击序列。
 - 通知、短信验证码、Wi‑Fi 凭据、日志和消息正文属于瞬时敏感工具数据。当前模型回合可以使用原始值，但持久 transcript 会同时替换对应工具参数和结果，避免进入会话数据库或后续 IPC。
 
@@ -58,7 +58,7 @@ pending steering
 - `android` 继续使用系统 Shell。`user` 身份不升级权限；`root` 身份在 `su` 内探测 Magisk、KernelSU、APatch 或系统 BusyBox，并优先进入 standalone `ash`，因此 BusyBox applet 不要求预先加入 PATH。旧 `run_command`、文件读写和目录操作保持这一环境，避免改变既有 Android 路径与命令语义。
 - `linux` 仅允许 `root`，并要求用户先在设置中安装 Eta 管理的 Alpine 环境。每个命令或会话进入独立 mount namespace，挂载必要的 `/proc`、`/dev` 以及可用的共享存储后再 chroot；进程结束时命名空间一并销毁，不把 bind mount 留在 Android 全局。chroot 只提供 Linux userland，不构成安全沙箱。
 
-安装器只接受代码中固定版本、大小和 SHA-256 的 Alpine 官方 minirootfs，先在临时目录校验并解压，再原子替换 App 私有 rootfs。常用工具安装完成前不会写入完成标记；失败后可继续安装。终端/文件工具开关仍默认关闭，安装环境不会自行授权模型使用终端。
+安装器只接受代码中固定版本、大小和 SHA-256 的 Alpine 官方 minirootfs，先在临时目录校验并解压，再原子替换 App 私有 rootfs。常用工具安装完成前不会写入完成标记；失败后可继续安装。安装环境不会改变终端/文件工具的用户设置。
 
 状态机语义研究参考了 MIT 许可的 [earendil-works/pi（研究时固定提交）](https://github.com/earendil-works/pi/tree/4c1861033b63a04563547ccdb5ed2bf31d4fdcd3)，Eta 按 Android Runtime、既有 IPC 和 Provider 协议做 Kotlin clean rewrite，没有直接引入其 TypeScript 运行时。
 

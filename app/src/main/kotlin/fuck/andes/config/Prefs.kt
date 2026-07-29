@@ -42,21 +42,21 @@ internal object Prefs {
 
         /** 全部布尔开关及其默认值。 */
         val BOOLEAN_DEFAULTS: Map<String, Boolean> = mapOf(
-            POWER_KEY_TAKEOVER to true,
-            ASSISTANT_AUTO_CONFIG to true,
-            HOTWORD_SELF_HEAL to true,
+            POWER_KEY_TAKEOVER to false,
+            ASSISTANT_AUTO_CONFIG to false,
+            HOTWORD_SELF_HEAL to false,
             GESTURE_BAR_CIRCLE_TO_SEARCH to true,
-            DOUBLE_FINGER_CIRCLE_TO_SEARCH to true,
-            LOCKSCREEN_VOICE_COMMAND to true,
-            SCREEN_ON_VOICE_COMMAND to true,
-            AGENT_CUSTOM_MODEL to false,
-            AGENT_REQUIRE_PREFIX to true,
-            AGENT_TERMINAL_TOOLS to false,
+            DOUBLE_FINGER_CIRCLE_TO_SEARCH to false,
+            LOCKSCREEN_VOICE_COMMAND to false,
+            SCREEN_ON_VOICE_COMMAND to false,
+            AGENT_CUSTOM_MODEL to true,
+            AGENT_REQUIRE_PREFIX to false,
+            AGENT_TERMINAL_TOOLS to true,
             AGENT_BROWSER_TOOLS to true,
             AGENT_DEVICE_DIRECT_TOOLS to true,
-            AGENT_DEVICE_SENSITIVE_READ_TOOLS to false,
-            AGENT_DEVICE_SENSITIVE_ACTION_TOOLS to false,
-            AGENT_THINKING_ENABLED to false
+            AGENT_DEVICE_SENSITIVE_READ_TOOLS to true,
+            AGENT_DEVICE_SENSITIVE_ACTION_TOOLS to true,
+            AGENT_THINKING_ENABLED to true
         )
     }
 
@@ -71,7 +71,7 @@ internal object Prefs {
 
     /**
      * 读取布尔开关。remote 不可用（框架未注入或调用失败）时回退各功能自己的默认值；
-     * 高风险能力仍保持关闭。
+     * 默认值与设置页展示保持一致。
      */
     fun isEnabled(key: String): Boolean {
         val default = Keys.BOOLEAN_DEFAULTS[key] ?: true

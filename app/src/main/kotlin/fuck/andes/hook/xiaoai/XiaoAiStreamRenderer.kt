@@ -68,7 +68,7 @@ internal class XiaoAiStreamRenderer(
 
     fun fail() {
         if (cancelled.get()) return
-        render("Eta가 처리하지 못했어요. 잠시 후 다시 시도해 주세요.", immediate = true)
+        render("Eta가 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.", immediate = true)
     }
 
     fun cancel(loader: ClassLoader = classLoader) {

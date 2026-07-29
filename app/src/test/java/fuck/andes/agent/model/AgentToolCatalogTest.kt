@@ -48,6 +48,22 @@ class AgentToolCatalogTest {
     }
 
     @Test
+    fun browserToolAllowsArbitraryUrlsAndFormSubmission() {
+        val function = AgentToolCatalog.build(
+            terminalTools = false,
+            browserTools = true,
+        ).function("browser_use")
+        val properties = function
+            .getJSONObject("parameters")
+            .getJSONObject("properties")
+
+        assertEquals("string", properties.getJSONObject("url").getString("type"))
+        assertEquals("boolean", properties.getJSONObject("submit").getString("type"))
+        assertFalse(properties.getJSONObject("url").getString("description").contains("HTTPS"))
+        assertFalse(function.getString("description").contains("拦截"))
+    }
+
+    @Test
     fun elementToolsRequireObservationIdFromTheSameObservation() {
         val tools = AgentToolCatalog.build(terminalTools = false, browserTools = false)
 

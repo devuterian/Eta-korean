@@ -3,10 +3,7 @@ package fuck.andes.ui.screens.skills
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -23,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.composables.icons.lucide.R as LucideR
+import fuck.andes.ui.components.MiuixDialogActions
 import fuck.andes.ui.components.MiuixScaffoldPage
 import fuck.andes.ui.components.PrefDivider
 import fuck.andes.ui.model.AgentSkillsAction
@@ -30,7 +28,6 @@ import fuck.andes.ui.model.AgentSkillsUiState
 import fuck.andes.ui.model.SkillItemUi
 import fuck.andes.ui.model.canDeleteUserSkill
 import top.yukonga.miuix.kmp.basic.BasicComponent
-import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Icon
@@ -38,7 +35,6 @@ import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.InfiniteProgressIndicator
 import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.Switch
-import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.window.WindowDialog
@@ -195,7 +191,7 @@ fun AgentSkillsScreen(
             summary = "사용자 스킬 「${replacement.name}」(${replacement.id})이 이미 있습니다. 교체하면 현재 파일을 모두 덮어씁니다.",
             onDismissRequest = { onAction(AgentSkillsAction.CancelZipReplacement) },
         ) {
-            DialogActions(
+            MiuixDialogActions(
                 confirmText = "교체",
                 confirmEnabled = !operationPending,
                 onCancel = { onAction(AgentSkillsAction.CancelZipReplacement) },
@@ -207,35 +203,20 @@ fun AgentSkillsScreen(
     deleteTarget?.let { skill ->
         WindowDialog(
             show = true,
-            title = "사용자 스킬을 삭제할까요?",
+            title = "사용자 스킬 삭제",
             summary = "「${skill.name}」을 삭제하면 복구하려면 다시 설치해야 합니다.",
             onDismissRequest = { deleteTarget = null },
         ) {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Button(
-                    onClick = {
-                        deleteTarget = null
-                        onAction(AgentSkillsAction.DeleteSkill(skill.id))
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = !operationPending,
-                    colors = ButtonDefaults.buttonColorsPrimary(
-                        color = MiuixTheme.colorScheme.error,
-                        contentColor = MiuixTheme.colorScheme.onError,
-                    ),
-                ) {
-                    Text("이 스킬 삭제")
-                }
-                TextButton(
-                    text = "취소",
-                    modifier = Modifier.fillMaxWidth(),
-                    onClick = { deleteTarget = null },
-                )
-            }
+            MiuixDialogActions(
+                confirmText = "삭제",
+                destructive = true,
+                confirmEnabled = !operationPending,
+                onCancel = { deleteTarget = null },
+                onConfirm = {
+                    deleteTarget = null
+                    onAction(AgentSkillsAction.DeleteSkill(skill.id))
+                },
+            )
         }
     }
 
@@ -315,31 +296,6 @@ private fun ZipImportIcon() {
             contentDescription = null,
             modifier = Modifier.size(22.dp),
             tint = MiuixTheme.colorScheme.onBackground,
-        )
-    }
-}
-
-@Composable
-private fun DialogActions(
-    confirmText: String,
-    confirmEnabled: Boolean,
-    onCancel: () -> Unit,
-    onConfirm: () -> Unit,
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.End,
-    ) {
-        TextButton(
-            text = "취소",
-            onClick = onCancel,
-        )
-        Spacer(modifier = Modifier.width(8.dp))
-        TextButton(
-            text = confirmText,
-            onClick = onConfirm,
-            enabled = confirmEnabled,
-            colors = ButtonDefaults.textButtonColorsPrimary(),
         )
     }
 }

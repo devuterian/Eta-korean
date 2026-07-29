@@ -35,6 +35,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
@@ -567,8 +568,8 @@ internal fun AgentResultCard(
     }
 
     val isFailed = state.phase == AgentOverlayPhase.FAILED
-    val titleColor = if (isFailed) MiuixTheme.colorScheme.error else phaseAccent(state.phase)
-    val title = if (isFailed) "실행 실패" else "결과가 반환되었습니다"
+    val dotColor = phaseAccent(state.phase)
+    val statusLabel = if (isFailed) "실행 실패" else "완료"
     val content = state.detailText.ifBlank { state.statusText }
     val textColor = MiuixTheme.colorScheme.onSurface
 
@@ -597,54 +598,62 @@ internal fun AgentResultCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(max = 360.dp)
-                    .shadow(3.dp, RoundedCornerShape(24.dp)),
-                cornerRadius = 24.dp,
+                    .shadow(8.dp, RoundedCornerShape(CardDefaults.CornerRadius)),
                 insideMargin = PaddingValues(horizontal = 16.dp, vertical = 14.dp),
             ) {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    // 标题行 + 关闭按钮
+                    // 状态行降级为圆点 + 灰色小字，关闭用幽灵图标，视觉重心留给内容
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
+                        Box(
+                            modifier = Modifier
+                                .size(8.dp)
+                                .clip(CircleShape)
+                                .background(dotColor),
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = title,
-                            color = titleColor,
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
+                            text = statusLabel,
+                            color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                            fontSize = 13.sp,
                         )
                         Spacer(modifier = Modifier.weight(1f))
                         // 关闭直接交给 Service，不经 Compose 协程延迟
-                        TextButton(
-                            text = "닫기",
+                        IconButton(
                             onClick = onClose,
-                            minWidth = 44.dp,
+                            backgroundColor = Color.Transparent,
+                            minWidth = 32.dp,
                             minHeight = 32.dp,
-                            insideMargin = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
-                            colors = ButtonDefaults.textButtonColorsPrimary(
-                                color = if (isFailed) MiuixTheme.colorScheme.error
-                                else MiuixTheme.colorScheme.primary,
-                            ),
-                        )
+                            cornerRadius = 16.dp,
+                        ) {
+                            Icon(
+                                painter = painterResource(LucideR.drawable.lucide_ic_x),
+                                contentDescription = "닫기",
+                                modifier = Modifier.size(16.dp),
+                                tint = MiuixTheme.colorScheme.onSurfaceVariantActions,
+                            )
+                        }
                     }
 
-                    Spacer(modifier = Modifier.height(10.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
 
                     // Markdown 结果，可滚动
                     val markdownState = rememberMarkdownState(content = content, retainState = true)
                     val typography = markdownTypography(
-                        h1 = TextStyle(fontSize = 18.sp, fontWeight = FontWeight.Bold, color = textColor),
-                        h2 = TextStyle(fontSize = 16.sp, fontWeight = FontWeight.Bold, color = textColor),
-                        h3 = TextStyle(fontSize = 15.sp, fontWeight = FontWeight.Bold, color = textColor),
-                        text = TextStyle(fontSize = 14.sp, color = textColor),
-                        paragraph = TextStyle(fontSize = 14.sp, color = textColor),
-                        ordered = TextStyle(fontSize = 14.sp, color = textColor),
-                        bullet = TextStyle(fontSize = 14.sp, color = textColor),
-                        list = TextStyle(fontSize = 14.sp, color = textColor),
+                        h1 = TextStyle(fontSize = 20.sp, fontWeight = FontWeight.Bold, color = textColor),
+                        h2 = TextStyle(fontSize = 18.sp, fontWeight = FontWeight.Bold, color = textColor),
+                        h3 = TextStyle(fontSize = 16.sp, fontWeight = FontWeight.Bold, color = textColor),
+                        text = TextStyle(fontSize = 16.sp, lineHeight = 22.sp, color = textColor),
+                        paragraph = TextStyle(fontSize = 16.sp, lineHeight = 22.sp, color = textColor),
+                        ordered = TextStyle(fontSize = 16.sp, lineHeight = 22.sp, color = textColor),
+                        bullet = TextStyle(fontSize = 16.sp, lineHeight = 22.sp, color = textColor),
+                        list = TextStyle(fontSize = 16.sp, lineHeight = 22.sp, color = textColor),
                         code = TextStyle(
-                            fontSize = 12.sp,
+                            fontSize = 13.sp,
                             fontFamily = FontFamily.Monospace,
                             color = textColor,
                         ),
@@ -657,10 +666,10 @@ internal fun AgentResultCard(
                             .heightIn(max = 280.dp)
                             .verticalScroll(rememberScrollState()),
                         loading = {
-                            Text(text = content, color = textColor, fontSize = 14.sp, modifier = it)
+                            Text(text = content, color = textColor, fontSize = 16.sp, modifier = it)
                         },
                         error = {
-                            Text(text = content, color = textColor, fontSize = 14.sp, modifier = it)
+                            Text(text = content, color = textColor, fontSize = 16.sp, modifier = it)
                         },
                     )
                 }
