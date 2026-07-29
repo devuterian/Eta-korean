@@ -51,6 +51,98 @@ class BreenoRequestImagesTest {
     }
 
     @Test
+    fun currentBreenoMultiImageClientResultPrefersCompletedUploadUrls() {
+        val clientResult = FakeClientResult(
+            type = 104,
+            extraWithType = FakeMultiImageList(
+                listOf(
+                    FakeMultiImageData(
+                        originUri = "https://example.test/original-1",
+                        uri = "https://example.test/uploaded-1",
+                        docEntity = FakeQueryDocEntity(
+                            originFilePath = "https://example.test/doc-original-1",
+                            filePath = "https://example.test/doc-1",
+                            data = FakeUploadData(
+                                url = "https://example.test/upload-original-1",
+                                imagePreProcessResult = listOf(
+                                    FakePreProcessInfo(
+                                        completed = false,
+                                        url = "https://example.test/incomplete-1",
+                                    ),
+                                    FakePreProcessInfo(
+                                        completed = true,
+                                        url = "https://example.test/resized-1",
+                                    ),
+                                ),
+                            ),
+                        ),
+                    ),
+                    FakeMultiImageData(
+                        originUri = null,
+                        uri = "https://example.test/uploaded-2",
+                        docEntity = null,
+                    ),
+                ),
+            ),
+            extra = null,
+        )
+
+        val images = resolveImages(BreenoRequestImages.captureClientResult(clientResult))
+
+        assertEquals(
+            listOf(
+                "https://example.test/resized-1",
+                "https://example.test/uploaded-2",
+            ),
+            images.map { it.reference },
+        )
+    }
+
+    @Test
+    fun serializedBreenoMultiImageClientResultIsUsedAsFallback() {
+        val clientResult = FakeClientResult(
+            type = 104,
+            extraWithType = null,
+            extra = """{"mImageList":[{"docEntity":{"filePath":"https://example.test/fallback"}}]}""",
+        )
+
+        val images = resolveImages(BreenoRequestImages.captureClientResult(clientResult))
+
+        assertEquals(listOf("https://example.test/fallback"), images.map { it.reference })
+    }
+
+    @Test
+    fun nonImageBreenoClientResultIsIgnored() {
+        val clientResult = FakeClientResult(
+            type = 100,
+            extraWithType = FakeMultiImageList(emptyList()),
+            extra = """{"imageUrl":"https://example.test/should-not-leak"}""",
+        )
+
+        assertTrue(BreenoRequestImages.captureClientResult(clientResult).isEmpty)
+    }
+
+    @Test
+    fun malformedMultiImageClientResultKeepsAnExplicitFailure() {
+        val clientResult = FakeClientResult(
+            type = 104,
+            extraWithType = FakeMultiImageList(emptyList()),
+            extra = null,
+        )
+
+        val resolution = BreenoRequestImages.resolve(
+            context = null,
+            snapshot = BreenoRequestImages.captureClientResult(clientResult),
+        )
+
+        assertTrue(resolution is BreenoRequestImages.Resolution.Failure)
+        assertEquals(
+            BreenoRequestImages.FailureCode.IMAGE_REFERENCE_UNREADABLE,
+            (resolution as BreenoRequestImages.Resolution.Failure).code,
+        )
+    }
+
+    @Test
     fun oversizedNlpDocImageListReturnsStructuredInputFailure() {
         val payload = FakeDocPayload(
             url = "https://example.test/original",
@@ -321,6 +413,68 @@ class BreenoRequestImagesTest {
 
     private class FakeImageResult(private val url: String) {
         fun getUrl(): String = url
+    }
+
+    private class FakeClientResult(
+        private val type: Int,
+        private val extraWithType: Any?,
+        private val extra: String?,
+    ) {
+        fun getType(): Int = type
+
+        fun getExtraWithType(): Any? = extraWithType
+
+        fun getExtra(): String? = extra
+    }
+
+    private class FakeMultiImageList(
+        private val images: List<FakeMultiImageData>,
+    ) {
+        fun getMImageList(): List<FakeMultiImageData> = images
+    }
+
+    private class FakeMultiImageData(
+        private val originUri: String?,
+        private val uri: String?,
+        private val docEntity: FakeQueryDocEntity?,
+    ) {
+        fun getOriginUri(): String? = originUri
+
+        fun getUri(): String? = uri
+
+        fun getDocEntity(): FakeQueryDocEntity? = docEntity
+    }
+
+    private class FakeQueryDocEntity(
+        private val originFilePath: String?,
+        private val filePath: String?,
+        private val data: FakeUploadData? = null,
+    ) {
+        fun getOriginFilePath(): String? = originFilePath
+
+        fun getFilePath(): String? = filePath
+
+        fun getImageMediaUriForChatQueryMsg(): String? = null
+
+        fun getData(): FakeUploadData? = data
+    }
+
+    private class FakeUploadData(
+        private val url: String?,
+        private val imagePreProcessResult: List<FakePreProcessInfo>,
+    ) {
+        fun getUrl(): String? = url
+
+        fun getImagePreProcessResult(): List<FakePreProcessInfo> = imagePreProcessResult
+    }
+
+    private class FakePreProcessInfo(
+        private val completed: Boolean,
+        private val url: String?,
+    ) {
+        fun getCompleted(): Boolean = completed
+
+        fun getUrl(): String? = url
     }
 
     private class FakeImagePayload {

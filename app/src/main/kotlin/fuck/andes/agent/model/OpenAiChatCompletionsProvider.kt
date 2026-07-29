@@ -3,6 +3,8 @@ package fuck.andes.agent.model
 import fuck.andes.agent.runtime.AgentRunController
 import fuck.andes.agent.runtime.AgentTokenUsage
 import fuck.andes.data.model.OpenAiEndpointMode
+import fuck.andes.data.model.ProviderSourceTypes
+import fuck.andes.data.provider.ProviderSourceRegistry
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import okhttp3.MediaType.Companion.toMediaType
@@ -94,14 +96,22 @@ internal object OpenAiChatCompletionsProvider : AgentProviderClient {
         messages: JSONArray,
         tools: JSONArray
     ): JSONObject {
+        val sourceType = ProviderSourceRegistry.resolve(
+            providerId = config.providerId,
+            sourceType = config.providerSourceType,
+            baseUrl = config.baseUrl,
+            providerType = config.providerType,
+        )
         return JSONObject()
             .put("model", config.model)
             .put("stream", true)
-            .put("stream_options", JSONObject().put("include_usage", true))
             .put("messages", messages)
             .put("tools", tools)
             .put("tool_choice", "auto")
             .also { request ->
+                if (sourceType != ProviderSourceTypes.OPENROUTER) {
+                    request.put("stream_options", JSONObject().put("include_usage", true))
+                }
                 ProviderReasoning.applyOpenAiCompatibleRequest(request, config)
                 mergeExtraBody(request, config.extraBodyJson)
                 RequestBodyMerge.mergeCustomBody(request, config.customBody)
@@ -138,6 +148,7 @@ internal object OpenAiChatCompletionsProvider : AgentProviderClient {
                     break
                 }
                 val chunk = JSONObject(payload)
+                throwStreamingErrorIfPresent(chunk)
                 parseUsage(chunk)?.let { parsedUsage ->
                     usage = parsedUsage
                     onEvent(ProviderEvent.Usage(parsedUsage))
@@ -148,6 +159,9 @@ internal object OpenAiChatCompletionsProvider : AgentProviderClient {
                 val reason = choice.optString("finish_reason")
                 if (reason.isNotBlank() && reason != "null") {
                     finishReason = reason
+                }
+                if (reason == "error") {
+                    error("模型接口 SSE 以 error 结束")
                 }
                 val delta = choice.optJSONObject("delta") ?: continue
                 if (delta.has("reasoning_content") && !delta.isNull("reasoning_content")) {
@@ -224,7 +238,7 @@ internal object OpenAiChatCompletionsProvider : AgentProviderClient {
         }
 
         if (!sawStreamData) error("모델 인터페이스에서 SSE 데이터 청크가 반환되지 않았습니다")
-        if (!sawDone) error("모델 인터페이스 SSE 스트림이 정상적으로 종료되지 않았습니다")
+        if (!sawDone && finishReason == null) error("모델 인터페이스 SSE 스트림이 정상적으로 종료되지 않았습니다")
 
         thinkingContentIndex?.let { index ->
             onEvent(
@@ -306,6 +320,24 @@ internal object OpenAiChatCompletionsProvider : AgentProviderClient {
         extraBody.keys().forEach { key ->
             request.put(key, extraBody.get(key))
         }
+    }
+
+    private fun throwStreamingErrorIfPresent(chunk: JSONObject) {
+        val streamError = chunk.optJSONObject("error") ?: return
+        val code = streamError.opt("code")
+            ?.toString()
+            ?.takeIf { it.isNotBlank() && it != "null" }
+        val errorType = streamError.optJSONObject("metadata")
+            ?.optString("error_type")
+            ?.takeIf { it.isNotBlank() && it != "null" }
+        val context = listOfNotNull(
+            code?.let { "code=$it" },
+            errorType?.let { "type=$it" },
+        ).joinToString(", ")
+        val message = streamError.optString("message")
+            .ifBlank { "未提供错误信息" }
+            .compactError()
+        error("模型接口 SSE 返回错误${context.takeIf { it.isNotBlank() }?.let { " ($it)" }.orEmpty()}：$message")
     }
 
     private fun parseUsage(chunk: JSONObject): AgentTokenUsage? {

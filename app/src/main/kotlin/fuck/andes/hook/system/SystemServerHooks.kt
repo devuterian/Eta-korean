@@ -14,6 +14,7 @@ internal object SystemServerHooks {
     ): HookInstallation = HookInstallation.combine(
         group = "SystemServer",
         installations = listOf(
+            AccessibilityProtectionHooks.install(module, logger, classLoader),
             ContextualSearchHooks.install(module, logger, classLoader),
             AssistantManager.install(module, logger, classLoader),
             HotwordSelfHealHooks.install(module, logger, classLoader),

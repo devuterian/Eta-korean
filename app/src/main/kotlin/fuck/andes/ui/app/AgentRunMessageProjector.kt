@@ -138,7 +138,7 @@ internal class AgentRunMessageProjector(
     ): List<AgentChatMessageUi> =
         messages.map { message ->
             if (message is AgentMessageUi && message.id.startsWith(assistantMessagePrefix(runId))) {
-                message.copy(isStreaming = false)
+                message.copy(content = message.content.trimEnd(), isStreaming = false)
             } else {
                 message
             }
@@ -149,10 +149,12 @@ internal class AgentRunMessageProjector(
         round: Int,
         messages: List<AgentChatMessageUi>,
     ): List<AgentChatMessageUi> {
+        // 定稿时裁掉尾部空白：模型输出常以换行收尾，Markdown 渲染会把每个尾部
+        // 换行节点变成一段固定间距，在正文与后续工具卡片之间形成莫名的空行。
         val assistantId = assistantMessageId(runId, round)
         return messages.map { message ->
             if (message is AgentMessageUi && message.id == assistantId) {
-                message.copy(isStreaming = false)
+                message.copy(content = message.content.trimEnd(), isStreaming = false)
             } else {
                 message
             }
@@ -163,17 +165,18 @@ internal class AgentRunMessageProjector(
         runId: String,
         event: AgentEvent.ToolStarted,
         messages: List<AgentChatMessageUi>,
-    ): List<AgentChatMessageUi> =
-        messages.insertBeforeAssistantOnce(
-            runId = runId,
-            round = event.round,
-            message = ToolActivityMessageUi(
-                id = toolActivityMessageId(runId, event.round, event.toolCallId),
-                toolName = event.name,
-                status = ToolActivityStatusUi.Running,
-                argumentsSummary = event.argsPreview,
-            )
+    ): List<AgentChatMessageUi> {
+        // 同一轮内文本一定先于工具执行到达（工具要等 assistant 消息完整返回后才启动），
+        // 工具行直接追加在该轮正文之后，不能插到正文前面。
+        val message = ToolActivityMessageUi(
+            id = toolActivityMessageId(runId, event.round, event.toolCallId),
+            toolName = event.name,
+            status = ToolActivityStatusUi.Running,
+            argumentsSummary = event.argsPreview,
         )
+        if (messages.any { it.id == message.id }) return messages
+        return messages + message
+    }
 
     fun finishTool(
         runId: String,
@@ -233,15 +236,6 @@ internal class AgentRunMessageProjector(
     private fun elapsedSeconds(thinkingId: String): Int {
         val startedAt = thinkingStartedAt.getOrPut(thinkingId, nowElapsedRealtime)
         return ((nowElapsedRealtime() - startedAt) / 1000).toInt().coerceAtLeast(0)
-    }
-
-    private fun List<AgentChatMessageUi>.insertBeforeAssistantOnce(
-        runId: String,
-        round: Int,
-        message: AgentChatMessageUi,
-    ): List<AgentChatMessageUi> {
-        if (any { it.id == message.id }) return this
-        return insertBeforeAssistant(runId, round, message)
     }
 
     private fun List<AgentChatMessageUi>.insertBeforeAssistant(

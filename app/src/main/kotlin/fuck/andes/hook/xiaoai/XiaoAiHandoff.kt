@@ -34,9 +34,9 @@ internal object XiaoAiHandoff {
     private fun archiveTitle(prompt: String): String {
         val firstLine = prompt.lineSequence().firstOrNull().orEmpty().trim()
         return if (firstLine.isBlank()) {
-            "슈퍼 샤오아이 대화"
+            "超级小爱对话"
         } else {
-            "슈퍼 샤오아이: ${firstLine.take(ARCHIVE_TITLE_CHARS)}"
+            "超级小爱：${firstLine.take(ARCHIVE_TITLE_CHARS)}"
         }
     }
 }

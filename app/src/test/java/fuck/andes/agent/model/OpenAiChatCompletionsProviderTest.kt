@@ -15,7 +15,7 @@ import org.junit.Test
 class OpenAiChatCompletionsProviderTest {
 
     @Test
-    fun completeParsesTextDeltasAndRequiresDone() {
+    fun completeParsesTextDeltasWithDoneSentinel() {
         val body = buildString {
             append(sseChunk(JSONObject().put("content", "Hel")))
             append(sseChunk(JSONObject().put("content", "lo"), finishReason = "stop"))
@@ -37,6 +37,85 @@ class OpenAiChatCompletionsProviderTest {
                     .filter { it.kind == AssistantBlockKind.TEXT }
                     .joinToString("") { it.delta }
             )
+        }
+    }
+
+    @Test
+    fun completeAcceptsFinishReasonWhenServerClosesWithoutDone() {
+        val usage = JSONObject()
+            .put("prompt_tokens", 10)
+            .put("completion_tokens", 2)
+            .put("total_tokens", 12)
+        val body = buildString {
+            append(sseChunk(JSONObject().put("content", "完成")))
+            append(sseChunk(null, finishReason = "stop"))
+            append(usageChunk(usage))
+        }
+
+        withSseServer(body) { baseUrl ->
+            val events = mutableListOf<ProviderEvent>()
+            val response = OpenAiChatCompletionsProvider.complete(
+                request = providerRequest(baseUrl),
+                runController = AgentRunController(),
+                onEvent = events::add
+            )
+
+            assertEquals("完成", response.assistantMessage.getString("content"))
+            assertEquals(
+                12,
+                events.filterIsInstance<ProviderEvent.Usage>().single().usage.contextTokens
+            )
+        }
+    }
+
+    @Test
+    fun completeRejectsOpenRouterMidStreamError() {
+        val body = buildString {
+            append(sseChunk(JSONObject().put("content", "部分内容")))
+            append(
+                sseErrorChunk(
+                    code = 502,
+                    message = "Provider disconnected unexpectedly",
+                    errorType = "provider_unavailable",
+                )
+            )
+        }
+
+        withSseServer(body) { baseUrl ->
+            val thrown = runCatching {
+                OpenAiChatCompletionsProvider.complete(
+                    request = providerRequest(baseUrl) {
+                        it.copy(providerSourceType = "openrouter")
+                    },
+                    runController = AgentRunController()
+                )
+            }.exceptionOrNull()
+
+            assertNotNull(thrown)
+            assertTrue(thrown is IllegalStateException)
+            assertTrue(thrown?.message.orEmpty().contains("Provider disconnected unexpectedly"))
+            assertTrue(thrown?.message.orEmpty().contains("provider_unavailable"))
+        }
+    }
+
+    @Test
+    fun completeDoesNotRequestDeprecatedOpenRouterUsageOption() {
+        val requestBody = AtomicReference<String>()
+        val body = buildString {
+            append(": OPENROUTER PROCESSING\n\n")
+            append(sseChunk(JSONObject().put("content", "ok"), finishReason = "stop"))
+            append("data: [DONE]\n\n")
+        }
+
+        withSseServer(body, onRequest = { requestBody.set(it) }) { baseUrl ->
+            OpenAiChatCompletionsProvider.complete(
+                request = providerRequest(baseUrl) {
+                    it.copy(providerSourceType = "openrouter")
+                },
+                runController = AgentRunController(),
+            )
+
+            assertTrue(!JSONObject(requestBody.get()).has("stream_options"))
         }
     }
 
@@ -254,15 +333,31 @@ class OpenAiChatCompletionsProviderTest {
             tools = JSONArray()
         )
 
-    private fun sseChunk(delta: JSONObject, finishReason: String? = null): String {
+    private fun sseChunk(delta: JSONObject?, finishReason: String? = null): String {
         val choice = JSONObject()
-            .put("delta", delta)
+            .put("delta", delta ?: JSONObject.NULL)
             .put("finish_reason", finishReason ?: JSONObject.NULL)
         return "data: ${JSONObject().put("choices", JSONArray().put(choice))}\n\n"
     }
 
     private fun usageChunk(usage: JSONObject): String =
         "data: ${JSONObject().put("choices", JSONArray()).put("usage", usage)}\n\n"
+
+    private fun sseErrorChunk(
+        code: Int,
+        message: String,
+        errorType: String,
+    ): String =
+        "data: ${JSONObject()
+            .put("error", JSONObject()
+                .put("code", code)
+                .put("message", message)
+                .put("metadata", JSONObject().put("error_type", errorType)))
+            .put("choices", JSONArray().put(
+                JSONObject()
+                    .put("delta", JSONObject().put("content", ""))
+                    .put("finish_reason", "error")
+            ))}\n\n"
 
     private fun withSseServer(
         body: String,

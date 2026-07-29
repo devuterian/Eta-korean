@@ -150,10 +150,8 @@ internal object RemoteModelFetcher {
                 "contextLimit",
                 "max_context_tokens",
             ),
-            inputModalities = stringList("input_modalities", "inputModalities")
-                ?: modalitiesFromCapabilityFlags(),
-            outputModalities = stringList("output_modalities", "outputModalities")
-                ?: listOf(Model.TEXT_MODALITY),
+            inputModalities = inputModalities(),
+            outputModalities = stringList("output_modalities", "outputModalities").orEmpty(),
             attachment = boolean("attachment", "vision", "supports_image_in"),
             toolCall = boolean("tool_call", "toolCall", "tools"),
             reasoning = boolean("reasoning", "thinking", "supports_reasoning"),
@@ -180,8 +178,22 @@ internal object RemoteModelFetcher {
                 ?.takeIf { it.isNotEmpty() }
         }
 
-    private fun JsonObject.modalitiesFromCapabilityFlags(): List<String> =
-        buildList {
+    /**
+     * 空列表表示远端没有提供输入模态元数据，后续才允许官方目录补齐。
+     *
+     * 不能把缺失字段直接折叠成 text：否则无法区分“远端明确声明仅文本”和
+     * “标准 /models 根本未返回能力字段”，官方目录会错误覆盖前一种情况。
+     */
+    private fun JsonObject.inputModalities(): List<String> {
+        stringList("input_modalities", "inputModalities")?.let { return it }
+        val capabilityNames = listOf(
+            "attachment",
+            "vision",
+            "supports_image_in",
+            "supports_video_in",
+        )
+        if (capabilityNames.none(::containsKey)) return emptyList()
+        return buildList {
             add(Model.TEXT_MODALITY)
             if (boolean("attachment", "vision", "supports_image_in") == true) {
                 add(Model.IMAGE_MODALITY)
@@ -190,6 +202,7 @@ internal object RemoteModelFetcher {
                 add("video")
             }
         }
+    }
 
     private fun JsonElement.jsonObjectOrNull(): JsonObject? =
         runCatching { jsonObject }.getOrNull()

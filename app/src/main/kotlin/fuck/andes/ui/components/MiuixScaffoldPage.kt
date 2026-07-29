@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.safeDrawing
@@ -14,6 +15,7 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.unit.dp
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
@@ -61,7 +63,10 @@ fun MiuixScaffoldPage(
             overscrollEffect = null,
         ) {
             content()
-            item(key = "bottom_spacer") { Spacer(modifier = Modifier.navigationBarsPadding()) }
+            // 导航栏留白之外再加固定间距，避免列表末尾内容贴近大圆角屏幕下沿
+            item(key = "bottom_spacer") {
+                Spacer(modifier = Modifier.navigationBarsPadding().height(24.dp))
+            }
         }
     }
 }

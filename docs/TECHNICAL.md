@@ -40,6 +40,7 @@ Release 裁剪以 `app/proguard-rules.pro` 为唯一可执行事实来源，规�
 - **唤起逻辑优化**：本次长按优先通过 `VoiceInteractionManagerService` 拉起 Google `voiceinteraction`，失败后依次尝试 `ACTION_ASSIST` 与 `ACTION_VOICE_COMMAND`。三条快速路径均失败时立即回退小布原逻辑；配置修复在后台进行，只影响后续触发，不阻塞当前系统回调。
 - **息屏后维持 Hey Google 可用**：Hook `PhoneWindowManager.screenTurnedOff()`，在默认显示息屏后短延迟检查 Google 的 `SoftwareTrustedHotwordDetectorSession`。只有已有 `mSoftwareCallback` 且当前未 running 时，才恢复 `startListeningFromMicLocked()`；亮屏或恢复成功后会取消未执行任务。
 - **一圈即搜支持**：强制启用 `ContextualSearchManagerService`，将包名指向 Google App，并放行 `SystemUI` 与 ColorDirectService 的调用权限。作为一圈即搜的底层依赖始终执行，不可关闭。
+- **无障碍保护**：复用已验证的 `SystemServer.startOtherServices(TimingsTraceAndSlog)` 生命周期点，在系统服务启动完成后接入事件驱动保护。后台工作复用 Android `BackgroundThread`，不开模块线程、不轮询；开关默认关闭，开启请求需同时通过 signature 权限、真实发送 UID、服务声明与 APK signer 钉扎校验。保护只维护 owner 用户中的 Eta 组件和总开关，保留其他服务；断连时通过仅允许 `system` UID 调用的健康 Provider 确认，并对 Eta 做带次数上限和冷却的定向重绑。
 
 ## SystemUI
 
@@ -105,6 +106,7 @@ Google App 作为普通用户应用时，缺乏语音唤醒所需的系统权限
 追求极简，绝不给系统增加额外负担：
 
 - 不轮询、不保活 Google 进程、不持续写日志
+- 无障碍保护默认关闭；开启后只响应设置、包、用户生命周期与 Runtime 明确上报，设置争抢采用退避，断连重绑有次数和冷却上限
 - 热路径只保留当前机型实际验证有效的 `OplusSpeechHandler` hook
 - 默认助理配置检查带 15 秒冷却，息屏后的 Hey Google 恢复路径不主动查写默认助理配置
 - 高频成功路径使用 `DEBUG`；Debug 构建可诊断，Release 由 R8 确定性裁剪

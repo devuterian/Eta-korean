@@ -33,21 +33,12 @@ import fuck.andes.data.repository.RuntimeConfigRepository
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberDecoratedNavEntries
 import androidx.navigation3.ui.NavDisplay
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.width
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp
+import fuck.andes.ui.components.MiuixDialogActions
 import fuck.andes.ui.model.ConversationSummaryUi
-import top.yukonga.miuix.kmp.basic.Button
-import top.yukonga.miuix.kmp.basic.ButtonDefaults
-import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.basic.TextField
-import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.window.WindowDialog
 import fuck.andes.ui.SettingsScreen
 import fuck.andes.ui.pages.providers.ModelProviderDetailScreen
@@ -143,6 +134,7 @@ fun AgentAppRoot() {
     ) {
         AgentAppShell(
             currentRoute = route,
+            isCurrentRoute = backStack.lastOrNull() == route,
             conversationPaneState = agentState.conversationPaneState,
             isConversationPaneOpen = conversationPaneOpen,
             onBack = { popRoute() },
@@ -179,6 +171,7 @@ fun AgentAppRoot() {
                 RoutedShell(route = AppRoute.Home) {
                     AgentHomeScreen(
                         state = agentState.homeState,
+                        conversationKey = agentState.conversationPaneState.selectedConversationId,
                         onAction = { action ->
                             when (action) {
                                 is AgentHomeAction.InputChanged -> agentState.updateInput(action.text)
@@ -204,6 +197,7 @@ fun AgentAppRoot() {
                 RoutedShell(route = AppRoute.Chat) {
                     AgentChatScreen(
                         state = agentState.homeState,
+                        conversationKey = agentState.conversationPaneState.selectedConversationId,
                         onAction = { action ->
                             when (action) {
                                 AgentChatAction.NavigateBack -> popRoute()
@@ -410,24 +404,20 @@ fun AgentAppRoot() {
                 TextField(
                     value = renameInput,
                     onValueChange = { renameInput = it },
+                    label = "对话名称",
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
-                    horizontalArrangement = Arrangement.End,
-                ) {
-                    TextButton(text = "취소", onClick = { conversationRenameTarget = null })
-                    Spacer(modifier = Modifier.width(8.dp))
-                    TextButton(
-                        text = "확인",
-                        colors = ButtonDefaults.textButtonColorsPrimary(),
-                        onClick = {
-                            agentState.renameConversation(conversation.id, renameInput)
-                            conversationRenameTarget = null
-                        },
-                    )
-                }
+                MiuixDialogActions(
+                    confirmText = "확인",
+                    confirmEnabled = renameInput.isNotBlank(),
+                    onCancel = { conversationRenameTarget = null },
+                    onConfirm = {
+                        agentState.renameConversation(conversation.id, renameInput)
+                        conversationRenameTarget = null
+                    },
+                    modifier = Modifier.padding(top = 16.dp),
+                )
             }
         }
     }
@@ -435,33 +425,19 @@ fun AgentAppRoot() {
     conversationDeleteTarget?.let { conversation ->
         WindowDialog(
             show = true,
-            title = "삭제한 대화는 복구할 수 없습니다.",
+            title = "删除对话",
+            summary = "삭제한 대화는 복구할 수 없습니다.",
             onDismissRequest = { conversationDeleteTarget = null },
         ) {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Button(
-                    onClick = {
-                        agentState.deleteConversation(conversation.id)
-                        conversationDeleteTarget = null
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColorsPrimary(
-                        color = MiuixTheme.colorScheme.error,
-                        contentColor = MiuixTheme.colorScheme.onError,
-                    ),
-                ) {
-                    Text("이 대화 삭제")
-                }
-                TextButton(
-                    text = "취소",
-                    modifier = Modifier.fillMaxWidth(),
-                    onClick = { conversationDeleteTarget = null },
-                )
-            }
+            MiuixDialogActions(
+                confirmText = "删除",
+                destructive = true,
+                onCancel = { conversationDeleteTarget = null },
+                onConfirm = {
+                    agentState.deleteConversation(conversation.id)
+                    conversationDeleteTarget = null
+                },
+            )
         }
     }
 }

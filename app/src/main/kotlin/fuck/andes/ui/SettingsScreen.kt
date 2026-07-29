@@ -4,12 +4,8 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.widget.Toast
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -33,12 +29,14 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import fuck.andes.FuckAndesApp
+import fuck.andes.agent.accessibility.AccessibilityProtectionClient
 import fuck.andes.agent.accessibility.AgentAccessibilityService
 import fuck.andes.config.Prefs
 import fuck.andes.data.repository.ProviderRepository
 import fuck.andes.data.repository.RuntimeConfigRepository
 import fuck.andes.systemizer.GoogleAppSystemizerInstaller
 import fuck.andes.ui.components.MiuixBackButton
+import fuck.andes.ui.components.MiuixDialogActions
 import fuck.andes.ui.navigation.AppRoute
 import fuck.andes.systemizer.RootManager
 import fuck.andes.systemizer.SystemizerInstallResult
@@ -46,7 +44,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import top.yukonga.miuix.kmp.basic.BasicComponent
-import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.HorizontalDivider
 import top.yukonga.miuix.kmp.basic.Icon
@@ -54,7 +51,6 @@ import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.basic.TextField
 import top.yukonga.miuix.kmp.basic.TopAppBar
 import top.yukonga.miuix.kmp.overlay.OverlayDialog
@@ -78,9 +74,9 @@ private val ColorOSOrange = Color(0xFFFF7700)
 /**
  * 模块配置界面。
  *
- * 开关默认开启（与历史硬编码行为一致）。切换时同步提交（RemotePreferences.commit
- * 会同步等待 binder 提交到 LSPosed 数据库，失败返回 false）；XposedService 未就绪时
- * 不允许写入，避免保存到 hook 进程不可见的本地配置。
+ * 开关默认值由 [Prefs.Keys.BOOLEAN_DEFAULTS] 统一定义。切换时同步提交
+ * （RemotePreferences.commit 会同步等待 binder 提交到 LSPosed 数据库，失败返回
+ * false）；XposedService 未就绪时不允许写入，避免保存到 hook 进程不可见的本地配置。
  */
 @Composable
 internal fun SettingsScreen(
@@ -100,12 +96,18 @@ internal fun SettingsScreen(
     var accessibilityGranted by remember {
         mutableStateOf(isAgentAccessibilityEnabled(context))
     }
+    var accessibilityProtectionEnabled by remember {
+        mutableStateOf(AccessibilityProtectionClient.isEnabled(context))
+    }
+    var accessibilityProtectionPending by remember { mutableStateOf(false) }
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 overlayGranted = android.provider.Settings.canDrawOverlays(context)
                 accessibilityGranted = isAgentAccessibilityEnabled(context)
+                accessibilityProtectionEnabled =
+                    AccessibilityProtectionClient.isEnabled(context)
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -125,7 +127,7 @@ internal fun SettingsScreen(
         selectedProvider?.models?.find { it.id == selectedModelId }
     }
     val providerSummary = selectedProvider?.let { provider ->
-        "${provider.name} / ${selectedModel?.displayName ?: "모델을 선택하지 않음"}"
+        "${provider.name} / ${selectedModel?.displayName ?: "未选择模型"}"
     } ?: "설정되지 않음"
 
     // prefs 绑定到 XposedService：service 到达时切换到 RemotePreferences（跨进程提交到
@@ -260,13 +262,13 @@ internal fun SettingsScreen(
 
             // ── 系统助手接管 ──────────────────────────────────────────────
             item(key = "section_assistant_takeover") {
-                SmallTitle("시스템 어시스턴트 연동")
+                SmallTitle("系统助手接管")
                 Card(modifier = Modifier.padding(horizontal = 12.dp).padding(bottom = 12.dp)) {
                     SwitchPref(
                         context = context,
                         prefs = prefs,
-                        title = "시스템 어시스턴트에서 사용자 지정 모델 사용",
-                        summary = "Breeno와 슈퍼 샤오아이가 이 설정을 함께 사용합니다",
+                        title = "启用系统助手自定义模型",
+                        summary = "小布与超级小爱共用此开关",
                         key = Prefs.Keys.AGENT_CUSTOM_MODEL,
                         icon = LucideR.drawable.lucide_ic_cpu,
                         iconTint = ColorOSOrangeRed,
@@ -276,7 +278,7 @@ internal fun SettingsScreen(
                         context = context,
                         prefs = prefs,
                         title = "/agent 접두사에서만 연동",
-                        summary = "Breeno와 슈퍼 샤오아이에 모두 적용됩니다",
+                        summary = "同时适用于小布与超级小爱",
                         key = Prefs.Keys.AGENT_REQUIRE_PREFIX,
                         icon = LucideR.drawable.lucide_ic_message_square,
                         iconTint = ColorOSAmberYellow,
@@ -441,6 +443,47 @@ internal fun SettingsScreen(
                             }
                         },
                     )
+                    PrefDivider()
+                    SwitchPreference(
+                        title = "强制保持无障碍",
+                        summary = "由 system_server 保护 Eta 服务并在断连时有限重绑；关闭后不再干预系统设置",
+                        checked = accessibilityProtectionEnabled,
+                        onCheckedChange = { enabled ->
+                            if (accessibilityProtectionPending) {
+                                return@SwitchPreference
+                            }
+                            accessibilityProtectionPending = true
+                            AccessibilityProtectionClient.setEnabled(
+                                context = context,
+                                enabled = enabled,
+                            ) { result ->
+                                accessibilityProtectionPending = false
+                                accessibilityProtectionEnabled = result.enabled
+                                accessibilityGranted = isAgentAccessibilityEnabled(context)
+                                val failureMessage = when (result.status) {
+                                    AccessibilityProtectionClient.ControlStatus.APPLIED -> null
+                                    AccessibilityProtectionClient.ControlStatus.UNAVAILABLE ->
+                                        "无障碍保护后端不可用，请确认 system 作用域已启用并重启"
+                                    AccessibilityProtectionClient.ControlStatus.REJECTED ->
+                                        "无障碍保护请求被系统拒绝"
+                                }
+                                if (failureMessage != null) {
+                                    Toast.makeText(
+                                        context.applicationContext,
+                                        failureMessage,
+                                        Toast.LENGTH_SHORT,
+                                    ).show()
+                                }
+                            }
+                        },
+                        startAction = {
+                            TintedIcon(
+                                icon = LucideR.drawable.lucide_ic_shield,
+                                tint = ColorOSVividGreen,
+                            )
+                        },
+                        enabled = !accessibilityProtectionPending,
+                    )
                 }
             }
 
@@ -551,39 +594,16 @@ private fun SystemizerConfirmDialog(
     OverlayDialog(
         show = show,
         title = "Google 앱을 시스템 앱으로 전환",
+        summary = "系统应用享有语音唤醒权限、更少的自启限制，体验接近原生。将通过 Magisk / KernelSU 模块安装，重启后生效。",
         onDismissRequest = onDismissRequest,
     ) {
-        Text(
-            text = "시스템 앱은 음성 호출 권한과 완화된 자동 시작 제한을 적용받아 기본 앱에 가까운 환경을 제공합니다.",
-            modifier = Modifier.fillMaxWidth(),
-            fontSize = MiuixTheme.textStyles.body2.fontSize,
-            color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+        MiuixDialogActions(
+            confirmText = if (installing) "处理中..." else "확인",
+            cancelEnabled = !installing,
+            confirmEnabled = !installing,
+            onCancel = onDismissRequest,
+            onConfirm = onConfirm,
         )
-        Spacer(modifier = Modifier.height(12.dp))
-        Text(
-            text = "Magisk / KernelSU 모듈로 설치하며, 재부팅 후 적용됩니다.",
-            modifier = Modifier.fillMaxWidth().padding(bottom = 20.dp),
-            fontSize = MiuixTheme.textStyles.footnote1.fontSize,
-            color = MiuixTheme.colorScheme.onSurfaceVariantActions,
-        )
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            TextButton(
-                text = "취소",
-                onClick = onDismissRequest,
-                modifier = Modifier.weight(1f),
-                enabled = !installing,
-            )
-            TextButton(
-                text = "확인",
-                onClick = onConfirm,
-                modifier = Modifier.weight(1f),
-                enabled = !installing,
-                colors = ButtonDefaults.textButtonColorsPrimary(),
-            )
-        }
     }
 }
 

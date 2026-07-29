@@ -48,6 +48,7 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
@@ -65,6 +66,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.isTraversalGroup
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
@@ -81,6 +83,8 @@ import androidx.compose.ui.unit.sp
 import com.composables.icons.lucide.R as LucideR
 import com.mikepenz.markdown.annotator.annotatorSettings
 import com.mikepenz.markdown.annotator.buildMarkdownAnnotatedString
+import com.mikepenz.markdown.compose.LocalMarkdownComponents
+import com.mikepenz.markdown.compose.LocalMarkdownPadding
 import com.mikepenz.markdown.compose.MarkdownElement
 import com.mikepenz.markdown.compose.components.MarkdownComponentModel
 import com.mikepenz.markdown.compose.components.MarkdownComponents
@@ -91,12 +95,14 @@ import com.mikepenz.markdown.compose.elements.MarkdownHeader
 import com.mikepenz.markdown.compose.elements.MarkdownParagraph
 import com.mikepenz.markdown.compose.elements.MarkdownTableBasicText
 import com.mikepenz.markdown.compose.elements.MarkdownText
+import com.mikepenz.markdown.compose.elements.listDepth
 import com.mikepenz.markdown.m3.Markdown
 import com.mikepenz.markdown.m3.markdownColor
 import com.mikepenz.markdown.m3.markdownTypography
 import com.mikepenz.markdown.model.markdownAnimations
 import com.mikepenz.markdown.model.markdownDimens
 import com.mikepenz.markdown.model.markdownPadding
+import com.mikepenz.markdown.model.MarkdownState
 import com.mikepenz.markdown.model.rememberMarkdownState
 import com.mikepenz.markdown.model.State
 import com.mikepenz.markdown.utils.getUnescapedTextInNode
@@ -119,6 +125,7 @@ import org.intellij.markdown.ast.findChildOfType
 import org.intellij.markdown.flavours.gfm.GFMElementTypes.HEADER
 import org.intellij.markdown.flavours.gfm.GFMElementTypes.ROW
 import org.intellij.markdown.flavours.gfm.GFMElementTypes.TABLE
+import org.intellij.markdown.flavours.gfm.GFMTokenTypes.CHECK_BOX
 import org.intellij.markdown.flavours.gfm.GFMTokenTypes.CELL
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
@@ -201,7 +208,7 @@ private fun rememberActivePulse(
 }
 
 @Composable
-fun ChatMessageItem(
+internal fun ChatMessageItem(
     message: AgentChatMessageUi,
     onSuggestionClick: (String) -> Unit,
     onRunTraceClick: () -> Unit,
@@ -209,11 +216,22 @@ fun ChatMessageItem(
     showBrowserShortcut: Boolean,
     modifier: Modifier = Modifier,
     compact: Boolean = false,
+    retainedStreamingState: StreamingMarkdownState? = null,
+    showCopyAction: Boolean = true,
 ) {
     when (message) {
         is UserMessageUi -> UserMessageBubble(message = message, modifier = modifier)
-        is AgentMessageUi -> AgentMessageBlock(message = message, modifier = modifier)
-        is ThinkingMessageUi -> ThinkingRow(message = message, modifier = modifier, compact = compact)
+        is AgentMessageUi -> AgentMessageBlock(
+            message = message,
+            retainedStreamingState = retainedStreamingState,
+            showCopyAction = showCopyAction,
+            modifier = modifier,
+        )
+        is ThinkingMessageUi -> ThinkingRow(
+            message = message,
+            modifier = modifier,
+            compact = compact,
+        )
         is RunTraceMessageUi -> RunTraceRow(message = message, onClick = onRunTraceClick, modifier = modifier)
         is ToolActivityMessageUi -> ToolActivityInline(
             message = message,
@@ -418,6 +436,8 @@ private fun UserMessageBubble(
 @Composable
 private fun AgentMessageBlock(
     message: AgentMessageUi,
+    retainedStreamingState: StreamingMarkdownState?,
+    showCopyAction: Boolean,
     modifier: Modifier = Modifier,
 ) {
     @Suppress("DEPRECATION")
@@ -426,6 +446,13 @@ private fun AgentMessageBlock(
     val keepStreamingMarkdown = remember(message.id) { message.isStreaming }
     var streamingRevealComplete by remember(message.id) {
         mutableStateOf(!keepStreamingMarkdown)
+    }
+    // 渲染会话由列表层按 message.id 持有，item 滚出视口被销毁后滑回时复用同一
+    // 会话；没有外部持有者时（如嵌套条目）退回组合内 remember，行为与之前一致。
+    val streamingState = if (keepStreamingMarkdown) {
+        retainedStreamingState ?: remember(message.id) { StreamingMarkdownState() }
+    } else {
+        null
     }
     LaunchedEffect(copied) {
         if (copied) {
@@ -445,8 +472,9 @@ private fun AgentMessageBlock(
                     modifier = Modifier.padding(top = 4.dp)
                 )
             }
-            keepStreamingMarkdown -> {
+            streamingState != null -> {
                 StreamingMarkdown(
+                    state = streamingState,
                     content = message.content,
                     isStreaming = message.isStreaming,
                     onRevealCompleteChange = { streamingRevealComplete = it },
@@ -473,6 +501,7 @@ private fun AgentMessageBlock(
         }
 
         if (
+            showCopyAction &&
             !message.isStreaming &&
             message.content.isNotBlank() &&
             (!keepStreamingMarkdown || streamingRevealComplete)
@@ -516,12 +545,12 @@ private fun StableMarkdown(
     content: String,
     modifier: Modifier = Modifier,
     tone: ChatMarkdownTone = ChatMarkdownTone.Answer,
-) {
-    val components = remember { chatMarkdownComponents() }
-    val markdownState = rememberMarkdownState(
+    markdownState: MarkdownState = rememberMarkdownState(
         content = content,
         retainState = true,
-    )
+    ),
+) {
+    val components = remember { chatMarkdownComponents() }
     Markdown(
         markdownState = markdownState,
         colors = chatMarkdownColors(tone),
@@ -550,23 +579,42 @@ private fun StableMarkdown(
     )
 }
 
+/**
+ * 流式渲染会话，按 message.id 提升到 LazyColumn 外层持有。
+ *
+ * 流式 item 滚出视口后组合会被销毁，裸 remember 会让解析基线、打字机进度和最新
+ * 快照全部丢失；滑回时整段已生成内容会重新全量解析，并从头重放显现动画。会话
+ * 与组合解耦后，item 重建只是重新挂接效果，渲染进度原样保留。
+ */
+internal class StreamingMarkdownState {
+    val parserSession = StreamingGfmParserSession()
+    val revealCoordinator = SmoothTextRevealCoordinator()
+    val parseTargets = Channel<StreamingMarkdownTarget>(Channel.CONFLATED)
+    val acceptedContent = arrayOf("")
+    var snapshot by mutableStateOf<StreamingGfmSnapshot?>(null)
+}
+
 @Composable
 private fun StreamingMarkdown(
+    state: StreamingMarkdownState,
     content: String,
     isStreaming: Boolean,
     onRevealCompleteChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
     tone: ChatMarkdownTone = ChatMarkdownTone.Answer,
 ) {
-    val parserSession = remember { StreamingGfmParserSession() }
-    val revealCoordinator = remember { SmoothTextRevealCoordinator() }
-    val components = remember(revealCoordinator) {
-        chatMarkdownComponents(revealCoordinator)
+    val parserSession = state.parserSession
+    val revealCoordinator = state.revealCoordinator
+    val components = remember(revealCoordinator, isStreaming) {
+        chatMarkdownComponents(
+            revealCoordinator = revealCoordinator,
+            suppressEmptyListMarkers = isStreaming,
+        )
     }
-    val parseTargets = remember { Channel<StreamingMarkdownTarget>(Channel.CONFLATED) }
-    val acceptedContent = remember { arrayOf("") }
+    val parseTargets = state.parseTargets
+    val acceptedContent = state.acceptedContent
     val currentRevealCompleteCallback by rememberUpdatedState(onRevealCompleteChange)
-    var snapshot by remember { mutableStateOf<StreamingGfmSnapshot?>(null) }
+    val snapshot = state.snapshot
 
     LaunchedEffect(revealCoordinator) {
         revealCoordinator.runFrameClock()
@@ -609,7 +657,7 @@ private fun StreamingMarkdown(
                 continue
             }
 
-            snapshot = parsed
+            state.snapshot = parsed
             target = parseTargets.receive()
         }
     }
@@ -682,7 +730,7 @@ private fun StreamingGfmSuccess(
     }
 }
 
-private data class StreamingMarkdownTarget(
+internal data class StreamingMarkdownTarget(
     val content: String,
     val isStreaming: Boolean,
 )
@@ -830,6 +878,7 @@ private fun chatMarkdownPadding() = markdownPadding(
 
 private fun chatMarkdownComponents(
     revealCoordinator: SmoothTextRevealCoordinator? = null,
+    suppressEmptyListMarkers: Boolean = false,
 ) = markdownComponents(
     text = { model ->
         if (revealCoordinator == null) {
@@ -856,6 +905,22 @@ private fun chatMarkdownComponents(
                 revealCoordinator = revealCoordinator,
             )
         }
+    },
+    orderedList = { model ->
+        ChatMarkdownList(
+            model = model,
+            ordered = true,
+            revealCoordinator = revealCoordinator,
+            suppressEmptyMarker = suppressEmptyListMarkers,
+        )
+    },
+    unorderedList = { model ->
+        ChatMarkdownList(
+            model = model,
+            ordered = false,
+            revealCoordinator = revealCoordinator,
+            suppressEmptyMarker = suppressEmptyListMarkers,
+        )
     },
     heading1 = { ChatHeadingBlock(it, it.typography.h1, topPadding = 14.dp, revealCoordinator = revealCoordinator) },
     heading2 = { ChatHeadingBlock(it, it.typography.h2, topPadding = 13.dp, revealCoordinator = revealCoordinator) },
@@ -926,6 +991,152 @@ private fun chatMarkdownComponents(
         )
     },
 )
+
+/**
+ * 流式列表不能直接使用库的默认实现：默认实现会立即绘制 marker，而正文还在显现动画中。
+ * 这里把每一项作为稳定的组合单元，并让 marker 与该项首个正文块共享开始时机。
+ */
+@Composable
+private fun ChatMarkdownList(
+    model: MarkdownComponentModel,
+    ordered: Boolean,
+    revealCoordinator: SmoothTextRevealCoordinator?,
+    suppressEmptyMarker: Boolean,
+    depth: Int = model.listDepth,
+) {
+    val components = LocalMarkdownComponents.current
+    val padding = LocalMarkdownPadding.current
+    val items = remember(model.node) {
+        model.node.children.filter { it.type == MarkdownElementTypes.LIST_ITEM }
+    }
+    if (items.isEmpty()) return
+
+    val startedRevealKeys = rememberStartedRevealKeys(revealCoordinator)
+    val initialListNumber = items.first()
+        .getUnescapedTextInNode(model.content)
+        .takeWhile(Char::isDigit)
+        .toIntOrNull()
+        ?: 1
+
+    Column(
+        modifier = Modifier.padding(
+            start = padding.listIndent * depth,
+            top = padding.list,
+            bottom = padding.list,
+        ),
+    ) {
+        items.forEachIndexed { index, item ->
+            key(item.startOffset, item.type.name) {
+                val firstRevealKey = remember(item) { item.firstRevealBlockKey() }
+                val checkboxNode = remember(item) {
+                    item.children.firstOrNull { child -> child.type == CHECK_BOX }
+                }
+                val markerText = if (ordered) {
+                    "${initialListNumber + index}. "
+                } else {
+                    "• "
+                }
+                val markerVisible = streamingListMarkerVisible(
+                    coordinatorActive = suppressEmptyMarker,
+                    firstRevealKey = firstRevealKey,
+                    startedRevealKeys = startedRevealKeys,
+                    containsImage = item.containsMarkdownImage(),
+                )
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .semantics { isTraversalGroup = true }
+                        .padding(
+                            top = padding.listItemTop,
+                            bottom = padding.listItemBottom,
+                        ),
+                ) {
+                    Box(
+                        modifier = Modifier.graphicsLayer(
+                            // 隐藏 marker 但保留它的测量宽度，避免正文横向跳动。
+                            alpha = if (markerVisible) 1f else 0f,
+                        ),
+                    ) {
+                        if (checkboxNode != null) {
+                            components.checkbox(
+                                MarkdownComponentModel(
+                                    content = model.content,
+                                    node = checkboxNode,
+                                    typography = model.typography,
+                                ),
+                            )
+                        } else {
+                            Text(
+                                text = markerText,
+                                style = if (ordered) model.typography.ordered else model.typography.bullet,
+                            )
+                        }
+                    }
+
+                    Column {
+                        item.children.forEach { child ->
+                            when (child.type) {
+                                MarkdownElementTypes.ORDERED_LIST -> {
+                                    ChatMarkdownList(
+                                        model = MarkdownComponentModel(
+                                            content = model.content,
+                                            node = child,
+                                            typography = model.typography,
+                                        ),
+                                        ordered = true,
+                                        revealCoordinator = revealCoordinator,
+                                        suppressEmptyMarker = suppressEmptyMarker,
+                                        depth = depth + 1,
+                                    )
+                                }
+
+                                MarkdownElementTypes.UNORDERED_LIST -> {
+                                    ChatMarkdownList(
+                                        model = MarkdownComponentModel(
+                                            content = model.content,
+                                            node = child,
+                                            typography = model.typography,
+                                        ),
+                                        ordered = false,
+                                        revealCoordinator = revealCoordinator,
+                                        suppressEmptyMarker = suppressEmptyMarker,
+                                        depth = depth + 1,
+                                    )
+                                }
+
+                                else -> MarkdownElement(
+                                    node = child,
+                                    components = components,
+                                    content = model.content,
+                                    includeSpacer = false,
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun rememberStartedRevealKeys(
+    coordinator: SmoothTextRevealCoordinator?,
+): Set<RevealBlockKey> = if (coordinator == null) {
+    emptySet()
+} else {
+    coordinator.started.collectAsState().value
+}
+
+internal fun streamingListMarkerVisible(
+    coordinatorActive: Boolean,
+    firstRevealKey: RevealBlockKey?,
+    startedRevealKeys: Set<RevealBlockKey>,
+    containsImage: Boolean,
+): Boolean = !coordinatorActive ||
+    firstRevealKey?.let(startedRevealKeys::contains) == true ||
+    (firstRevealKey == null && containsImage)
 
 @Composable
 private fun ChatRevealRawText(
@@ -1282,6 +1493,45 @@ private fun ChatMarkdownTableCell(
 private fun ASTNode.containsMarkdownImage(): Boolean =
     type == MarkdownElementTypes.IMAGE || children.any { child -> child.containsMarkdownImage() }
 
+/** 找到列表项中首个会被显现协调器管理的块，marker 以它作为显示时机。 */
+private fun ASTNode.firstRevealBlockKey(): RevealBlockKey? = when (type) {
+    MarkdownTokenTypes.TEXT -> RevealBlockKey(startOffset)
+
+    MarkdownElementTypes.PARAGRAPH,
+    MarkdownElementTypes.ATX_1,
+    MarkdownElementTypes.ATX_2,
+    MarkdownElementTypes.ATX_3,
+    MarkdownElementTypes.ATX_4,
+    MarkdownElementTypes.ATX_5,
+    MarkdownElementTypes.ATX_6,
+    MarkdownElementTypes.SETEXT_1,
+    MarkdownElementTypes.SETEXT_2,
+    -> if (!containsMarkdownImage()) RevealBlockKey(startOffset) else null
+
+    MarkdownElementTypes.CODE_FENCE ->
+        if (children.size >= 3) RevealBlockKey(startOffset) else null
+
+    MarkdownElementTypes.CODE_BLOCK ->
+        if (children.isNotEmpty()) RevealBlockKey(startOffset) else null
+
+    TABLE -> children.asSequence()
+        .flatMap { it.depthFirstSequence() }
+        .firstOrNull { it.type == CELL && !it.containsMarkdownImage() }
+        ?.let { RevealBlockKey(it.startOffset) }
+
+    MarkdownElementTypes.IMAGE,
+    MarkdownTokenTypes.EOL,
+    MarkdownTokenTypes.HORIZONTAL_RULE,
+    -> null
+
+    else -> children.asSequence().mapNotNull(ASTNode::firstRevealBlockKey).firstOrNull()
+}
+
+private fun ASTNode.depthFirstSequence(): Sequence<ASTNode> = sequence {
+    yield(this@depthFirstSequence)
+    children.forEach { child -> yieldAll(child.depthFirstSequence()) }
+}
+
 private fun State.Success.revealBlockKeys(): Set<RevealBlockKey> = buildSet {
     node.children.forEach { child -> collectRevealBlockKeys(child) }
 }
@@ -1339,8 +1589,26 @@ private fun ThinkingRow(
     var expanded by remember(message.id) { mutableStateOf(!message.collapsed) }
     // 只给本次实际经历流式输出的思考保留显现时钟；历史消息直接静态渲染。
     val keepStreamingMarkdown = remember(message.id) { message.isStreaming }
+    val streamingState = if (keepStreamingMarkdown) {
+        remember(message.id) { StreamingMarkdownState() }
+    } else {
+        null
+    }
     LaunchedEffect(message.isStreaming) {
         if (message.isStreaming) expanded = true
+    }
+
+    // Markdown 状态在行级提前创建：行进入组合（工作过程展开或滚动到可视区）时就开始
+    // 后台解析，而不是等到首次点击展开。否则首帧只能测量 loading fallback 的纯文本高度，
+    // 解析完成后正文高度会再次变化；状态挂在行级还能在收起/展开循环中存活，
+    // 避免每次展开都重新走一遍异步解析。
+    val stableMarkdownState = if (!keepStreamingMarkdown) {
+        rememberMarkdownState(
+            content = message.content,
+            retainState = true,
+        )
+    } else {
+        null
     }
 
     val pulseAlpha = rememberActivePulse(
@@ -1394,7 +1662,7 @@ private fun ThinkingRow(
                 text = if (message.isStreaming) {
                     "생각 중…"
                 } else {
-                    "생각 완료${message.elapsedSeconds?.let { " · ${it}초 소요" }.orEmpty()}"
+                    "思考已完成${message.elapsedSeconds?.let { " · 用时 ${it} 秒" }.orEmpty()}"
                 },
                 style = MiuixTheme.textStyles.body2,
                 color = if (message.isStreaming) {
@@ -1434,8 +1702,9 @@ private fun ThinkingRow(
                         top = if (compact) 2.dp else 8.dp,
                         bottom = if (compact) 8.dp else 12.dp,
                     )
-                if (keepStreamingMarkdown) {
+                if (streamingState != null) {
                     StreamingMarkdown(
+                        state = streamingState,
                         content = message.content,
                         isStreaming = message.isStreaming,
                         onRevealCompleteChange = {},
@@ -1446,6 +1715,7 @@ private fun ThinkingRow(
                     StableMarkdown(
                         content = message.content,
                         tone = ChatMarkdownTone.Thinking,
+                        markdownState = checkNotNull(stableMarkdownState),
                         modifier = contentModifier,
                     )
                 }

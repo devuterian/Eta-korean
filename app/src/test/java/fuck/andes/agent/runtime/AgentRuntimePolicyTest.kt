@@ -31,10 +31,12 @@ class AgentRuntimePolicyTest {
 
         assertEquals(
             AgentRuntimePolicy.Permissions(
-                terminalTools = false,
+                terminalTools = true,
                 browserTools = true,
                 deviceDirectTools = true,
-                thinking = false,
+                deviceSensitiveReadTools = true,
+                deviceSensitiveActionTools = true,
+                thinking = true,
             ),
             AgentRuntimePolicy.permissions(preferences),
         )

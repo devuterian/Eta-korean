@@ -184,6 +184,9 @@ fun AgentChatBody(
         onThinkingChange = onThinkingChange,
         onSend = {
             sentFromKeyboard = true
+            // 发送即重新锚定底部：用户从历史上方直接发送时，同帧内 isStreaming 与
+            // 新消息一起到位，立即回到底部并恢复后续的流式平滑跟底。
+            keepBottomAnchored = true
             onSend()
         },
         onStop = onStop,
@@ -300,6 +303,14 @@ private fun AgentChatMessages(
     modifier: Modifier = Modifier,
 ) {
     val timelineEntries = remember(visibleMessages) { visibleMessages.toTimelineEntries() }
+    // 复制按钮只出现在每轮对话的最终结果上，中间步骤的过渡文本不提供复制入口。
+    // 流式进行中当前这一轮尚未收尾，此时的“最后一条正文”只是中间步骤，不标记。
+    val finalResultMessageIds = remember(visibleMessages, isStreaming) {
+        resolveFinalResultMessageIds(visibleMessages, isStreaming = isStreaming)
+    }
+    // 流式消息的渲染会话按 id 提升到列表层持有：item 滚出视口被 LazyColumn 销毁后，
+    // 滑回时复用同一解析会话与打字机进度，避免整段内容重新解析并重放显现动画。
+    val streamingMarkdownStates = remember { mutableMapOf<String, StreamingMarkdownState>() }
     val bottomItemIndex = timelineEntries.size
     val isUserDragging by scrollState.interactionSource.collectIsDraggedAsState()
     val isAtBottom by remember(scrollState) {
@@ -339,8 +350,14 @@ private fun AgentChatMessages(
         bottomItemIndex,
         keepBottomAnchored,
         isUserDragging,
+        isStreaming,
     ) {
-        if (keepBottomAnchored && !isUserDragging) {
+        if (shouldRequestInitialBottom(
+                isStreaming = isStreaming,
+                keepBottomAnchored = keepBottomAnchored,
+                isUserDragging = isUserDragging,
+            )
+        ) {
             scrollState.requestScrollToItem(bottomItemIndex)
         }
     }
@@ -365,15 +382,14 @@ private fun AgentChatMessages(
         }
             .distinctUntilChanged()
             .collect { layout ->
-                bottomFollowDecisions.trySend(
-                    resolveBottomFollowDecision(
-                        enabled = layout.enabled,
-                        bottomItemIndex = layout.bottomItemIndex,
-                        sentinelBottom = layout.sentinelBottom,
-                        viewportEnd = layout.viewportEnd,
-                        lastVisibleIndex = layout.lastVisibleIndex,
-                    )
+                val decision = resolveBottomFollowDecision(
+                    enabled = layout.enabled,
+                    bottomItemIndex = layout.bottomItemIndex,
+                    sentinelBottom = layout.sentinelBottom,
+                    viewportEnd = layout.viewportEnd,
+                    lastVisibleIndex = layout.lastVisibleIndex,
                 )
+                bottomFollowDecisions.trySend(decision)
             }
     }
 
@@ -397,6 +413,12 @@ private fun AgentChatMessages(
             while (true) {
                 val latest = bottomFollowDecisions.tryReceive().getOrNull() ?: break
                 accept(latest)
+            }
+
+            if (!shouldFollowBottom) {
+                remainingDistancePx = 0f
+                requestIndex = null
+                continue
             }
 
             requestIndex?.let { targetIndex ->
@@ -426,10 +448,14 @@ private fun AgentChatMessages(
                 elapsedSeconds = elapsedSeconds,
                 density = densityScale,
             )
+            var consumedStep = 0f
             try {
-                val consumed = scrollState.scrollBy(step)
-                remainingDistancePx = if (consumed > 0f) {
-                    (remainingDistancePx - consumed).coerceAtLeast(0f)
+                scrollState.scroll {
+                    scrollBy(step)
+                    consumedStep = step
+                }
+                remainingDistancePx = if (consumedStep > 0f) {
+                    (remainingDistancePx - consumedStep).coerceAtLeast(0f)
                 } else {
                     0f
                 }
@@ -468,12 +494,21 @@ private fun AgentChatMessages(
                         val message = entry.message
                         ChatMessageItem(
                             message = message,
+                            retainedStreamingState = (message as? AgentMessageUi)
+                                ?.takeIf { it.isStreaming || streamingMarkdownStates.containsKey(it.id) }
+                                ?.let { agentMessage ->
+                                    streamingMarkdownStates.getOrPut(agentMessage.id) {
+                                        StreamingMarkdownState()
+                                    }
+                                },
                             onSuggestionClick = onSuggestionClick,
                             onRunTraceClick = onRunTraceClick,
                             onOpenBrowser = onOpenBrowser,
                             showBrowserShortcut = message is ToolActivityMessageUi &&
                                 message.toolName == "browser_use" &&
                                 message.id == currentBrowserMessageId,
+                            showCopyAction = message !is AgentMessageUi ||
+                                message.id in finalResultMessageIds,
                             modifier = itemModifier,
                         )
                     }
@@ -519,7 +554,7 @@ private fun AgentChatMessages(
             ) {
                 Icon(
                     painter = painterResource(LucideR.drawable.lucide_ic_arrow_down),
-                    contentDescription = "맨 아래로 이동",
+                    contentDescription = "回到底部",
                     modifier = Modifier.size(17.dp),
                     tint = MiuixTheme.colorScheme.onSurface,
                 )
@@ -615,6 +650,33 @@ private fun List<AgentChatMessageUi>.toTimelineEntries(): List<AgentTimelineEntr
 
 private fun AgentChatMessageUi.isWorkProcessMessage(): Boolean =
     this is ThinkingMessageUi || this is ToolActivityMessageUi || this is ToolSummaryMessageUi
+
+/**
+ * 一轮对话（两条用户消息之间）里最后一条 Agent 正文视为最终结果，其余为中间步骤。
+ * 流式传输期间当前轮次尚未结束，最后一轮不标记，等传输结束后复制按钮才出现；
+ * 之前已结束轮次的最终结果不受影响。
+ */
+internal fun resolveFinalResultMessageIds(
+    messages: List<AgentChatMessageUi>,
+    isStreaming: Boolean = false,
+): Set<String> {
+    val ids = LinkedHashSet<String>()
+    var lastAgentMessageId: String? = null
+    messages.forEach { message ->
+        when (message) {
+            is UserMessageUi -> {
+                lastAgentMessageId?.let(ids::add)
+                lastAgentMessageId = null
+            }
+            is AgentMessageUi -> lastAgentMessageId = message.id
+            else -> Unit
+        }
+    }
+    if (!isStreaming) {
+        lastAgentMessageId?.let(ids::add)
+    }
+    return ids
+}
 
 @Composable
 private fun AgentChatBottomBar(
@@ -725,6 +787,12 @@ internal fun resolveKeepBottomAnchored(
 }
 
 internal fun resolveBottomFollowEnabled(
+    isStreaming: Boolean,
+    keepBottomAnchored: Boolean,
+    isUserDragging: Boolean,
+): Boolean = isStreaming && keepBottomAnchored && !isUserDragging
+
+internal fun shouldRequestInitialBottom(
     isStreaming: Boolean,
     keepBottomAnchored: Boolean,
     isUserDragging: Boolean,

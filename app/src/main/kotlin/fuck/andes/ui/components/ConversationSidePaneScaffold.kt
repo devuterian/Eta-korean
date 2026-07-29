@@ -1,6 +1,5 @@
 package fuck.andes.ui.components
 
-import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -31,6 +30,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -51,6 +51,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.navigationevent.NavigationEventInfo
+import androidx.navigationevent.compose.NavigationBackHandler
+import androidx.navigationevent.compose.rememberNavigationEventState
 import com.composables.icons.lucide.R as LucideR
 import fuck.andes.ui.model.ConversationPaneUiState
 import fuck.andes.ui.model.ConversationSummaryUi
@@ -100,6 +105,7 @@ private object DrawerMetrics {
 fun ConversationSidePaneScaffold(
     state: ConversationPaneUiState,
     visible: Boolean,
+    backHandlerEnabled: Boolean,
     onOpen: () -> Unit,
     onDismiss: () -> Unit,
     onSearchChange: (String) -> Unit,
@@ -114,6 +120,9 @@ fun ConversationSidePaneScaffold(
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
+    val sceneLifecycleState by LocalLifecycleOwner.current.lifecycle.currentStateFlow.collectAsState()
+    val navigationEventState = rememberNavigationEventState(NavigationEventInfo.None)
+
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
         val density = LocalDensity.current
         val paneWidth = minOf(maxWidth * DrawerMetrics.PaneWidthFraction, DrawerMetrics.PaneMaxWidth)
@@ -137,9 +146,15 @@ fun ConversationSidePaneScaffold(
             0f
         }
 
-        if (visible) {
-            BackHandler(onBack = onDismiss)
-        }
+        // NavDisplay 的退出 Scene 在转场期间仍会保留组合；仅允许已稳定显示的首页
+        // 处理侧栏返回，避免它抢先消费二级页面的第一次返回事件。
+        NavigationBackHandler(
+            state = navigationEventState,
+            isBackEnabled = visible &&
+                backHandlerEnabled &&
+                sceneLifecycleState == Lifecycle.State.RESUMED,
+            onBackCompleted = onDismiss,
+        )
 
         ConversationPanePanel(
             state = state,

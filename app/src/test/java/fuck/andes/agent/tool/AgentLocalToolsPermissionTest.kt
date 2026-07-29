@@ -79,8 +79,8 @@ class AgentLocalToolsPermissionTest {
         val tools = tools(
             beforeToolExecution = {
                 ToolExecutionDecision.Reject(
-                    code = "ACCESSIBILITY_ROOT_ENABLE_FAILED",
-                    message = "Root 无法启用 Eta 无障碍服务",
+                    code = "ACCESSIBILITY_PROTECTION_UNAVAILABLE",
+                    message = "无障碍保护后端不可用",
                 )
             },
         )
@@ -94,8 +94,8 @@ class AgentLocalToolsPermissionTest {
         )
         val json = JSONObject(result.content)
 
-        assertEquals("ACCESSIBILITY_ROOT_ENABLE_FAILED", json.getString("code"))
-        assertEquals("Root 无法启用 Eta 无障碍服务", json.getString("message"))
+        assertEquals("ACCESSIBILITY_PROTECTION_UNAVAILABLE", json.getString("code"))
+        assertEquals("无障碍保护后端不可用", json.getString("message"))
         tools.close()
     }
 

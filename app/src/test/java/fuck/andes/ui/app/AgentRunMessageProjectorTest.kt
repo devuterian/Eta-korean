@@ -166,4 +166,50 @@ class AgentRunMessageProjectorTest {
         assertEquals("observe_screen", tools[1].toolName)
         assertEquals(ToolActivityStatusUi.Running, tools[1].status)
     }
+
+    @Test
+    fun toolActivityFollowsAssistantTextStreamedInSameRound() {
+        val projector = AgentRunMessageProjector(nowElapsedRealtime = { 1_000L })
+        val runId = "run-order"
+        var messages: List<AgentChatMessageUi> = listOf(
+            UserMessageUi(id = "user-$runId", content = "搜一下")
+        )
+
+        messages = projector.appendTextDelta(runId, round = 1, delta = "先查找应用", messages)
+        messages = projector.startTool(
+            runId,
+            AgentEvent.ToolStarted(
+                round = 1,
+                toolCallId = "call_1",
+                name = "search_apps",
+                argsPreview = "{}",
+            ),
+            messages
+        )
+
+        assertEquals(
+            listOf(
+                "user-$runId",
+                "assistant-$runId-1",
+                "$runId-tool-1-call_1",
+            ),
+            messages.map { it.id }
+        )
+    }
+
+    @Test
+    fun finalizingTextTrimsTrailingWhitespace() {
+        val projector = AgentRunMessageProjector(nowElapsedRealtime = { 1_000L })
+        val runId = "run-trim"
+        var messages: List<AgentChatMessageUi> = listOf(
+            UserMessageUi(id = "user-$runId", content = "你好")
+        )
+
+        messages = projector.appendTextDelta(runId, round = 1, delta = "回答。\n\n", messages)
+        messages = projector.finalizeTextRound(runId, round = 1, messages)
+
+        val assistant = messages.last() as AgentMessageUi
+        assertEquals("回答。", assistant.content)
+        assertFalse(assistant.isStreaming)
+    }
 }

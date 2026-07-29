@@ -57,12 +57,13 @@ class RemoteModelFetcherTest {
         val models = OfficialModelCatalog.enrich(
             provider = provider,
             models = RemoteModelFetcher.parseOpenAiModels(
-                """{"data":[{"id":"qwen3.7-plus"},{"id":"kimi-k2.6"}]}"""
+                """{"data":[{"id":"qwen3.7-plus"},{"id":"kimi-k2.7-code"},{"id":"kimi-k2.6"}]}"""
             )
         )
 
         val byId = models.associateBy { it.modelId }
         assertTrue(byId.getValue("qwen3.7-plus").supportsVision)
+        assertTrue(byId.getValue("kimi-k2.7-code").supportsVision)
         assertTrue(byId.getValue("kimi-k2.6").supportsVision)
         assertTrue(byId.getValue("kimi-k2.6").supportsTools)
         assertEquals("Kimi K2.6", byId.getValue("kimi-k2.6").displayName)
@@ -105,6 +106,59 @@ class RemoteModelFetcherTest {
         ).associateBy { it.modelId }
         assertTrue(stepfunModels.getValue("step-3.7-flash").supportsVision)
         assertEquals(1, stepfunModels.size)
+    }
+
+    @Test
+    fun keepsExplicitRemoteCapabilitiesAheadOfOfficialCatalog() {
+        val provider = OpenAiCompatibleProviderSetting(
+            id = "p1",
+            name = "Bailian",
+            baseUrl = "https://dashscope.aliyuncs.com/compatible-mode/v1",
+            sourceType = ProviderSourceTypes.BAILIAN,
+        )
+
+        val models = OfficialModelCatalog.enrich(
+            provider = provider,
+            models = RemoteModelFetcher.parseOpenAiModels(
+                """
+                {
+                  "data":[
+                    {
+                      "id":"qwen3.7-plus",
+                      "input_modalities":["text"],
+                      "vision":false,
+                      "tool_call":false,
+                      "reasoning":false
+                    }
+                  ]
+                }
+                """.trimIndent()
+            )
+        )
+
+        val model = models.single()
+        assertEquals(listOf("text"), model.inputModalities)
+        assertFalse(model.supportsVision)
+        assertFalse(model.supportsTools)
+        assertFalse(model.supportsReasoning)
+    }
+
+    @Test
+    fun leavesMissingStandardModelMetadataAvailableForCatalogEnrichment() {
+        val parsed = RemoteModelFetcher.parseOpenAiModels(
+            """{"data":[{"id":"kimi-k2.7-code","owned_by":"moonshot"}]}"""
+        ).single()
+
+        assertTrue(parsed.inputModalities.isEmpty())
+        assertTrue(parsed.outputModalities.isEmpty())
+
+        val enriched = OfficialModelCatalog.enrich(
+            catalogId = ProviderSourceTypes.BAILIAN,
+            models = listOf(parsed),
+        ).single()
+        assertEquals(listOf("text", "image", "video"), enriched.inputModalities)
+        assertEquals(listOf("text"), enriched.outputModalities)
+        assertTrue(enriched.supportsVision)
     }
 
     @Test

@@ -190,6 +190,52 @@ class SmoothTextRevealPolicyTest {
         assertEquals(96, streamingMarkdownBatchSize(backlogChars = 384))
     }
 
+    @Test
+    fun streamingListMarkerWaitsForItsOwnContentToStart() {
+        val currentItem = RevealBlockKey(10)
+
+        assertEquals(
+            false,
+            streamingListMarkerVisible(
+                coordinatorActive = true,
+                firstRevealKey = currentItem,
+                startedRevealKeys = emptySet(),
+                containsImage = false,
+            ),
+        )
+        assertEquals(
+            true,
+            streamingListMarkerVisible(
+                coordinatorActive = true,
+                firstRevealKey = currentItem,
+                startedRevealKeys = setOf(currentItem),
+                containsImage = false,
+            ),
+        )
+    }
+
+    @Test
+    fun streamingListMarkerKeepsImageItemsVisibleAndSuppressesEmptyItems() {
+        assertEquals(
+            true,
+            streamingListMarkerVisible(
+                coordinatorActive = true,
+                firstRevealKey = null,
+                startedRevealKeys = emptySet(),
+                containsImage = true,
+            ),
+        )
+        assertEquals(
+            false,
+            streamingListMarkerVisible(
+                coordinatorActive = true,
+                firstRevealKey = null,
+                startedRevealKeys = emptySet(),
+                containsImage = false,
+            ),
+        )
+    }
+
     private companion object {
         const val FLOAT_TOLERANCE = 0.0001f
     }

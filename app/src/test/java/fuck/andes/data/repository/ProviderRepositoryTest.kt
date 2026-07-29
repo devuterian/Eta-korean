@@ -44,16 +44,31 @@ class ProviderRepositoryTest {
 
         assertTrue(providers.getValue(BuiltinProviders.ANTHROPIC_ID) is AnthropicProviderSetting)
         assertEquals(
-            listOf("gpt-5.5"),
+            listOf("gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna", "gpt-5.5"),
             providers.getValue(BuiltinProviders.OPENAI_ID).models.map { it.modelId },
         )
         assertEquals(
-            listOf(ModelSource.CATALOG),
+            List(4) { ModelSource.CATALOG },
             providers.getValue(BuiltinProviders.OPENAI_ID).models.map { it.source },
         )
         assertEquals(
             listOf("claude-fable-5", "claude-opus-4-8", "claude-sonnet-5"),
             providers.getValue(BuiltinProviders.ANTHROPIC_ID).models.map { it.modelId },
+        )
+        assertEquals(
+            listOf(
+                "kimi-k3",
+                "kimi-k2.7-code",
+                "kimi-k2.7-code-highspeed",
+                "kimi-k2.6",
+                "kimi-k2.5",
+            ),
+            providers.getValue(BuiltinProviders.KIMI_ID).models.map { it.modelId },
+        )
+        assertTrue(
+            providers.getValue(BuiltinProviders.BAILIAN_ID).models.none {
+                it.modelId == "kimi-k3"
+            }
         )
     }
 

@@ -1,8 +1,10 @@
 package fuck.andes.ui.screens.chat
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.key
 import androidx.compose.ui.Modifier
 import fuck.andes.ui.components.AgentChatBody
+import fuck.andes.ui.components.chatConversationCompositionKey
 import fuck.andes.ui.model.AgentChatAction
 import fuck.andes.ui.model.AgentChatUiState
 
@@ -13,27 +15,30 @@ import fuck.andes.ui.model.AgentChatUiState
 @Composable
 internal fun AgentChatScreen(
     state: AgentChatUiState,
+    conversationKey: String?,
     onAction: (AgentChatAction) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    AgentChatBody(
-        messages = state.messages,
-        input = state.input,
-        isStreaming = state.isStreaming,
-        thinkingEnabled = state.thinkingEnabled,
-        pendingImages = state.pendingImages,
-        onInputChange = { onAction(AgentChatAction.InputChanged(it)) },
-        onThinkingChange = { onAction(AgentChatAction.ThinkingToggled(it)) },
-        onSend = { onAction(AgentChatAction.SendMessage) },
-        onStop = { onAction(AgentChatAction.StopRun) },
-        onAttachImage = { uri -> onAction(AgentChatAction.ImageAttached(uri)) },
-        onRemoveImage = { id -> onAction(AgentChatAction.RemoveImage(id)) },
-        onSuggestionClick = { prompt ->
-            onAction(AgentChatAction.InputChanged(prompt))
-            onAction(AgentChatAction.SendMessage)
-        },
-        onRunTraceClick = { /* 对话页暂不做 Run trace 展开 */ },
-        onOpenBrowser = { onAction(AgentChatAction.OpenBrowser) },
-        modifier = modifier,
-    )
+    key(chatConversationCompositionKey(conversationKey)) {
+        AgentChatBody(
+            messages = state.messages,
+            input = state.input,
+            isStreaming = state.isStreaming,
+            thinkingEnabled = state.thinkingEnabled,
+            pendingImages = state.pendingImages,
+            onInputChange = { onAction(AgentChatAction.InputChanged(it)) },
+            onThinkingChange = { onAction(AgentChatAction.ThinkingToggled(it)) },
+            onSend = { onAction(AgentChatAction.SendMessage) },
+            onStop = { onAction(AgentChatAction.StopRun) },
+            onAttachImage = { uri -> onAction(AgentChatAction.ImageAttached(uri)) },
+            onRemoveImage = { id -> onAction(AgentChatAction.RemoveImage(id)) },
+            onSuggestionClick = { prompt ->
+                onAction(AgentChatAction.InputChanged(prompt))
+                onAction(AgentChatAction.SendMessage)
+            },
+            onRunTraceClick = { /* 对话页暂不做 Run trace 展开 */ },
+            onOpenBrowser = { onAction(AgentChatAction.OpenBrowser) },
+            modifier = modifier,
+        )
+    }
 }

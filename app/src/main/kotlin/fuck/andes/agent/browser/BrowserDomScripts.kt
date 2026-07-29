@@ -3,10 +3,9 @@ package fuck.andes.agent.browser
 import org.json.JSONObject
 
 /**
- * Agent 浏览器注入页面的只读/定向交互脚本。
+ * Agent 浏览器注入页面的读取与交互脚本。
  *
- * 模型不能执行任意 JavaScript。所有 DOM 遍历都有节点、时间、字段和输出上限；读取只接受
- * 计算后可见的内容，交互也不会回退到隐藏或已禁用的控件。
+ * DOM 遍历保留节点、时间、字段和输出上限，避免网页规模导致 Binder 或模型上下文溢出。
  */
 internal object BrowserDomScripts {
     fun wrap(body: String): String =
@@ -121,16 +120,11 @@ internal object BrowserDomScripts {
             }
             return boundedString(parts.join(' > '), MAX_SELECTOR_CHARS) || null;
           }
-          function safeHttpsUrl(value) {
+          function absoluteUrl(value) {
             if (!value) return null;
             try {
               var parsed = new URL(boundedString(value, 2048), document.baseURI);
-              if (parsed.protocol !== 'https:') return null;
-              parsed.username = '';
-              parsed.password = '';
-              parsed.search = '';
-              parsed.hash = '';
-              return boundedString(parsed.origin + '/', MAX_URL_CHARS);
+              return boundedString(parsed.href, MAX_URL_CHARS);
             } catch (_) { return null; }
           }
           function collectVisibleText(root, maxChars, nodeLimit, sharedDeadline) {
@@ -182,7 +176,7 @@ internal object BrowserDomScripts {
               text: visibleText(element, 160, 400, sharedDeadline),
               aria_label: cleanInline(element.getAttribute('aria-label'), 100),
               placeholder: cleanInline(element.getAttribute('placeholder'), 100),
-              href: safeHttpsUrl(element.getAttribute('href')),
+              href: absoluteUrl(element.getAttribute('href')),
               type: cleanInline(element.getAttribute('type'), 32) || null,
               bounds: {
                 x: Math.round(rect.left), y: Math.round(rect.top),
@@ -194,29 +188,12 @@ internal object BrowserDomScripts {
             var target = null;
             var deadline = Date.now() + 300;
             if (selector) {
-              var matches = document.querySelectorAll(selector);
-              for (var index = 0; index < matches.length && index < 2000 && Date.now() <= deadline; index++) {
-                if (visible(matches[index])) {
-                  target = matches[index];
-                  break;
-                }
-              }
+              target = document.querySelector(selector);
             } else if (Number.isFinite(x) && Number.isFinite(y)) {
               target = document.elementFromPoint(x, y);
             }
-            if (!target || !visible(target)) throw new Error('TARGET_NOT_VISIBLE');
-            if (!enabled(target)) throw new Error('TARGET_DISABLED');
+            if (!target) throw new Error('TARGET_NOT_FOUND');
             return target;
-          }
-          function requireHitTarget(target) {
-            var rect = target.getBoundingClientRect();
-            var left = Math.max(0, rect.left);
-            var right = Math.min(window.innerWidth, rect.right);
-            var top = Math.max(0, rect.top);
-            var bottom = Math.min(window.innerHeight, rect.bottom);
-            if (right <= left || bottom <= top) throw new Error('TARGET_NOT_VISIBLE');
-            var hit = document.elementFromPoint((left + right) / 2, (top + bottom) / 2);
-            if (!hit || (hit !== target && !target.contains(hit))) throw new Error('TARGET_OCCLUDED');
           }
           function markdownEscape(value) {
             return boundedString(value, 4000).replace(/([\\`*_[\]<>])/g, '\\${'$'}1');
@@ -315,7 +292,7 @@ internal object BrowserDomScripts {
             if (tag === 'table') { renderTable(node, state); return; }
             if (tag === 'a') {
               var label = visibleText(node, 600, 300, state.deadline) || cleanInline(node.getAttribute('aria-label'), 160);
-              var href = safeHttpsUrl(node.getAttribute('href'));
+              var href = absoluteUrl(node.getAttribute('href'));
               if (label) emit(state, href ? '[' + markdownEscape(label) + '](' + href + ')' : markdownEscape(label));
               return;
             }
@@ -411,7 +388,7 @@ internal object BrowserDomScripts {
           language: cleanInline(document.documentElement.lang, 32) || null,
           canonical_url: (function() {
             var item = document.querySelector('link[rel="canonical"]');
-            return item ? safeHttpsUrl(item.getAttribute('href')) : null;
+            return item ? absoluteUrl(item.getAttribute('href')) : null;
           })()
         };
         """.trimIndent()
@@ -461,7 +438,7 @@ internal object BrowserDomScripts {
         var deadline = Date.now() + 500;
         for (var index = 0; index < matches.length && index < 3000 && elements.length < 16 && Date.now() <= deadline; index++) {
           scanned++;
-          if (enabled(matches[index])) elements.push(describe(matches[index], deadline));
+          elements.push(describe(matches[index], deadline));
         }
         return {
           selector_used: selector,
@@ -477,7 +454,6 @@ internal object BrowserDomScripts {
         targeted(selector, x, y) +
             """
             target.scrollIntoView({ block: 'center', inline: 'center' });
-            requireHitTarget(target);
             var rect = target.getBoundingClientRect();
             var cx = rect.left + rect.width / 2;
             var cy = rect.top + rect.height / 2;
@@ -493,7 +469,6 @@ internal object BrowserDomScripts {
             """
             if (!editable(target)) throw new Error('TARGET_NOT_EDITABLE');
             target.scrollIntoView({ block: 'center', inline: 'center' });
-            requireHitTarget(target);
             target.focus();
             var value = ${JSONObject.quote(text)};
             if (target.isContentEditable) {
@@ -543,7 +518,7 @@ internal object BrowserDomScripts {
           scroll_x: window.scrollX || 0,
           scroll_y: window.scrollY || 0,
           language: cleanInline(document.documentElement.lang, 32) || null,
-          canonical_url: canonical ? safeHttpsUrl(canonical.getAttribute('href')) : null
+          canonical_url: canonical ? absoluteUrl(canonical.getAttribute('href')) : null
         };
         """.trimIndent()
 
@@ -555,14 +530,6 @@ internal object BrowserDomScripts {
           if (visible(matches[index])) { target = matches[index]; break; }
         }
         return { found: !!target, visible: !!target, enabled: target ? enabled(target) : false };
-        """.trimIndent()
-
-    fun riskSample(): String =
-        """
-        return {
-          title: cleanInline(document.title || '', 160),
-          text: visibleText(document.body || document.documentElement, 8000, 1200)
-        };
         """.trimIndent()
 
     private fun targeted(selector: String?, x: Int?, y: Int?): String {

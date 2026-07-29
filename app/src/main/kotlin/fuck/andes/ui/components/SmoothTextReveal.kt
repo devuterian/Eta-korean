@@ -45,8 +45,11 @@ internal class SmoothTextRevealCoordinator {
     private val records = sortedMapOf<RevealBlockKey, RevealRecord>()
     private val wakeups = Channel<Unit>(capacity = Channel.CONFLATED)
     private val drainedState = MutableStateFlow(true)
+    private val startedState = MutableStateFlow<Set<RevealBlockKey>>(emptySet())
 
     val drained: StateFlow<Boolean> = drainedState
+    /** 已经开始显现的块，用于让列表 marker 与正文保持同一生命周期。 */
+    val started: StateFlow<Set<RevealBlockKey>> = startedState
 
     fun retainBlocks(activeBlocks: Set<RevealBlockKey>) {
         val iterator = records.iterator()
@@ -57,6 +60,10 @@ internal class SmoothTextRevealCoordinator {
                 removedPendingBlock = removedPendingBlock || record.progress < record.targetCount
                 iterator.remove()
             }
+        }
+        val retainedStarted = startedState.value.intersect(activeBlocks)
+        if (retainedStarted != startedState.value) {
+            startedState.value = retainedStarted
         }
         if (removedPendingBlock || records.none { (_, record) -> record.progress < record.targetCount }) {
             updateDrainedState()
@@ -127,6 +134,9 @@ internal class SmoothTextRevealCoordinator {
                     elapsedSeconds = elapsedSeconds,
                     totalBacklog = totalBacklog,
                 )
+                if (record.progress > 0f && record.key !in startedState.value) {
+                    startedState.value = startedState.value + record.key
+                }
                 record.node?.onRevealDataChanged()
             }
         }
