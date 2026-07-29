@@ -886,7 +886,7 @@ private fun ModelSelectionBar(
                 )
             }
             Text(
-                text = "선택됨: $selectedCount개",
+                text = "선택됨: ${selectedCount}개",
                 style = MiuixTheme.textStyles.body2,
                 modifier = Modifier.weight(1f),
             )
