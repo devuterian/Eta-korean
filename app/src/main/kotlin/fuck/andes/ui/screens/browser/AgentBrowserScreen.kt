@@ -667,7 +667,7 @@ private fun BrowserFailedState(
         }
         Spacer(modifier = Modifier.height(14.dp))
         TextButton(
-            text = "重新加载",
+            text = "다시 불러오기",
             onClick = onRetry,
             colors = ButtonDefaults.textButtonColorsPrimary(),
         )

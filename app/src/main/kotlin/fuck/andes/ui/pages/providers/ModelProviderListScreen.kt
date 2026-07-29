@@ -149,7 +149,7 @@ internal fun ModelProviderListScreen(
         OverlayDialog(
             show = true,
             title = "제공자 삭제",
-            summary = "删除「${providerToDelete?.name}」后将不可恢复。",
+            summary = "‘${providerToDelete?.name}’을 삭제하면 복구할 수 없습니다.",
             onDismissRequest = { providerToDelete = null },
         ) {
             MiuixDialogActions(

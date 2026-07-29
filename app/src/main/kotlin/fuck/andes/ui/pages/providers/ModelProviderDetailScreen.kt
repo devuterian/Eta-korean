@@ -416,7 +416,7 @@ private fun ProviderConfigTab(
                             } catch (cancelled: CancellationException) {
                                 throw cancelled
                             } catch (throwable: Throwable) {
-                                status = "失败：${throwable.message ?: "저장 실패"}"
+                                status = "실패: ${throwable.message ?: "저장 실패"}"
                             } finally {
                                 isWorking = false
                             }
@@ -477,7 +477,7 @@ private fun ProviderConfigTab(
         OverlayDialog(
             show = true,
             title = "제공자 삭제",
-            summary = "删除「${provider.name}」后将不可恢复。",
+            summary = "‘${provider.name}’을 삭제하면 복구할 수 없습니다.",
             onDismissRequest = { if (!isWorking) showDeleteDialog = false },
         ) {
             MiuixDialogActions(
@@ -497,7 +497,7 @@ private fun ProviderConfigTab(
                         } catch (cancelled: CancellationException) {
                             throw cancelled
                         } catch (throwable: Throwable) {
-                            status = "失败：${throwable.message ?: "删除失败"}"
+                            status = "실패: ${throwable.message ?: "삭제 실패"}"
                             showDeleteDialog = false
                         } finally {
                             isWorking = false
@@ -512,7 +512,7 @@ private fun ProviderConfigTab(
         OverlayDialog(
             show = true,
             title = "내장 설정 초기화",
-            summary = "将恢复「${provider.name}」的默认配置和官方模型列表，API Key 会保留。",
+            summary = "‘${provider.name}’의 기본 설정과 공식 모델 목록을 복원합니다. API Key는 유지됩니다.",
             onDismissRequest = { if (!isWorking) showResetDialog = false },
         ) {
             MiuixDialogActions(
@@ -531,7 +531,7 @@ private fun ProviderConfigTab(
                         } catch (cancelled: CancellationException) {
                             throw cancelled
                         } catch (throwable: Throwable) {
-                            status = "失败：${throwable.message ?: "重置失败"}"
+                            status = "실패: ${throwable.message ?: "초기화 실패"}"
                             showResetDialog = false
                         } finally {
                             isWorking = false
@@ -612,7 +612,7 @@ private fun ProviderModelsTab(
                                 } catch (cancelled: CancellationException) {
                                     throw cancelled
                                 } catch (throwable: Throwable) {
-                                    message = "失败：${throwable.message ?: "同步失败"}"
+                                    message = "실패: ${throwable.message ?: "동기화 실패"}"
                                 } finally {
                                     isFetching = false
                                 }
@@ -784,7 +784,7 @@ private fun ProviderModelsTab(
         OverlayDialog(
             show = true,
             title = "모델 삭제",
-            summary = "删除「${model.displayName}」后将不可恢复。",
+            summary = "‘${model.displayName}’을 삭제하면 복구할 수 없습니다.",
             onDismissRequest = { if (!isMutatingModel) modelPendingDelete = null },
         ) {
             MiuixDialogActions(
@@ -804,7 +804,7 @@ private fun ProviderModelsTab(
                         } catch (cancelled: CancellationException) {
                             throw cancelled
                         } catch (throwable: Throwable) {
-                            message = "失败：${throwable.message ?: "删除失败"}"
+                            message = "실패: ${throwable.message ?: "삭제 실패"}"
                             modelPendingDelete = null
                         } finally {
                             isMutatingModel = false
@@ -819,7 +819,7 @@ private fun ProviderModelsTab(
         OverlayDialog(
             show = true,
             title = "모델 삭제",
-            summary = "删除选中的 ${selectedModelIds.size} 个模型后将不可恢复。",
+            summary = "선택한 ${selectedModelIds.size}개 모델을 삭제하면 복구할 수 없습니다.",
             onDismissRequest = { if (!isMutatingModel) showBatchDeleteDialog = false },
         ) {
             MiuixDialogActions(
@@ -842,7 +842,7 @@ private fun ProviderModelsTab(
                         } catch (cancelled: CancellationException) {
                             throw cancelled
                         } catch (throwable: Throwable) {
-                            message = "失败：${throwable.message ?: "删除失败"}"
+                            message = "실패: ${throwable.message ?: "삭제 실패"}"
                             showBatchDeleteDialog = false
                         } finally {
                             isMutatingModel = false
@@ -886,7 +886,7 @@ private fun ModelSelectionBar(
                 )
             }
             Text(
-                text = "已选 $selectedCount 个",
+                text = "선택됨: $selectedCount개",
                 style = MiuixTheme.textStyles.body2,
                 modifier = Modifier.weight(1f),
             )

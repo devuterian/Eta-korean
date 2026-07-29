@@ -1662,7 +1662,7 @@ private fun ThinkingRow(
                 text = if (message.isStreaming) {
                     "생각 중…"
                 } else {
-                    "思考已完成${message.elapsedSeconds?.let { " · 用时 ${it} 秒" }.orEmpty()}"
+                    "생각 완료${message.elapsedSeconds?.let { " · 소요 시간 ${it}초" }.orEmpty()}"
                 },
                 style = MiuixTheme.textStyles.body2,
                 color = if (message.isStreaming) {

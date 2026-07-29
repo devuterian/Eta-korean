@@ -161,7 +161,7 @@ internal object OpenAiChatCompletionsProvider : AgentProviderClient {
                     finishReason = reason
                 }
                 if (reason == "error") {
-                    error("模型接口 SSE 以 error 结束")
+                    error("모델 API의 SSE가 오류로 종료되었습니다")
                 }
                 val delta = choice.optJSONObject("delta") ?: continue
                 if (delta.has("reasoning_content") && !delta.isNull("reasoning_content")) {
@@ -335,9 +335,9 @@ internal object OpenAiChatCompletionsProvider : AgentProviderClient {
             errorType?.let { "type=$it" },
         ).joinToString(", ")
         val message = streamError.optString("message")
-            .ifBlank { "未提供错误信息" }
+            .ifBlank { "오류 정보가 제공되지 않았습니다" }
             .compactError()
-        error("模型接口 SSE 返回错误${context.takeIf { it.isNotBlank() }?.let { " ($it)" }.orEmpty()}：$message")
+        error("모델 API의 SSE가 오류를 반환했습니다${context.takeIf { it.isNotBlank() }?.let { " ($it)" }.orEmpty()}：$message")
     }
 
     private fun parseUsage(chunk: JSONObject): AgentTokenUsage? {

@@ -203,12 +203,12 @@ fun AgentSkillsScreen(
     deleteTarget?.let { skill ->
         WindowDialog(
             show = true,
-            title = "删除用户技能",
+            title = "사용자 스킬 삭제",
             summary = "「${skill.name}」을 삭제하면 복구하려면 다시 설치해야 합니다.",
             onDismissRequest = { deleteTarget = null },
         ) {
             MiuixDialogActions(
-                confirmText = "删除",
+                confirmText = "삭제",
                 destructive = true,
                 confirmEnabled = !operationPending,
                 onCancel = { deleteTarget = null },

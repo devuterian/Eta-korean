@@ -242,7 +242,7 @@ fun AgentChatInputBar(
                                         LucideR.drawable.lucide_ic_arrow_up
                                     }
                                 ),
-                                contentDescription = if (streaming) "停止" else "发送",
+                                contentDescription = if (streaming) "중지" else "보내기",
                                 modifier = Modifier.size(if (streaming) 12.dp else 17.dp),
                                 tint = when {
                                     streaming -> MiuixTheme.colorScheme.surface

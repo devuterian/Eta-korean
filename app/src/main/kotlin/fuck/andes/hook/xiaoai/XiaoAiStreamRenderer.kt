@@ -30,7 +30,7 @@ internal class XiaoAiStreamRenderer(
         when (event) {
             is AgentEvent.RunStarted,
             is AgentEvent.ProviderRequestStarted,
-            is AgentEvent.ProviderResponseStarted -> render("Eta 正在思考…")
+            is AgentEvent.ProviderResponseStarted -> render("Eta가 생각하고 있어요…")
 
             is AgentEvent.AssistantBlockStart -> {
                 if (event.kind == AgentEvent.AssistantBlockKind.TEXT) {
@@ -49,7 +49,7 @@ internal class XiaoAiStreamRenderer(
 
             is AgentEvent.ToolStarted -> {
                 if (synchronized(streamedText) { streamedText.isEmpty() }) {
-                    render("Eta 正在执行任务…")
+                    render("Eta가 작업을 수행하고 있어요…")
                 }
             }
 
@@ -59,7 +59,7 @@ internal class XiaoAiStreamRenderer(
 
     fun complete(content: String) {
         if (cancelled.get()) return
-        val finalText = content.trim().ifBlank { "Eta 已完成本轮任务" }
+        val finalText = content.trim().ifBlank { "Eta가 이번 작업을 완료했어요" }
         render(finalText, immediate = true)
         mainHandler.post {
             if (!cancelled.get()) speak(finalText)
@@ -68,7 +68,7 @@ internal class XiaoAiStreamRenderer(
 
     fun fail() {
         if (cancelled.get()) return
-        render("Eta 处理失败，请稍后重试", immediate = true)
+        render("Eta가 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.", immediate = true)
     }
 
     fun cancel(loader: ClassLoader = classLoader) {
@@ -125,7 +125,7 @@ internal class XiaoAiStreamRenderer(
             val floatManager = floatManagerProvider()
             if (floatManager == null) {
                 logger.warnThrottled("xiaoai_card_sink_unavailable") {
-                    "超级小爱结果卡片管理器暂不可用"
+                    "슈퍼 샤오아이 결과 카드 관리자를 현재 사용할 수 없습니다"
                 }
                 return null
             }
@@ -134,7 +134,7 @@ internal class XiaoAiStreamRenderer(
             card.get()
         } catch (exception: Exception) {
             logger.warnThrottled("xiaoai_card_create_failed") {
-                "超级小爱结果卡创建失败: type=${exception.safeLogType()}"
+                "슈퍼 샤오아이 결과 카드 생성 실패: type=${exception.safeLogType()}"
             }
             null
         }
@@ -147,7 +147,7 @@ internal class XiaoAiStreamRenderer(
                 ?.invoke(player, text)
         } catch (exception: Exception) {
             logger.warnThrottled("xiaoai_tts_failed") {
-                "超级小爱 Eta 结果朗读失败: type=${exception.safeLogType()}"
+                "슈퍼 샤오아이 Eta 결과 읽기 실패: type=${exception.safeLogType()}"
             }
         }
     }

@@ -260,15 +260,15 @@ internal fun SettingsScreen(
                 }
             }
 
-            // ── 系统助手接管 ──────────────────────────────────────────────
+            // ── 시스템 어시스턴트 연동 ──────────────────────────────────────────────
             item(key = "section_assistant_takeover") {
-                SmallTitle("系统助手接管")
+                SmallTitle("시스템 어시스턴트 연동")
                 Card(modifier = Modifier.padding(horizontal = 12.dp).padding(bottom = 12.dp)) {
                     SwitchPref(
                         context = context,
                         prefs = prefs,
-                        title = "启用系统助手自定义模型",
-                        summary = "小布与超级小爱共用此开关",
+                        title = "시스템 어시스턴트에서 사용자 지정 모델 사용",
+                        summary = "Breeno와 슈퍼 샤오아이가 이 설정을 함께 사용합니다",
                         key = Prefs.Keys.AGENT_CUSTOM_MODEL,
                         icon = LucideR.drawable.lucide_ic_cpu,
                         iconTint = ColorOSOrangeRed,
@@ -278,7 +278,7 @@ internal fun SettingsScreen(
                         context = context,
                         prefs = prefs,
                         title = "/agent 접두사에서만 연동",
-                        summary = "同时适用于小布与超级小爱",
+                        summary = "Breeno와 슈퍼 샤오아이에 모두 적용됩니다",
                         key = Prefs.Keys.AGENT_REQUIRE_PREFIX,
                         icon = LucideR.drawable.lucide_ic_message_square,
                         iconTint = ColorOSAmberYellow,
@@ -445,8 +445,8 @@ internal fun SettingsScreen(
                     )
                     PrefDivider()
                     SwitchPreference(
-                        title = "强制保持无障碍",
-                        summary = "由 system_server 保护 Eta 服务并在断连时有限重绑；关闭后不再干预系统设置",
+                        title = "접근성 강제 유지",
+                        summary = "system_server가 Eta 서비스를 보호하고 연결이 끊기면 제한적으로 다시 연결합니다. 끄면 시스템 설정에 개입하지 않습니다.",
                         checked = accessibilityProtectionEnabled,
                         onCheckedChange = { enabled ->
                             if (accessibilityProtectionPending) {
@@ -463,9 +463,9 @@ internal fun SettingsScreen(
                                 val failureMessage = when (result.status) {
                                     AccessibilityProtectionClient.ControlStatus.APPLIED -> null
                                     AccessibilityProtectionClient.ControlStatus.UNAVAILABLE ->
-                                        "无障碍保护后端不可用，请确认 system 作用域已启用并重启"
+                                        "접근성 보호 백엔드를 사용할 수 없습니다. system 범위를 활성화하고 재부팅했는지 확인해 주세요."
                                     AccessibilityProtectionClient.ControlStatus.REJECTED ->
-                                        "无障碍保护请求被系统拒绝"
+                                        "시스템이 접근성 보호 요청을 거부했습니다"
                                 }
                                 if (failureMessage != null) {
                                     Toast.makeText(
@@ -594,11 +594,11 @@ private fun SystemizerConfirmDialog(
     OverlayDialog(
         show = show,
         title = "Google 앱을 시스템 앱으로 전환",
-        summary = "系统应用享有语音唤醒权限、更少的自启限制，体验接近原生。将通过 Magisk / KernelSU 模块安装，重启后生效。",
+        summary = "시스템 앱은 음성 호출 권한과 완화된 자동 실행 제한을 적용받습니다. Magisk 또는 KernelSU 모듈로 설치되며 재부팅 후 적용됩니다.",
         onDismissRequest = onDismissRequest,
     ) {
         MiuixDialogActions(
-            confirmText = if (installing) "处理中..." else "확인",
+            confirmText = if (installing) "처리 중..." else "확인",
             cancelEnabled = !installing,
             confirmEnabled = !installing,
             onCancel = onDismissRequest,

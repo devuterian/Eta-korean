@@ -569,7 +569,7 @@ internal fun AgentResultCard(
 
     val isFailed = state.phase == AgentOverlayPhase.FAILED
     val dotColor = phaseAccent(state.phase)
-    val statusLabel = if (isFailed) "실행 실패" else "已完成"
+    val statusLabel = if (isFailed) "실행 실패" else "완료"
     val content = state.detailText.ifBlank { state.statusText }
     val textColor = MiuixTheme.colorScheme.onSurface
 
