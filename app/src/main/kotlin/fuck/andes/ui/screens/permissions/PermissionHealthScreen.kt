@@ -34,12 +34,12 @@ fun PermissionHealthScreen(
     modifier: Modifier = Modifier,
 ) {
     MiuixScaffoldPage(
-        title = "权限健康",
+        title = "권한 상태",
         onBack = { onAction(PermissionHealthAction.NavigateBack) },
         modifier = modifier,
     ) {
         item(key = "title") {
-            SmallTitle("权限与状态")
+            SmallTitle("권한 및 상태")
         }
         item(key = "card") {
             Card(modifier = Modifier.padding(horizontal = 12.dp)) {

@@ -1,22 +1,23 @@
-name: Export source snapshots
+name: Export source snapshots for update
 
 on:
-  pull_request:
+  pull_request_target:
     branches:
       - main
-  workflow_dispatch:
+    types: [opened, synchronize, reopened]
 
 permissions:
   contents: read
 
 jobs:
   export:
+    if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
       - name: Checkout update branch
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          ref: ${{ github.event.pull_request.head.sha }}
           path: head
 
       - name: Checkout main

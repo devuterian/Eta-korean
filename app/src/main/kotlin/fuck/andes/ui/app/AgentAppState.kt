@@ -221,7 +221,7 @@ internal class AgentAppState(
                     withContext(Dispatchers.Main) {
                         memoryState = memoryState.copy(
                             isLoading = false,
-                            notice = "读取记忆失败，请稍后重试",
+                            notice = "메모리를 읽지 못했습니다. 나중에 다시 시도해 주세요.",
                         )
                     }
                 },
@@ -251,7 +251,7 @@ internal class AgentAppState(
                             "Agent memory setting update failed: type=${throwable.safeLogType()}"
                         }
                         withContext(Dispatchers.Main) {
-                            memoryState = memoryState.copy(notice = "记忆开关保存失败")
+                            memoryState = memoryState.copy(notice = "메모리 스위치를 저장하지 못했습니다.")
                         }
                     },
                 )
@@ -276,7 +276,7 @@ internal class AgentAppState(
                                     memoryState.draft
                                 },
                                 draftBytes = memoryState.draft.toByteArray(Charsets.UTF_8).size,
-                                notice = "记忆已保存",
+                                notice = "메모리가 절약되었습니다",
                             )
                         }
                     },
@@ -287,7 +287,7 @@ internal class AgentAppState(
                         withContext(Dispatchers.Main) {
                             memoryState = memoryState.copy(
                                 isSaving = false,
-                                notice = throwable.message ?: "记忆保存失败",
+                                notice = throwable.message ?: "메모리 저장 실패",
                             )
                         }
                     },
@@ -308,7 +308,7 @@ internal class AgentAppState(
                                 draft = "",
                                 savedContent = "",
                                 draftBytes = 0,
-                                notice = "记忆已清空",
+                                notice = "메모리가 지워졌습니다.",
                             )
                         }
                     },
@@ -319,7 +319,7 @@ internal class AgentAppState(
                         withContext(Dispatchers.Main) {
                             memoryState = memoryState.copy(
                                 isSaving = false,
-                                notice = throwable.message ?: "记忆清空失败",
+                                notice = throwable.message ?: "메모리 삭제 실패",
                             )
                         }
                     },
@@ -417,8 +417,8 @@ internal class AgentAppState(
             }
         if (alreadyImported) return runId
 
-        if (conversationTitles[conversationId].isNullOrBlank() || conversationTitles[conversationId] == "新对话") {
-            conversationTitles = conversationTitles + (conversationId to payload.title.ifBlank { "外部记录" })
+        if (conversationTitles[conversationId].isNullOrBlank() || conversationTitles[conversationId] == "새 대화") {
+            conversationTitles = conversationTitles + (conversationId to payload.title.ifBlank { "외부 기록" })
         }
         runConversationIds[runId] = conversationId
         updateConversation(
@@ -554,8 +554,8 @@ internal class AgentAppState(
         )
 
         val title = conversationTitles[conversationId]
-            ?.takeUnless { it == "新对话" }
-            ?: prompt.lineSequence().firstOrNull().orEmpty().trim().take(MAX_TITLE_CHARS).ifBlank { "新对话" }
+            ?.takeUnless { it == "새 대화" }
+            ?: prompt.lineSequence().firstOrNull().orEmpty().trim().take(MAX_TITLE_CHARS).ifBlank { "새 대화" }
 
         conversationTitles = conversationTitles + (conversationId to title)
         conversationPaneState = conversationPaneState.copy(selectedConversationId = conversationId)
@@ -602,7 +602,7 @@ internal class AgentAppState(
                             runId = runId,
                             ok = false,
                             content = "",
-                            error = "请先配置模型提供商和模型",
+                            error = "모델 제공자와 모델을 먼저 설정하세요.",
                         )
                     )
                 }
@@ -649,7 +649,7 @@ internal class AgentAppState(
                     withContext(Dispatchers.Main) {
                         Toast.makeText(
                             appContext,
-                            "无法读取这张图片，请重试或改用其他图片",
+                            "이미지를 읽을 수 없습니다. 다시 시도하거나 다른 이미지를 사용하세요.",
                             Toast.LENGTH_SHORT,
                         ).show()
                     }
@@ -696,9 +696,9 @@ internal class AgentAppState(
         updateRunTrace(runId) { messages ->
             val finalizedThinking = runMessageProjector.finalizeThinking(runId, messages)
             val finalizedText = runMessageProjector.finalizeText(runId, finalizedThinking)
-            runMessageProjector.failRunningTools("已停止", finalizedText)
+            runMessageProjector.failRunningTools("중지됨", finalizedText)
         }
-        replaceLatestAssistantMessage(runId, content = "已停止", isStreaming = false, renderMarkdown = false)
+        replaceLatestAssistantMessage(runId, content = "중지됨", isStreaming = false, renderMarkdown = false)
         setConversationStreaming(runId, false)
         runMessageProjector.clearRun(runId)
         runConversationIds.remove(runId)
@@ -720,8 +720,8 @@ internal class AgentAppState(
                     skillsState = skillsState.copy(
                         isLoading = false,
                         notice = skillsState.notice ?: newSkillNotice(
-                            title = "无法读取技能",
-                            message = "技能列表暂时不可用，请稍后重试。",
+                            title = "스킬을 읽을 수 없음",
+                            message = "스킬 목록을 불러올 수 없습니다. 잠시 후 다시 시도하세요.",
                             isError = true,
                         ),
                     )
@@ -765,8 +765,8 @@ internal class AgentAppState(
                         skillsState.notice
                     } else {
                         newSkillNotice(
-                            title = "无法更新技能",
-                            message = "技能开关未发生变化，请稍后重试。",
+                            title = "스킬을 업데이트할 수 없음",
+                            message = "스킬 상태가 변경되지 않았습니다. 잠시 후 다시 시도하세요.",
                             isError = true,
                         )
                     },
@@ -792,14 +792,14 @@ internal class AgentAppState(
                     busySkillId = null,
                     notice = if (succeeded) {
                         newSkillNotice(
-                            title = "技能已删除",
-                            message = "「$skillName」已从 Eta 删除。",
+                            title = "스킬이 삭제됨",
+                            message = "「$skillName」 스킬을 Eta에서 삭제했습니다.",
                             isError = false,
                         )
                     } else {
                         newSkillNotice(
-                            title = "无法删除技能",
-                            message = "删除未完成。Eta 会在刷新技能列表时尝试恢复，请确认状态后再重试。",
+                            title = "스킬을 삭제할 수 없음",
+                            message = "삭제가 완료되지 않았습니다. Eta가 스킬 목록을 새로고침할 때 복구를 시도합니다. 상태를 확인한 후 다시 시도하세요.",
                             isError = true,
                         )
                     },
@@ -816,8 +816,8 @@ internal class AgentAppState(
         if (uri == null) {
             skillsState = skillsState.copy(
                 notice = newSkillNotice(
-                    title = "无法读取技能包",
-                    message = "请选择由系统文件选择器提供的 ZIP 文件。",
+                    title = "스킬 패키지를 읽을 수 없음",
+                    message = "시스템 파일 선택기에서 ZIP 파일을 선택하세요.",
                     isError = true,
                 ),
             )
@@ -841,8 +841,8 @@ internal class AgentAppState(
             skillsState = skillsState.copy(
                 replacement = null,
                 notice = newSkillNotice(
-                    title = "无法继续安装",
-                    message = "技能包已不可用，请重新选择 ZIP 文件。",
+                    title = "설치를 계속할 수 없음",
+                    message = "스킬 패키지를 사용할 수 없습니다. ZIP 파일을 다시 선택하세요.",
                     isError = true,
                 ),
             )
@@ -856,8 +856,8 @@ internal class AgentAppState(
             skillsState = skillsState.copy(
                 replacement = null,
                 notice = newSkillNotice(
-                    title = "无法继续安装",
-                    message = "替换确认已失效，请重新选择 ZIP 文件。",
+                    title = "설치를 계속할 수 없음",
+                    message = "교체 확인이 만료되었습니다. ZIP 파일을 다시 선택하세요.",
                     isError = true,
                 ),
             )
@@ -894,7 +894,7 @@ internal class AgentAppState(
                 skillZipImportGateway.installLocalZip(
                     openStream = {
                         appContext.contentResolver.openInputStream(uri)
-                            ?: error("无法打开所选内容")
+                            ?: error("선택한 항목을 열 수 없음")
                     },
                     replaceUserSkill = replaceUserSkill,
                     expectedReplacementId = expectedReplacementId,
@@ -953,8 +953,8 @@ internal class AgentAppState(
                         skillZipFailureNotice(SkillZipImportOutcome.FailureCode.MULTIPLE_SKILLS)
                     } else {
                         newSkillNotice(
-                            title = "技能已安装",
-                            message = "「${installed.name.safeSkillDisplayName()}」已启用，将从下一轮对话开始可用。",
+                            title = "스킬이 설치됨",
+                            message = "「${installed.name.safeSkillDisplayName()}」 스킬을 사용 설정했습니다. 다음 대화부터 사용할 수 있습니다.",
                             isError = false,
                         )
                     },
@@ -1023,23 +1023,23 @@ internal class AgentAppState(
 
     private fun skillZipFailureNotice(code: SkillZipImportOutcome.FailureCode): SkillNoticeUi {
         val message = when (code) {
-            SkillZipImportOutcome.FailureCode.INVALID_ARCHIVE -> "所选文件不是有效的 ZIP 技能包。"
-            SkillZipImportOutcome.FailureCode.ARCHIVE_LIMIT_EXCEEDED -> "技能包超过安全大小或文件数量限制。"
-            SkillZipImportOutcome.FailureCode.UNSAFE_ARCHIVE -> "技能包包含不安全的文件路径，未进行安装。"
-            SkillZipImportOutcome.FailureCode.NO_SKILL -> "ZIP 中没有找到 SKILL.md。"
-            SkillZipImportOutcome.FailureCode.MULTIPLE_SKILLS -> "本地 ZIP 必须只包含一个技能。"
-            SkillZipImportOutcome.FailureCode.INVALID_SKILL -> "SKILL.md 缺少必要信息或格式无效。"
-            SkillZipImportOutcome.FailureCode.PACKAGE_CHANGED -> "ZIP 内容已变化，请重新选择并确认要替换的技能。"
-            SkillZipImportOutcome.FailureCode.BUILTIN_CONFLICT -> "同名内置技能受保护，不能由 ZIP 替换。"
+            SkillZipImportOutcome.FailureCode.INVALID_ARCHIVE -> "선택한 파일은 올바른 ZIP 스킬 패키지가 아닙니다."
+            SkillZipImportOutcome.FailureCode.ARCHIVE_LIMIT_EXCEEDED -> "스킬 패키지가 안전한 크기 또는 파일 수 제한을 초과했습니다."
+            SkillZipImportOutcome.FailureCode.UNSAFE_ARCHIVE -> "스킬 패키지에 안전하지 않은 파일 경로가 있어 설치하지 않았습니다."
+            SkillZipImportOutcome.FailureCode.NO_SKILL -> "ZIP에서 SKILL.md를 찾지 못했습니다."
+            SkillZipImportOutcome.FailureCode.MULTIPLE_SKILLS -> "로컬 ZIP에는 스킬 하나만 포함되어야 합니다."
+            SkillZipImportOutcome.FailureCode.INVALID_SKILL -> "SKILL.md에 필수 정보가 없거나 형식이 올바르지 않습니다."
+            SkillZipImportOutcome.FailureCode.PACKAGE_CHANGED -> "ZIP 내용이 변경되었습니다. 다시 선택하고 교체할 스킬을 확인하세요."
+            SkillZipImportOutcome.FailureCode.BUILTIN_CONFLICT -> "같은 이름의 내장 스킬은 보호되므로 ZIP으로 교체할 수 없습니다."
             SkillZipImportOutcome.FailureCode.TARGET_NOT_REPLACEABLE ->
-                "同名目标不是可安全替换的用户技能，现有文件未被覆盖。"
-            SkillZipImportOutcome.FailureCode.READ_FAILED -> "无法读取所选文件，请重新选择。"
-            SkillZipImportOutcome.FailureCode.STORAGE_FAILED -> "无法保存技能，原有技能已自动恢复。"
+                "같은 이름의 대상이 안전하게 교체할 수 있는 사용자 스킬이 아니어서 기존 파일을 덮어쓰지 않았습니다."
+            SkillZipImportOutcome.FailureCode.READ_FAILED -> "선택한 파일을 읽을 수 없습니다. 다시 선택하세요."
+            SkillZipImportOutcome.FailureCode.STORAGE_FAILED -> "스킬을 저장하지 못해 기존 스킬을 자동으로 복구했습니다."
             SkillZipImportOutcome.FailureCode.RECOVERY_REQUIRED ->
-                "安装失败且自动恢复未完整完成。Eta 已在应用私有目录保留恢复备份，请先检查技能列表并停止继续安装。"
+                "설치에 실패했고 자동 복구도 완료되지 않았습니다. Eta가 앱 전용 디렉터리에 복구 백업을 보관했습니다. 스킬 목록을 확인하고 추가 설치를 중지하세요."
         }
         return newSkillNotice(
-            title = "无法安装技能",
+            title = "스킬을 설치할 수 없음",
             message = message,
             isError = true,
         )
@@ -1059,8 +1059,8 @@ internal class AgentAppState(
                         skillsState.notice
                     } else {
                         newSkillNotice(
-                            title = "无法恢复技能",
-                            message = "内置技能未发生变化，请稍后重试。",
+                            title = "스킬을 복구할 수 없음",
+                            message = "내장 스킬이 변경되지 않았습니다. 잠시 후 다시 시도하세요.",
                             isError = true,
                         )
                     },
@@ -1086,7 +1086,7 @@ internal class AgentAppState(
     )
 
     private fun String.safeSkillDisplayName(): String =
-        lineSequence().firstOrNull().orEmpty().trim().ifBlank { "未命名技能" }.take(80)
+        lineSequence().firstOrNull().orEmpty().trim().ifBlank { "이름 없는 스킬" }.take(80)
 
     private fun applyRunEvent(runId: String, event: AgentEvent) {
         when (event) {
@@ -1196,9 +1196,9 @@ internal class AgentAppState(
             currentRunJob = null
         }
         val content = if (result.ok) {
-            result.content.ifBlank { "已完成。" }
+            result.content.ifBlank { "완료되었습니다." }
         } else {
-            result.error ?: "Agent Runtime 调用失败"
+            result.error ?: "에이전트 런타임 호출 실패"
         }
 
         applyConversationHistoryResult(runId, result.transcript)
@@ -1414,18 +1414,18 @@ internal class AgentAppState(
                 val lastMessage = state.messages.lastOrNull()
                 ConversationSummaryUi(
                     id = id,
-                    title = conversationTitles[id] ?: "新对话",
+                    title = conversationTitles[id] ?: "새 대화",
                     preview = when (lastMessage) {
                         is UserMessageUi -> lastMessage.content
-                        is AgentMessageUi -> lastMessage.content.ifBlank { "Agent 正在思考" }
-                        is ThinkingMessageUi -> "Agent 正在思考"
-                        is ToolActivityMessageUi -> "调用工具：${lastMessage.toolName}"
-                        else -> "直接输入问题，必要时 Agent 会操作手机"
+                        is AgentMessageUi -> lastMessage.content.ifBlank { "에이전트가 생각 중" }
+                        is ThinkingMessageUi -> "에이전트가 생각 중"
+                        is ToolActivityMessageUi -> "도구 호출: ${lastMessage.toolName}"
+                        else -> "질문을 입력하세요. 필요하면 에이전트가 휴대폰을 조작합니다."
                     }.take(MAX_PREVIEW_CHARS),
                     timeLabel = if (state.isStreaming) {
-                        "现在"
+                        "지금"
                     } else {
-                        conversationUpdatedAt[id]?.let(ConversationTimeLabels::label) ?: "最近"
+                        conversationUpdatedAt[id]?.let(ConversationTimeLabels::label) ?: "최근"
                     },
                     mode = ConversationModeUi.Chat,
                     isActiveRun = state.isStreaming,
@@ -1514,121 +1514,121 @@ private fun buildToolsState(): AgentToolsUiState =
         groups = listOf(
             ToolGroupUi(
                 id = "screen",
-                title = "屏幕与控件",
+                title = "화면 및 컨트롤",
                 tools = listOf(
-                    ToolItemUi("observe_screen", "观察屏幕", "截图并读取当前无障碍节点"),
-                    ToolItemUi("tap_element", "点击元素", "按最近一次观察到的节点点击"),
-                    ToolItemUi("tap_area", "点击区域", "按坐标区域点击"),
-                    ToolItemUi("long_press", "长按", "长按坐标或元素"),
-                    ToolItemUi("swipe", "滑动", "执行上下左右滑动手势"),
-                    ToolItemUi("scroll", "滚动", "滚动页面或指定节点"),
+                    ToolItemUi("observe_screen", "화면 확인", "스크린샷과 현재 접근성 노드를 읽습니다."),
+                    ToolItemUi("tap_element", "요소 탭", "최근 확인한 노드를 탭합니다."),
+                    ToolItemUi("tap_area", "영역 탭", "좌표 영역을 탭합니다."),
+                    ToolItemUi("long_press", "길게 누르기", "좌표 또는 요소를 길게 누릅니다."),
+                    ToolItemUi("swipe", "스와이프", "상하좌우 스와이프 제스처를 실행합니다."),
+                    ToolItemUi("scroll", "스크롤", "페이지 또는 지정 노드를 스크롤합니다."),
                 ),
             ),
             ToolGroupUi(
                 id = "text",
-                title = "文本与剪贴板",
+                title = "텍스트 및 클립보드",
                 tools = listOf(
-                    ToolItemUi("input_text", "输入文字", "向当前焦点追加或粘贴文本"),
-                    ToolItemUi("replace_text", "替换文本", "替换焦点或节点中的文本"),
-                    ToolItemUi("clear_text", "清空文本", "清空焦点或节点文本"),
-                    ToolItemUi("paste_text", "粘贴文本", "用剪贴板可靠输入长文本"),
-                    ToolItemUi("wait_for_text", "等待文本", "等待指定文本出现在屏幕上"),
+                    ToolItemUi("input_text", "텍스트 입력", "현재 포커스에 텍스트를 추가하거나 붙여넣습니다."),
+                    ToolItemUi("replace_text", "텍스트 바꾸기", "포커스 또는 노드의 텍스트를 바꿉니다."),
+                    ToolItemUi("clear_text", "텍스트 지우기", "포커스 또는 노드의 텍스트를 지웁니다."),
+                    ToolItemUi("paste_text", "텍스트 붙여넣기", "클립보드로 긴 텍스트를 안정적으로 입력합니다."),
+                    ToolItemUi("wait_for_text", "텍스트 대기", "지정한 텍스트가 화면에 나타날 때까지 기다립니다."),
                 ),
             ),
             ToolGroupUi(
                 id = "web",
-                title = "网页浏览",
+                title = "웹 탐색",
                 tools = listOf(
-                    ToolItemUi("browser_use", "Agent 浏览器", "离屏打开网页，并保持可接管的浏览会话"),
-                    ToolItemUi("browser_read", "阅读网页", "提取渲染后的正文、列表与链接"),
-                    ToolItemUi("browser_interact", "网页交互", "查找、点击并输入页面元素"),
-                    ToolItemUi("browser_screenshot", "页面截图", "把当前网页视口交给视觉模型"),
+                    ToolItemUi("browser_use", "에이전트 브라우저", "백그라운드에서 웹페이지를 열고 인계 가능한 탐색 세션을 유지합니다."),
+                    ToolItemUi("browser_read", "웹페이지 읽기", "렌더링된 본문, 목록, 링크를 추출합니다."),
+                    ToolItemUi("browser_interact", "웹페이지 조작", "페이지 요소를 찾고 탭하거나 입력합니다."),
+                    ToolItemUi("browser_screenshot", "페이지 스크린샷", "현재 웹페이지 뷰포트를 비전 모델에 전달합니다."),
                 ),
             ),
             ToolGroupUi(
                 id = "app",
-                title = "应用与系统",
+                title = "앱 및 시스템",
                 tools = listOf(
-                    ToolItemUi("search_apps", "搜索应用", "按名称或包名查询已安装应用"),
-                    ToolItemUi("get_current_context", "时间与位置", "读取系统时间与最近位置"),
-                    ToolItemUi("launch_app", "打开 App", "启动指定包名或应用名"),
-                    ToolItemUi("open_uri", "用应用打开", "把链接或 deep link 显式交给外部应用"),
-                    ToolItemUi("press_key", "按键", "返回、主页、最近任务等系统按键"),
-                    ToolItemUi("open_system_panel", "系统面板", "打开通知栏、快捷设置等面板"),
+                    ToolItemUi("search_apps", "앱 검색", "이름 또는 패키지명으로 설치된 앱을 검색합니다."),
+                    ToolItemUi("get_current_context", "시간 및 위치", "시스템 시간과 최근 위치를 읽습니다."),
+                    ToolItemUi("launch_app", "앱 열기", "지정한 패키지명 또는 앱 이름으로 실행합니다."),
+                    ToolItemUi("open_uri", "앱으로 열기", "링크 또는 딥 링크를 외부 앱으로 명시적으로 전달합니다."),
+                    ToolItemUi("press_key", "버튼", "뒤로, 홈, 최근 앱 등의 시스템 버튼을 누릅니다."),
+                    ToolItemUi("open_system_panel", "시스템 패널", "알림 창, 빠른 설정 등의 패널을 엽니다."),
                 ),
             ),
             ToolGroupUi(
                 id = "device_direct",
-                title = "设备直达",
+                title = "기기 직접 제어",
                 tools = listOf(
-                    ToolItemUi("set_alarm", "设置闹钟", "直接创建系统闹钟，失败时打开时钟确认"),
-                    ToolItemUi("set_timer", "设置计时器", "直接创建最长 24 小时的系统计时器"),
-                    ToolItemUi("device_status", "设备状态", "读取电量、内存、存储与系统版本"),
-                    ToolItemUi("network_info", "网络状态", "读取联网方式和当前 Wi‑Fi 状态"),
-                    ToolItemUi("media_control", "媒体控制", "播放、暂停、切歌，不操作界面"),
-                    ToolItemUi("set_volume", "设置音量", "按媒体、闹钟、铃声等通道设置"),
-                    ToolItemUi("top_memory_apps", "内存排行", "查看当前占用最高的进程"),
-                    ToolItemUi("top_storage_apps", "存储排行", "查看应用、数据与缓存占用"),
+                    ToolItemUi("set_alarm", "알람 설정", "시스템 알람을 직접 만들고, 실패하면 시계 앱을 열어 확인합니다."),
+                    ToolItemUi("set_timer", "타이머 설정", "최대 24시간의 시스템 타이머를 직접 만듭니다."),
+                    ToolItemUi("device_status", "기기 상태", "배터리, 메모리, 저장공간, 시스템 버전을 읽습니다."),
+                    ToolItemUi("network_info", "네트워크 상태", "연결 방식과 현재 Wi‑Fi 상태를 읽습니다."),
+                    ToolItemUi("media_control", "미디어 제어", "화면 조작 없이 재생, 일시정지, 곡 넘기기를 수행합니다."),
+                    ToolItemUi("set_volume", "음량 설정", "미디어, 알람, 벨소리 등의 채널별로 설정합니다."),
+                    ToolItemUi("top_memory_apps", "메모리 사용 순위", "현재 메모리를 가장 많이 사용하는 프로세스를 확인합니다."),
+                    ToolItemUi("top_storage_apps", "저장공간 사용 순위", "앱, 데이터, 캐시 사용량을 확인합니다."),
                 ),
             ),
             ToolGroupUi(
                 id = "device_sensitive",
-                title = "敏感设备能力",
+                title = "민감한 기기 기능",
                 tools = listOf(
-                    ToolItemUi("read_sms_code", "读取验证码", "只提取最近短信中的验证码"),
-                    ToolItemUi("recent_notifications", "读取通知", "读取当前通知标题与正文"),
-                    ToolItemUi("wifi_credentials", "Wi‑Fi 密码", "读取手机保存的网络凭据"),
-                    ToolItemUi("get_setting", "读取系统设置", "读取指定 Settings 键"),
-                    ToolItemUi("set_setting", "修改系统设置", "修改非安全关键 Settings 键"),
-                    ToolItemUi("set_device_state", "网络开关", "直接控制 Wi‑Fi 或蓝牙"),
-                    ToolItemUi("app_state_control", "应用状态", "停止、冻结或解冻应用"),
-                    ToolItemUi("get_logcat", "系统日志", "有界读取并过滤最近日志"),
+                    ToolItemUi("read_sms_code", "인증번호 읽기", "최근 SMS에서 인증번호만 추출합니다."),
+                    ToolItemUi("recent_notifications", "알림 읽기", "현재 알림의 제목과 본문을 읽습니다."),
+                    ToolItemUi("wifi_credentials", "Wi‑Fi 비밀번호", "휴대폰에 저장된 네트워크 인증 정보를 읽습니다."),
+                    ToolItemUi("get_setting", "시스템 설정 읽기", "지정한 Settings 키를 읽습니다."),
+                    ToolItemUi("set_setting", "시스템 설정 변경", "보안상 중요하지 않은 Settings 키를 변경합니다."),
+                    ToolItemUi("set_device_state", "네트워크 스위치", "Wi‑Fi 또는 블루투스를 직접 제어합니다."),
+                    ToolItemUi("app_state_control", "앱 상태", "앱을 중지, 정지 또는 정지 해제합니다."),
+                    ToolItemUi("get_logcat", "시스템 로그", "제한된 범위에서 최근 로그를 읽고 필터링합니다."),
                 ),
             ),
             ToolGroupUi(
                 id = "personal_data",
-                title = "个人数据直达",
+                title = "개인 데이터에 직접 접근",
                 tools = listOf(
-                    ToolItemUi("search_media", "相册图片", "按文件名或相册路径检索图片"),
-                    ToolItemUi("search_audio", "音频文件", "按标题、文件名或作者检索音频"),
-                    ToolItemUi("search_recordings", "系统录音", "从系统媒体库检索录音文件"),
-                    ToolItemUi("search_files", "共享文件", "检索文档和共享存储中的文件"),
-                    ToolItemUi("search_calendar_events", "日历事件", "按标题、地点或说明检索日程"),
-                    ToolItemUi("search_contacts", "通讯录", "检索联系人姓名与打开地址"),
-                    ToolItemUi("search_call_history", "通话记录", "按号码或联系人名称检索通话"),
-                    ToolItemUi("search_messages", "短信", "按发送方或正文关键词检索短信"),
-                    ToolItemUi("search_downloads", "下载记录", "检索系统下载任务和文件"),
-                    ToolItemUi("search_coloros_notes", "ColorOS 便签", "检索便签、待办及正文内容"),
-                    ToolItemUi("search_coloros_recordings", "ColorOS 录音", "检索普通录音与通话录音"),
-                    ToolItemUi("search_recording_summaries", "录音摘要", "检索录音关联的转写摘要和便签"),
-                    ToolItemUi("search_qq_chat_images", "QQ 聊天图片", "检索 QQ 聊天图片缓存中的最近图片"),
-                    ToolItemUi("search_wechat_chat_images", "微信聊天图片", "检索微信聊天图片缓存中的最近图片"),
+                    ToolItemUi("search_media", "앨범 사진", "파일 이름이나 앨범 경로로 사진 검색"),
+                    ToolItemUi("search_audio", "오디오 파일", "제목, 파일 이름 또는 작성자로 오디오 검색"),
+                    ToolItemUi("search_recordings", "시스템 녹화", "시스템 미디어 라이브러리에서 녹화 파일 검색"),
+                    ToolItemUi("search_files", "파일 공유", "공유 저장소에서 문서 및 파일 검색"),
+                    ToolItemUi("search_calendar_events", "캘린더 이벤트", "제목, 위치 또는 설명으로 이벤트 검색"),
+                    ToolItemUi("search_contacts", "주소록", "연락처 이름 및 공개 주소 검색"),
+                    ToolItemUi("search_call_history", "통화 기록", "번호 또는 연락처 이름으로 통화 검색"),
+                    ToolItemUi("search_messages", "짧은 메시지", "보낸 사람 또는 텍스트 키워드로 문자 메시지를 검색하세요."),
+                    ToolItemUi("search_downloads", "다운로드 기록", "시스템 다운로드 작업 및 파일 검색"),
+                    ToolItemUi("search_coloros_notes", "ColorOS 노트", "메모, 할 일, 텍스트 콘텐츠 검색"),
+                    ToolItemUi("search_coloros_recordings", "ColorOS 녹음", "일반 녹음 및 통화 녹음 검색"),
+                    ToolItemUi("search_recording_summaries", "녹화 요약", "녹음과 관련된 기록된 요약 및 메모 검색"),
+                    ToolItemUi("search_qq_chat_images", "QQ 채팅 사진", "QQ 채팅 사진 캐시에서 최근 사진을 검색하세요"),
+                    ToolItemUi("search_wechat_chat_images", "위챗 채팅 사진", "WeChat 채팅 사진 캐시에서 최근 사진 검색"),
                 ),
             ),
             ToolGroupUi(
                 id = "file_vision",
-                title = "文件视觉",
+                title = "문서 비전",
                 tools = listOf(
-                    ToolItemUi("read_image", "读取图片", "读取已知路径的图片并交给视觉模型解读"),
+                    ToolItemUi("read_image", "사진 읽기", "알려진 경로의 그림을 읽고 해석을 위해 시각적 모델에 전달합니다."),
                 ),
             ),
             ToolGroupUi(
                 id = "memory",
-                title = "记忆",
+                title = "메모리",
                 tools = listOf(
-                    ToolItemUi("memory_get", "读取记忆", "分页读取或检索 MEMORY.md 中的长期记忆"),
-                    ToolItemUi("memory_write", "整理记忆", "局部更新、追加或清空长期记忆"),
+                    ToolItemUi("memory_get", "메모리 읽기", "MEMORY.md에서 장기 메모리를 읽거나 검색하도록 페이징되었습니다."),
+                    ToolItemUi("memory_write", "기억을 정리하다", "장기 기억을 부분적으로 업데이트, 추가 또는 삭제합니다."),
                 ),
             ),
             ToolGroupUi(
                 id = "terminal",
-                title = "终端与文件",
+                title = "터미널 및 파일",
                 tools = listOf(
-                    ToolItemUi("terminal", "会话终端", "user/root shell，会话式执行与异步读取"),
-                    ToolItemUi("run_command", "执行命令", "直接执行单条 shell 命令"),
-                    ToolItemUi("read_file", "读取文件", "读取手机文件内容"),
-                    ToolItemUi("write_file", "写入文件", "写入或覆盖手机文件"),
-                    ToolItemUi("list_directory", "列目录", "列出目录内容"),
+                    ToolItemUi("terminal", "세션 터미널", "user/root Shell을 세션 방식으로 실행하고 비동기 출력을 읽습니다."),
+                    ToolItemUi("run_command", "명령 실행", "Shell 명령 하나를 직접 실행합니다."),
+                    ToolItemUi("read_file", "파일 읽기", "휴대폰 파일 내용을 읽습니다."),
+                    ToolItemUi("write_file", "파일 쓰기", "휴대폰 파일을 쓰거나 덮어씁니다."),
+                    ToolItemUi("list_directory", "디렉터리 목록", "디렉터리 내용을 나열합니다."),
                 ),
             ),
         )
@@ -1646,33 +1646,33 @@ private fun buildPermissionHealthState(context: Context): PermissionHealthUiStat
         items = listOf(
             PermissionHealthItemUi(
                 id = "background",
-                title = "后台运行权限",
+                title = "백그라운드 실행 권한",
                 summary = "",
                 status = if (backgroundRunningEnabled) PermissionStatusUi.Available else PermissionStatusUi.Missing,
-                primaryActionLabel = if (backgroundRunningEnabled) null else "去开启",
+                primaryActionLabel = if (backgroundRunningEnabled) null else "설정하기",
             ),
             PermissionHealthItemUi(
                 id = "overlay",
-                title = "悬浮窗权限",
+                title = "다른 앱 위에 표시 권한",
                 summary = "",
                 status = if (overlayEnabled) PermissionStatusUi.Available else PermissionStatusUi.Missing,
-                primaryActionLabel = if (overlayEnabled) null else "去授权",
+                primaryActionLabel = if (overlayEnabled) null else "허용하기",
             ),
             PermissionHealthItemUi(
                 id = "app_list",
-                title = "应用列表读取",
+                title = "앱 목록 읽기",
                 summary = "",
                 status = if (appListEnabled) PermissionStatusUi.Available else PermissionStatusUi.Missing,
-                primaryActionLabel = if (appListEnabled) null else "去开启",
+                primaryActionLabel = if (appListEnabled) null else "설정하기",
             ),
             PermissionHealthItemUi(
                 id = "location",
-                title = "位置权限",
+                title = "위치 권한",
                 summary = when (locationAccess) {
-                    DeviceLocationProvider.AccessState.DENIED -> "用于按需理解手机所在位置"
-                    DeviceLocationProvider.AccessState.FOREGROUND_ONLY -> "小布入口需要设为“始终允许”"
-                    DeviceLocationProvider.AccessState.DISABLED -> "系统定位服务已关闭"
-                    DeviceLocationProvider.AccessState.AVAILABLE -> "仅在 Agent 调用工具时读取"
+                    DeviceLocationProvider.AccessState.DENIED -> "필요할 때 휴대폰의 현재 위치를 파악하는 데 사용합니다."
+                    DeviceLocationProvider.AccessState.FOREGROUND_ONLY -> "Breeno 진입점에서는 ‘항상 허용’으로 설정해야 합니다."
+                    DeviceLocationProvider.AccessState.DISABLED -> "시스템 위치 서비스가 꺼져 있습니다."
+                    DeviceLocationProvider.AccessState.AVAILABLE -> "에이전트가 도구를 호출할 때만 읽습니다."
                 },
                 status = when (locationAccess) {
                     DeviceLocationProvider.AccessState.DENIED -> PermissionStatusUi.Missing
@@ -1681,25 +1681,25 @@ private fun buildPermissionHealthState(context: Context): PermissionHealthUiStat
                     DeviceLocationProvider.AccessState.AVAILABLE -> PermissionStatusUi.Available
                 },
                 primaryActionLabel = when (locationAccess) {
-                    DeviceLocationProvider.AccessState.DENIED -> "去授权"
-                    DeviceLocationProvider.AccessState.FOREGROUND_ONLY -> "去设置"
-                    DeviceLocationProvider.AccessState.DISABLED -> "去开启"
+                    DeviceLocationProvider.AccessState.DENIED -> "허용하기"
+                    DeviceLocationProvider.AccessState.FOREGROUND_ONLY -> "설정으로 이동"
+                    DeviceLocationProvider.AccessState.DISABLED -> "설정하기"
                     DeviceLocationProvider.AccessState.AVAILABLE -> null
                 },
             ),
             PermissionHealthItemUi(
                 id = "accessibility",
-                title = "无障碍辅助权限",
+                title = "접근성 권한",
                 summary = "",
                 status = if (accessibilityEnabled) PermissionStatusUi.Available else PermissionStatusUi.Missing,
-                primaryActionLabel = if (accessibilityEnabled) null else "去开启",
+                primaryActionLabel = if (accessibilityEnabled) null else "설정하기",
             ),
             PermissionHealthItemUi(
                 id = "root",
-                title = "Root 权限",
+                title = "Root 권한",
                 summary = "",
                 status = if (rootEnabled) PermissionStatusUi.Available else PermissionStatusUi.Missing,
-                primaryActionLabel = if (rootEnabled) null else "去开启",
+                primaryActionLabel = if (rootEnabled) null else "설정하기",
             ),
         )
     )
@@ -1730,32 +1730,32 @@ private fun buildSystemEnhanceState(): AgentSystemEnhanceUiState =
                 items = listOf(
                     SystemEnhanceItemUi(
                         id = "streaming",
-                        title = "流式事件",
-                        summary = "模型增量、工具调用和最终结果会同步到当前对话",
+                        title = "스트리밍 이벤트",
+                        summary = "모델의 스트리밍 응답, 도구 호출, 최종 결과를 현재 대화에 동기화합니다.",
                         status = SystemEnhanceStatusUi.Active,
                     ),
                     SystemEnhanceItemUi(
                         id = "memory",
-                        title = "记忆系统",
-                        summary = "核心记忆自动注入，详细内容由模型按需检索",
+                        title = "메모리 시스템",
+                        summary = "코어 메모리는 자동으로 주입되며, 요청 시 모델에서 세부 콘텐츠를 검색합니다.",
                         status = SystemEnhanceStatusUi.Active,
                     ),
                     SystemEnhanceItemUi(
                         id = "overlay",
-                        title = "运行浮窗",
-                        summary = "Runtime 服务运行时显示状态浮窗",
+                        title = "실행 오버레이",
+                        summary = "런타임 서비스가 실행되는 동안 상태 오버레이를 표시합니다.",
                         status = SystemEnhanceStatusUi.Active,
                     ),
                 ),
             ),
             SystemEnhanceSectionUi(
                 id = "future",
-                title = "后续能力",
+                title = "향후 기능",
                 items = listOf(
                     SystemEnhanceItemUi(
                         id = "hook",
-                        title = "Hook 二级能力",
-                        summary = "系统增强能力保留为后续二级功能",
+                        title = "Hook 보조 기능",
+                        summary = "시스템 강화 기능은 향후 보조 기능으로 유지합니다.",
                         status = SystemEnhanceStatusUi.Inactive,
                     ),
                 ),

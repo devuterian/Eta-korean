@@ -24,8 +24,8 @@ data class ConversationSummaryUi(
 enum class ConversationModeUi(
     val label: String,
 ) {
-    Chat("聊天"),
-    PhoneAgent("手机"),
-    Terminal("终端"),
-    Automation("自动化"),
+    Chat("채팅"),
+    PhoneAgent("휴대폰"),
+    Terminal("터미널"),
+    Automation("자동화"),
 }

@@ -1,0 +1,514 @@
+name: Eta upstream update command
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  update:
+    if: >-
+      github.event.issue.pull_request &&
+      github.event.issue.number == 13 &&
+      contains(github.event.comment.body, '/eta-sync-2.5.0')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+
+    steps:
+      - name: Resolve pull request
+        id: pr
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: pr } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+            });
+            core.setOutput('head_ref', pr.head.ref);
+            core.setOutput('head_sha', pr.head.sha);
+
+      - name: Check out update branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.pr.outputs.head_ref }}
+          fetch-depth: 0
+          token: ${{ github.token }}
+
+      - name: Configure repositories
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git fetch origin main
+          git remote add upstream https://github.com/Mangi-11/Eta.git || true
+          git fetch upstream main
+          git fetch upstream 7eeb00cc4da8c857f2a046c4c1c056610e2c0b16
+          git merge-base --is-ancestor aefd2a4dda1428e64dd0fd0cb09d8ebf94f1fd26 HEAD
+
+      - name: Record main as merged while keeping upstream tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          git merge -s ours --no-commit origin/main
+          rm -f \
+            .github/update-export-trigger.txt \
+            .github/workflows/export-source.yml \
+            .github/workflows/export-source-target.yml \
+            .github/workflows/audit-localization-target.yml \
+            .github/workflows/actions-smoke-test.yml \
+            .github/workflows/pr-comment-smoke-test.yml \
+            .github/workflows/eta-update-command.yml
+
+      - name: Reapply Korean localization
+        id: localization
+        shell: bash
+        env:
+          OLD_UPSTREAM: 7eeb00cc4da8c857f2a046c4c1c056610e2c0b16
+          KOREAN_BASE: dd68bdd452877d888e37fe7f09d1a668d4022abc
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import difflib
+          import json
+          import os
+          import pathlib
+          import re
+          import subprocess
+          import time
+          import urllib.parse
+          import urllib.request
+
+          OLD = os.environ['OLD_UPSTREAM']
+          KO = os.environ['KOREAN_BASE']
+          roots = [
+              pathlib.Path('app/src/main/kotlin/fuck/andes/ui'),
+              pathlib.Path('app/src/main/kotlin/fuck/andes/agent/overlay'),
+              pathlib.Path('app/src/main/kotlin/fuck/andes/systemizer'),
+              pathlib.Path('app/src/main/res'),
+          ]
+          quote_re = re.compile(r'"(?:\\.|[^"\\])*"')
+          chinese_re = re.compile(r'[\u3400-\u9fff]')
+          korean_re = re.compile(r'[가-힣]')
+          interpolation_re = re.compile(r'\$\{[^{}]*\}|\$[A-Za-z_][A-Za-z0-9_]*|\\[nrt"\\]')
+
+          def git_show(ref, path):
+              p = subprocess.run(
+                  ['git', 'show', f'{ref}:{path}'],
+                  text=True,
+                  capture_output=True,
+              )
+              return p.stdout if p.returncode == 0 else None
+
+          def in_scope(path):
+              pp = pathlib.Path(path)
+              return any(pp == root or root in pp.parents for root in roots)
+
+          def literals(text):
+              return [m.group(0) for m in quote_re.finditer(text)]
+
+          mapping = {}
+          old_files = subprocess.check_output(
+              ['git', 'ls-tree', '-r', '--name-only', OLD], text=True
+          ).splitlines()
+          for path in old_files:
+              if not in_scope(path) or not path.endswith(('.kt', '.xml')):
+                  continue
+              old_text = git_show(OLD, path)
+              ko_text = git_show(KO, path)
+              if old_text is None or ko_text is None:
+                  continue
+              old_lits = literals(old_text)
+              ko_lits = literals(ko_text)
+              matcher = difflib.SequenceMatcher(a=old_lits, b=ko_lits, autojunk=False)
+              for tag, i1, i2, j1, j2 in matcher.get_opcodes():
+                  if tag != 'replace' or i2 - i1 != j2 - j1:
+                      continue
+                  for source, target in zip(old_lits[i1:i2], ko_lits[j1:j2]):
+                      if chinese_re.search(source) and korean_re.search(target):
+                          mapping[source] = target
+
+          manual = {
+              '未选择模型': '모델을 선택하지 않음',
+              '未配置': '설정되지 않음',
+              '设置': '설정',
+              'LSPosed 服务未连接': 'LSPosed 서비스가 연결되지 않음',
+              '模型提供商': '모델 제공업체',
+              '默认启用深度思考': '기본으로 심층 사고 사용',
+              '记忆': '메모리',
+              '工具': '도구',
+              '启用网页浏览工具': '웹 브라우징 도구 사용',
+              '启用设备直达工具': '기기 직접 제어 도구 사용',
+              '允许读取敏感设备信息': '민감한 기기 정보 읽기 허용',
+              '允许敏感设备操作': '민감한 기기 작업 허용',
+              '启用终端/文件工具': '터미널/파일 도구 사용',
+              'Linux 工具环境': 'Linux 도구 환경',
+              '系统助手接管': '시스템 어시스턴트 연동',
+              '启用系统助手自定义模型': '시스템 어시스턴트에서 사용자 모델 사용',
+              '仅 /agent 前缀接管': '/agent 접두사가 있을 때만 처리',
+              '长按电源键唤起 Gemini': '전원 버튼을 길게 눌러 Gemini 실행',
+              '自动设置 Google 为默认助理': 'Google을 기본 어시스턴트로 자동 설정',
+              '息屏后维持 Hey Google 检测': '화면이 꺼져도 Hey Google 감지 유지',
+              '锁屏唤起自动语音输入': '잠금 화면에서 실행 시 음성 입력 자동 시작',
+              '亮屏唤起自动语音输入': '화면이 켜진 상태에서 실행 시 음성 입력 자동 시작',
+              '将 Google App 转为系统应用': 'Google 앱을 시스템 앱으로 전환',
+              '一圈即搜': '서클 투 서치',
+              '手势条长按触发一圈即搜': '제스처 바를 길게 눌러 서클 투 서치 실행',
+              '双指长按触发一圈即搜': '두 손가락으로 길게 눌러 서클 투 서치 실행',
+              '权限': '권한',
+              '悬浮窗权限': '다른 앱 위에 표시 권한',
+              '已授权': '허용됨',
+              '未授权': '허용되지 않음',
+              '无障碍服务': '접근성 서비스',
+              '无障碍保护': '접근성 보호',
+              '启用无障碍保护': '접근성 보호 사용',
+              '长期记忆': '장기 메모리',
+              '记忆内容': '메모리 내용',
+              '编辑记忆': '메모리 편집',
+              '保存': '저장',
+              '取消': '취소',
+              '删除': '삭제',
+              '清空记忆': '메모리 비우기',
+              '暂无记忆': '저장된 메모리가 없음',
+              '思考强度': '사고 강도',
+              '自动': '자동',
+              '关闭': '끄기',
+              '低': '낮음',
+              '中': '보통',
+              '高': '높음',
+          }
+          for source, target in manual.items():
+              mapping[json.dumps(source, ensure_ascii=False)] = json.dumps(target, ensure_ascii=False)
+
+          translated_cache = {}
+
+          def translate_plain(text):
+              if text in manual:
+                  return manual[text]
+              if text in translated_cache:
+                  return translated_cache[text]
+              protected = {}
+              def protect(match):
+                  token = f'__ETA_PH_{len(protected)}__'
+                  protected[token] = match.group(0)
+                  return token
+              query = interpolation_re.sub(protect, text)
+              url = (
+                  'https://translate.googleapis.com/translate_a/single?client=gtx'
+                  '&sl=zh-CN&tl=ko&dt=t&q=' + urllib.parse.quote(query)
+              )
+              translated = None
+              for attempt in range(3):
+                  try:
+                      with urllib.request.urlopen(url, timeout=20) as response:
+                          payload = json.loads(response.read().decode('utf-8'))
+                      translated = ''.join(part[0] for part in payload[0] if part and part[0])
+                      break
+                  except Exception:
+                      time.sleep(2 ** attempt)
+              if not translated:
+                  return text
+              for token, original in protected.items():
+                  translated = translated.replace(token, original)
+              translated_cache[text] = translated
+              return translated
+
+          def translate_literal(literal):
+              if literal in mapping:
+                  return mapping[literal]
+              inner = literal[1:-1]
+              if not chinese_re.search(inner):
+                  return literal
+              translated = translate_plain(inner)
+              translated = translated.replace('\\', '\\\\').replace('"', '\\"')
+              return f'"{translated}"'
+
+          changed_files = 0
+          for root in roots:
+              if not root.exists():
+                  continue
+              for path in root.rglob('*'):
+                  if not path.is_file() or path.suffix not in {'.kt', '.xml'}:
+                      continue
+                  original = path.read_text(encoding='utf-8')
+                  updated = original
+                  for source, target in sorted(mapping.items(), key=lambda item: -len(item[0])):
+                      updated = updated.replace(source, target)
+                  if path.suffix == '.kt':
+                      updated = quote_re.sub(lambda m: translate_literal(m.group(0)), updated)
+                  if updated != original:
+                      path.write_text(updated, encoding='utf-8')
+                      changed_files += 1
+
+          strings_path = pathlib.Path('app/src/main/res/values/strings.xml')
+          strings_path.write_text(
+              '<resources>\n'
+              '    <string name="app_name">Eta</string>\n'
+              '    <string name="xposed_description">ColorOS에서 시스템 수준 AI 에이전트를 구현하고 Breeno를 대체하며 Gemini와 서클 투 서치를 활성화합니다.</string>\n'
+              '    <string name="agent_accessibility_label">Eta 기기 제어</string>\n'
+              '    <string name="agent_accessibility_description">Eta가 화면 내용을 읽고 탭, 스와이프, 텍스트 입력, 시스템 작업을 수행할 수 있도록 합니다.</string>\n'
+              '</resources>\n',
+              encoding='utf-8',
+          )
+
+          remaining = []
+          for root in roots:
+              if not root.exists():
+                  continue
+              for path in root.rglob('*'):
+                  if not path.is_file() or path.suffix not in {'.kt', '.xml'}:
+                      continue
+                  for number, line in enumerate(path.read_text(encoding='utf-8').splitlines(), 1):
+                      for match in quote_re.finditer(line):
+                          literal = match.group(0)
+                          if chinese_re.search(literal):
+                              remaining.append(f'{path}:{number}: {literal}')
+
+          report = pathlib.Path('/tmp/eta-localization-report.md')
+          report.write_text(
+              '## Eta 2.5.0 현지화 결과\n\n'
+              f'- 기존 번역 매핑: {len(mapping)}개\n'
+              f'- 수정된 파일: {changed_files}개\n'
+              f'- 남은 중국어 UI 문자열: {len(remaining)}개\n\n'
+              + ('```text\n' + '\n'.join(remaining[:300]) + '\n```\n' if remaining else '남은 중국어 UI 문자열이 없습니다.\n'),
+              encoding='utf-8',
+          )
+          pathlib.Path('/tmp/eta-remaining-count').write_text(str(len(remaining)))
+          PY
+          echo "remaining=$(cat /tmp/eta-remaining-count)" >> "$GITHUB_OUTPUT"
+
+      - name: Install Android build workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > .github/workflows/android-apk.yml <<'YAML'
+          name: Android APK
+
+          on:
+            push:
+              branches: [main]
+            pull_request:
+              branches: [main]
+            workflow_dispatch:
+
+          permissions:
+            contents: write
+            pull-requests: write
+            issues: write
+
+          concurrency:
+            group: android-apk-${{ github.workflow }}-${{ github.ref }}
+            cancel-in-progress: true
+
+          jobs:
+            build:
+              runs-on: ubuntu-24.04
+              timeout-minutes: 60
+              steps:
+                - name: Check out repository
+                  uses: actions/checkout@v4
+
+                - name: Read version
+                  id: version
+                  shell: bash
+                  run: |
+                    set -euo pipefail
+                    VERSION="$(sed -nE 's/^[[:space:]]*versionName = "([^"]+)".*/\1/p' app/build.gradle.kts | head -n 1)"
+                    if [[ -z "$VERSION" ]]; then
+                      echo 'Could not read versionName.' >&2
+                      exit 1
+                    fi
+                    echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+                    echo "apk_name=Eta-${VERSION}.apk" >> "$GITHUB_OUTPUT"
+
+                - name: Set up JDK 25
+                  uses: actions/setup-java@v4
+                  with:
+                    distribution: temurin
+                    java-version: '25'
+
+                - name: Set up Android SDK
+                  uses: android-actions/setup-android@v3
+
+                - name: Set up Gradle
+                  uses: gradle/actions/setup-gradle@v4
+                  with:
+                    cache-read-only: ${{ github.event_name == 'pull_request' }}
+
+                - name: Install Android SDK 37
+                  shell: bash
+                  run: |
+                    set -euo pipefail
+                    yes | sdkmanager --licenses >/dev/null || true
+                    sdkmanager --channel=3 'platform-tools' 'platforms;android-37.0'
+                    chmod +x gradlew
+
+                - name: Build debug APK
+                  run: ./gradlew --no-daemon --stacktrace --console=plain assembleDebug
+
+                - name: Name APK
+                  shell: bash
+                  run: |
+                    cp app/build/outputs/apk/debug/app-debug.apk \
+                      "app/build/outputs/apk/debug/${{ steps.version.outputs.apk_name }}"
+
+                - name: Upload APK artifact
+                  uses: actions/upload-artifact@v4
+                  with:
+                    name: Eta-${{ steps.version.outputs.version }}
+                    path: app/build/outputs/apk/debug/${{ steps.version.outputs.apk_name }}
+                    if-no-files-found: error
+                    compression-level: 0
+                    retention-days: 14
+
+                - name: Publish GitHub Release
+                  if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+                  shell: bash
+                  env:
+                    GH_TOKEN: ${{ github.token }}
+                    VERSION: ${{ steps.version.outputs.version }}
+                    APK_NAME: ${{ steps.version.outputs.apk_name }}
+                  run: |
+                    set -euo pipefail
+                    APK_PATH="app/build/outputs/apk/debug/$APK_NAME"
+                    NOTES=/tmp/eta-release-notes.md
+                    cat > "$NOTES" <<EOF
+                    Eta ${VERSION} 한국어 현지화 빌드입니다.
+
+                    - upstream 버전: ${VERSION}
+                    - 빌드: GitHub Actions debug APK
+                    - 커밋: ${GITHUB_SHA}
+                    - Actions: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}
+                    EOF
+                    if gh release view "$VERSION" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+                      gh release upload "$VERSION" "$APK_PATH" --repo "$GITHUB_REPOSITORY" --clobber
+                      gh release edit "$VERSION" --repo "$GITHUB_REPOSITORY" \
+                        --title "Eta $VERSION" --notes-file "$NOTES" --target "$GITHUB_SHA"
+                    else
+                      gh release create "$VERSION" "$APK_PATH" --repo "$GITHUB_REPOSITORY" \
+                        --target "$GITHUB_SHA" --title "Eta $VERSION" --notes-file "$NOTES"
+                    fi
+
+                - name: Report Eta 2.5.0 release
+                  if: github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.version.outputs.version == '2.5.0'
+                  shell: bash
+                  env:
+                    GH_TOKEN: ${{ github.token }}
+                  run: |
+                    gh pr comment 13 --body "ETA_RELEASE_SUCCESS
+                    version=2.5.0
+                    main_sha=${GITHUB_SHA}
+                    run_id=${GITHUB_RUN_ID}
+                    run_url=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}
+                    release=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/tag/2.5.0
+                    artifact=Eta-2.5.0
+                    apk=Eta-2.5.0.apk"
+          YAML
+
+      - name: Verify version and upstream preservation
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'versionName = "2.5.0"' app/build.gradle.kts
+          if grep -q 'versionNameSuffix' app/build.gradle.kts; then
+            echo 'Korean-only version suffix remains.' >&2
+            exit 1
+          fi
+          git diff --check
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Install Android SDK 37
+        shell: bash
+        run: |
+          set -euo pipefail
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager --channel=3 'platform-tools' 'platforms;android-37.0'
+          chmod +x gradlew
+
+      - name: Build debug APK
+        id: build
+        shell: bash
+        run: |
+          set -o pipefail
+          ./gradlew --no-daemon --stacktrace --console=plain assembleDebug 2>&1 | tee /tmp/eta-build.log
+          mkdir -p /tmp/eta-apk
+          cp app/build/outputs/apk/debug/app-debug.apk /tmp/eta-apk/Eta-2.5.0.apk
+
+      - name: Commit and push successful update
+        id: commit
+        shell: bash
+        env:
+          HEAD_REF: ${{ steps.pr.outputs.head_ref }}
+        run: |
+          set -euo pipefail
+          git add -A
+          git commit -m 'Eta 2.5.0 upstream 동기화 및 한국어 현지화'
+          git push origin "HEAD:${HEAD_REF}"
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Upload pre-merge APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Eta-2.5.0
+          path: /tmp/eta-apk/Eta-2.5.0.apk
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
+
+      - name: Report success
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ steps.commit.outputs.sha }}
+          REMAINING: ${{ steps.localization.outputs.remaining }}
+        run: |
+          set -euo pipefail
+          cat > /tmp/eta-success.md <<EOF
+          ETA_UPDATE_SUCCESS
+          version=2.5.0
+          upstream=aefd2a4dda1428e64dd0fd0cb09d8ebf94f1fd26
+          head_sha=${SHA}
+          run_id=${GITHUB_RUN_ID}
+          run_url=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}
+          artifact=Eta-2.5.0
+          apk=Eta-2.5.0.apk
+          remaining_ui_chinese=${REMAINING}
+
+          EOF
+          cat /tmp/eta-localization-report.md >> /tmp/eta-success.md
+          gh pr comment 13 --body-file /tmp/eta-success.md
+
+      - name: Report failure
+        if: failure()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          {
+            echo 'ETA_UPDATE_FAILED'
+            echo "run_id=${GITHUB_RUN_ID}"
+            echo "run_url=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+            echo
+            if [[ -f /tmp/eta-build.log ]]; then
+              echo '```text'
+              tail -n 180 /tmp/eta-build.log
+              echo '```'
+            fi
+          } > /tmp/eta-failure.md
+          gh pr comment 13 --body-file /tmp/eta-failure.md

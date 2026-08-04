@@ -66,7 +66,7 @@ fun AgentSkillsScreen(
     }
 
     MiuixScaffoldPage(
-        title = "技能",
+        title = "스킬",
         onBack = { onAction(AgentSkillsAction.NavigateBack) },
         modifier = modifier,
     ) {
@@ -75,7 +75,7 @@ fun AgentSkillsScreen(
         val userInstalled = installed.filter { it.canDeleteUserSkill }
         val removed = state.skills.filter { !it.installed }
 
-        item(key = "zip-import-title") { SmallTitle("安装") }
+        item(key = "zip-import-title") { SmallTitle("설치") }
         item(key = "zip-import-card") {
             Card(
                 modifier = Modifier
@@ -83,11 +83,11 @@ fun AgentSkillsScreen(
                     .padding(bottom = CardBottomPadding),
             ) {
                 BasicComponent(
-                    title = if (state.isImporting) "正在检查技能包" else "从 ZIP 导入",
+                    title = if (state.isImporting) "스킬 패키지 확인 중" else "ZIP에서 가져오기",
                     summary = if (state.isImporting) {
-                        "正在验证并安装，请稍候"
+                        "검증하고 설치하는 중입니다. 잠시 기다려 주세요."
                     } else {
-                        "选择包含 SKILL.md 的技能包"
+                        "SKILL.md가 포함된 스킬 패키지를 선택하세요."
                     },
                     startAction = {
                         if (state.isImporting) {
@@ -105,13 +105,13 @@ fun AgentSkillsScreen(
                     },
                     enabled = !operationPending,
                     onClick = openZipPicker,
-                    onClickLabel = "选择 ZIP 技能包",
+                    onClickLabel = "ZIP 스킬 패키지 선택",
                 )
             }
         }
 
         if (builtinInstalled.isNotEmpty()) {
-            item(key = "builtin-title") { SmallTitle("内置技能") }
+            item(key = "builtin-title") { SmallTitle("내장 스킬") }
             item(key = "builtin-card") {
                 Card(
                     modifier = Modifier
@@ -133,7 +133,7 @@ fun AgentSkillsScreen(
         }
 
         if (userInstalled.isNotEmpty()) {
-            item(key = "user-title") { SmallTitle("用户技能") }
+            item(key = "user-title") { SmallTitle("사용자 스킬") }
             item(key = "user-card") {
                 Card(
                     modifier = Modifier
@@ -156,7 +156,7 @@ fun AgentSkillsScreen(
         }
 
         if (removed.isNotEmpty()) {
-            item(key = "removed-title") { SmallTitle("已移除") }
+            item(key = "removed-title") { SmallTitle("제거됨") }
             item(key = "removed-card") {
                 Card(
                     modifier = Modifier
@@ -166,7 +166,7 @@ fun AgentSkillsScreen(
                     removed.forEachIndexed { index, skill ->
                         BasicComponent(
                             title = skill.name,
-                            summary = "点击重新安装",
+                            summary = "탭하여 다시 설치",
                             startAction = { SkillIcon(skill) },
                             enabled = !operationPending,
                             onClick = {
@@ -180,19 +180,19 @@ fun AgentSkillsScreen(
         }
 
         if (state.skills.isEmpty() && !state.isLoading) {
-            item(key = "empty") { SmallTitle("暂无已安装技能") }
+            item(key = "empty") { SmallTitle("설치된 스킬이 없습니다.") }
         }
     }
 
     state.replacement?.let { replacement ->
         WindowDialog(
             show = true,
-            title = "替换用户技能？",
-            summary = "已存在用户技能「${replacement.name}」（${replacement.id}）。替换会覆盖它当前的全部文件。",
+            title = "사용자 스킬을 교체할까요?",
+            summary = "사용자 스킬 「${replacement.name}」(${replacement.id})이 이미 있습니다. 교체하면 현재 파일을 모두 덮어씁니다.",
             onDismissRequest = { onAction(AgentSkillsAction.CancelZipReplacement) },
         ) {
             MiuixDialogActions(
-                confirmText = "替换",
+                confirmText = "교체",
                 confirmEnabled = !operationPending,
                 onCancel = { onAction(AgentSkillsAction.CancelZipReplacement) },
                 onConfirm = { onAction(AgentSkillsAction.ConfirmZipReplacement) },
@@ -203,12 +203,12 @@ fun AgentSkillsScreen(
     deleteTarget?.let { skill ->
         WindowDialog(
             show = true,
-            title = "删除用户技能",
-            summary = "删除「${skill.name}」后需要重新安装才能恢复。",
+            title = "사용자 스킬 삭제",
+            summary = "「${skill.name}」을 삭제하면 복구하려면 다시 설치해야 합니다.",
             onDismissRequest = { deleteTarget = null },
         ) {
             MiuixDialogActions(
-                confirmText = "删除",
+                confirmText = "삭제",
                 destructive = true,
                 confirmEnabled = !operationPending,
                 onCancel = { deleteTarget = null },
@@ -228,7 +228,7 @@ fun AgentSkillsScreen(
             onDismissRequest = { onAction(AgentSkillsAction.DismissNotice) },
         ) {
             TextButton(
-                text = "知道了",
+                text = "확인",
                 onClick = { onAction(AgentSkillsAction.DismissNotice) },
                 modifier = Modifier.fillMaxWidth(),
                 colors = if (notice.isError) {
@@ -249,7 +249,7 @@ private fun SkillSwitchRow(
     onDelete: (() -> Unit)? = null,
 ) {
     val truncatedSummary = remember(skill.description) {
-        val desc = skill.description.ifBlank { "无描述" }
+        val desc = skill.description.ifBlank { "설명 없음" }
         if (desc.length > 80) desc.take(80) + "..." else desc
     }
     BasicComponent(
@@ -266,7 +266,7 @@ private fun SkillSwitchRow(
                 ) {
                     Icon(
                         painter = painterResource(LucideR.drawable.lucide_ic_trash_2),
-                        contentDescription = "删除 ${skill.name}",
+                        contentDescription = "${skill.name} 삭제",
                         modifier = Modifier.size(20.dp),
                         tint = MiuixTheme.colorScheme.error,
                     )

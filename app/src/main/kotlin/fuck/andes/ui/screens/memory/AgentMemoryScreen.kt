@@ -46,7 +46,7 @@ internal fun AgentMemoryScreen(
     var showClearDialog by remember { mutableStateOf(false) }
 
     MiuixScaffold(
-        title = "记忆",
+        title = "메모리",
         onBack = { onAction(AgentMemoryAction.NavigateBack) },
     ) { paddingValues, scrollBehavior ->
         Column(
@@ -64,7 +64,7 @@ internal fun AgentMemoryScreen(
                     .nestedScroll(scrollBehavior.nestedScrollConnection),
                 overscrollEffect = null,
             ) {
-                item(key = "status-title") { SmallTitle("记忆") }
+                item(key = "status-title") { SmallTitle("메모리") }
                 item(key = "status-card") {
                     Card(
                         modifier = Modifier
@@ -72,15 +72,15 @@ internal fun AgentMemoryScreen(
                             .padding(bottom = 12.dp),
                     ) {
                         SwitchPreference(
-                            title = "启用记忆",
-                            summary = "关闭后不注入记忆，也不允许模型读写；已有内容会保留",
+                            title = "메모리 활성화",
+                            summary = "닫은 후에는 메모리가 주입되지 않으며 모델을 읽거나 쓸 수 없습니다. 기존 콘텐츠는 그대로 유지됩니다.",
                             checked = state.enabled,
                             enabled = !state.isLoading,
                             onCheckedChange = { onAction(AgentMemoryAction.ToggleEnabled(it)) },
                         )
                         BasicComponent(
-                            title = "核心记忆注入预算",
-                            summary = "每轮最多注入 ${formatNumber(state.coreBudgetChars)} 字符，详细内容由模型按需读取",
+                            title = "코어 메모리 주입 예산",
+                            summary = "각 라운드에는 최대 ${formatNumber(state.coreBudgetChars)} 문자가 주입되며, 요청 시 모델에서 세부 정보를 읽습니다.",
                         )
                     }
                 }
@@ -101,7 +101,7 @@ internal fun AgentMemoryScreen(
                         TextField(
                             value = state.draft,
                             onValueChange = { onAction(AgentMemoryAction.DraftChanged(it)) },
-                            label = "# 核心记忆\n- 用户名字：\n- 长期偏好：",
+                            label = "# 코어 메모리 \\n- 사용자 이름: \\n- 장기 선호 사항:",
                             useLabelAsPlaceholder = true,
                             enabled = !state.isLoading && !state.isSaving,
                             minLines = 6,
@@ -118,8 +118,8 @@ internal fun AgentMemoryScreen(
                             val overLimit = state.draftBytes > state.maxBytes
                             Text(
                                 text = when {
-                                    overLimit -> "已超过 1 MiB 上限，请删减"
-                                    state.hasUnsavedChanges -> "未保存的更改"
+                                    overLimit -> "1MiB 한도를 초과했습니다. 삭제하세요."
+                                    state.hasUnsavedChanges -> "저장되지 않은 변경사항"
                                     else -> ""
                                 },
                                 color = if (overLimit) {
@@ -145,13 +145,13 @@ internal fun AgentMemoryScreen(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
                             TextButton(
-                                text = "清空",
+                                text = "분명한",
                                 enabled = !state.isLoading && !state.isSaving && state.draft.isNotEmpty(),
                                 onClick = { showClearDialog = true },
                                 modifier = Modifier.weight(1f),
                             )
                             TextButton(
-                                text = if (state.isSaving) "保存中" else "保存",
+                                text = if (state.isSaving) "절약" else "저장",
                                 enabled = state.canSave,
                                 onClick = { onAction(AgentMemoryAction.Save) },
                                 modifier = Modifier.weight(1f),
@@ -167,12 +167,12 @@ internal fun AgentMemoryScreen(
     if (showClearDialog) {
         WindowDialog(
             show = true,
-            title = "清空全部记忆？",
-            summary = "MEMORY.md 的全部内容将被删除，记忆开关保持当前状态。",
+            title = "모든 메모리를 지우시겠습니까?",
+            summary = "MEMORY.md의 전체 내용이 삭제되고 메모리 스위치는 현재 상태로 유지됩니다.",
             onDismissRequest = { showClearDialog = false },
         ) {
             MiuixDialogActions(
-                confirmText = "清空",
+                confirmText = "분명한",
                 destructive = true,
                 confirmEnabled = !state.isSaving,
                 onCancel = { showClearDialog = false },
@@ -187,12 +187,12 @@ internal fun AgentMemoryScreen(
     state.notice?.let { notice ->
         WindowDialog(
             show = true,
-            title = "记忆",
+            title = "메모리",
             summary = notice,
             onDismissRequest = { onAction(AgentMemoryAction.DismissNotice) },
         ) {
             TextButton(
-                text = "知道了",
+                text = "확인",
                 onClick = { onAction(AgentMemoryAction.DismissNotice) },
                 modifier = Modifier.fillMaxWidth(),
             )

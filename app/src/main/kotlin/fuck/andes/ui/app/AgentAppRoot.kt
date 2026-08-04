@@ -419,19 +419,19 @@ fun AgentAppRoot() {
         var renameInput by remember(conversation.id) { mutableStateOf(conversation.title) }
         WindowDialog(
             show = true,
-            title = "重命名对话",
+            title = "대화 이름 변경",
             onDismissRequest = { conversationRenameTarget = null },
         ) {
             Column {
                 TextField(
                     value = renameInput,
                     onValueChange = { renameInput = it },
-                    label = "对话名称",
+                    label = "대화 이름",
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
                 MiuixDialogActions(
-                    confirmText = "确定",
+                    confirmText = "확인",
                     confirmEnabled = renameInput.isNotBlank(),
                     onCancel = { conversationRenameTarget = null },
                     onConfirm = {
@@ -447,12 +447,12 @@ fun AgentAppRoot() {
     conversationDeleteTarget?.let { conversation ->
         WindowDialog(
             show = true,
-            title = "删除对话",
-            summary = "删除后，该对话将不可恢复",
+            title = "대화 삭제",
+            summary = "삭제한 대화는 복구할 수 없습니다.",
             onDismissRequest = { conversationDeleteTarget = null },
         ) {
             MiuixDialogActions(
-                confirmText = "删除",
+                confirmText = "삭제",
                 destructive = true,
                 onCancel = { conversationDeleteTarget = null },
                 onConfirm = {

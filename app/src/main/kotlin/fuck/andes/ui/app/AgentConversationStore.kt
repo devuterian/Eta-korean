@@ -66,7 +66,7 @@ internal object AgentConversationStore {
                 val conversations = sorted.map { (id, state) ->
                     ConversationEntity(
                         id = id,
-                        title = titles[id] ?: "新对话",
+                        title = titles[id] ?: "새 대화",
                         thinkingEnabled = state.reasoningEffort.enablesReasoning,
                         reasoningEffort = state.reasoningEffort.wireValue,
                         historyJson = json.encodeToString(state.history),
@@ -128,7 +128,7 @@ internal object AgentConversationStore {
                 thinkingEnabled = conversation.reasoningEffortValue.enablesReasoning,
                 reasoningEffort = conversation.reasoningEffortValue,
             )
-            titles[conversation.id] = conversation.title.ifBlank { "新对话" }
+            titles[conversation.id] = conversation.title.ifBlank { "새 대화" }
             updatedAt[conversation.id] = conversation.updatedAt
         }
 

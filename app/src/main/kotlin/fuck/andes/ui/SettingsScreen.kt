@@ -127,8 +127,8 @@ internal fun SettingsScreen(
         selectedProvider?.models?.find { it.id == selectedModelId }
     }
     val providerSummary = selectedProvider?.let { provider ->
-        "${provider.name} / ${selectedModel?.displayName ?: "未选择模型"}"
-    } ?: "未配置"
+        "${provider.name} / ${selectedModel?.displayName ?: "모델을 선택하지 않음"}"
+    } ?: "설정되지 않음"
 
     // prefs 绑定到 XposedService：service 到达时切换到 RemotePreferences（跨进程提交到
     // LSPosed 数据库）；未就绪时保持 null，UI 禁止修改。
@@ -149,8 +149,8 @@ internal fun SettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = "设置",
-                largeTitle = "设置",
+                title = "설정",
+                largeTitle = "설정",
                 navigationIcon = { MiuixBackButton(onClick = onBack) },
                 scrollBehavior = scrollBehavior,
             )
@@ -165,7 +165,7 @@ internal fun SettingsScreen(
                 item(key = "service_warning") {
                     Card(modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)) {
                         BasicComponent(
-                            title = "LSPosed 服务未连接",
+                            title = "LSPosed 서비스가 연결되지 않음",
                         )
                     }
                 }
@@ -176,7 +176,7 @@ internal fun SettingsScreen(
                 SmallTitle("Agent")
                 Card(modifier = Modifier.padding(horizontal = 12.dp).padding(bottom = 12.dp)) {
                     ArrowPreference(
-                        title = "模型提供商",
+                        title = "모델 제공업체",
                         summary = providerSummary,
                         startAction = {
                             TintedIcon(
@@ -190,14 +190,14 @@ internal fun SettingsScreen(
                     SwitchPref(
                         context = context,
                         prefs = prefs,
-                        title = "默认启用深度思考",
+                        title = "기본으로 심층 사고 사용",
                         key = Prefs.Keys.AGENT_THINKING_ENABLED,
                         icon = LucideR.drawable.lucide_ic_brain,
                         iconTint = ColorOSRoyalBlue,
                     )
                     PrefDivider()
                     ArrowPreference(
-                        title = "记忆",
+                        title = "메모리",
                         startAction = {
                             TintedIcon(
                                 icon = LucideR.drawable.lucide_ic_brain,
@@ -211,12 +211,12 @@ internal fun SettingsScreen(
 
             // ── 工具 ───────────────────────────────────────────────────
             item(key = "section_tools") {
-                SmallTitle("工具")
+                SmallTitle("도구")
                 Card(modifier = Modifier.padding(horizontal = 12.dp).padding(bottom = 12.dp)) {
                     SwitchPref(
                         context = context,
                         prefs = prefs,
-                        title = "启用网页浏览工具",
+                        title = "웹 브라우징 도구 사용",
                         key = Prefs.Keys.AGENT_BROWSER_TOOLS,
                         icon = LucideR.drawable.lucide_ic_globe,
                         iconTint = ColorOSVividGreen,
@@ -225,7 +225,7 @@ internal fun SettingsScreen(
                     SwitchPref(
                         context = context,
                         prefs = prefs,
-                        title = "启用设备直达工具",
+                        title = "기기 직접 제어 도구 사용",
                         key = Prefs.Keys.AGENT_DEVICE_DIRECT_TOOLS,
                         icon = LucideR.drawable.lucide_ic_smartphone,
                         iconTint = ColorOSVividGreen,
@@ -234,7 +234,7 @@ internal fun SettingsScreen(
                     SwitchPref(
                         context = context,
                         prefs = prefs,
-                        title = "允许读取敏感设备信息",
+                        title = "민감한 기기 정보 읽기 허용",
                         key = Prefs.Keys.AGENT_DEVICE_SENSITIVE_READ_TOOLS,
                         icon = LucideR.drawable.lucide_ic_eye,
                         iconTint = ColorOSAmberYellow,
@@ -243,7 +243,7 @@ internal fun SettingsScreen(
                     SwitchPref(
                         context = context,
                         prefs = prefs,
-                        title = "允许敏感设备操作",
+                        title = "민감한 기기 작업 허용",
                         key = Prefs.Keys.AGENT_DEVICE_SENSITIVE_ACTION_TOOLS,
                         icon = LucideR.drawable.lucide_ic_shield_alert,
                         iconTint = ColorOSAmberYellow,
@@ -252,14 +252,14 @@ internal fun SettingsScreen(
                     SwitchPref(
                         context = context,
                         prefs = prefs,
-                        title = "启用终端/文件工具",
+                        title = "터미널/파일 도구 사용",
                         key = Prefs.Keys.AGENT_TERMINAL_TOOLS,
                         icon = LucideR.drawable.lucide_ic_square_terminal,
                         iconTint = ColorOSAmberYellow,
                     )
                     PrefDivider()
                     ArrowPreference(
-                        title = "Linux 工具环境",
+                        title = "Linux 도구 환경",
                         startAction = {
                             TintedIcon(
                                 icon = LucideR.drawable.lucide_ic_square_terminal,
@@ -273,12 +273,12 @@ internal fun SettingsScreen(
 
             // ── 系统助手接管 ──────────────────────────────────────────────
             item(key = "section_assistant_takeover") {
-                SmallTitle("系统助手接管")
+                SmallTitle("시스템 어시스턴트 연동")
                 Card(modifier = Modifier.padding(horizontal = 12.dp).padding(bottom = 12.dp)) {
                     SwitchPref(
                         context = context,
                         prefs = prefs,
-                        title = "启用系统助手自定义模型",
+                        title = "시스템 어시스턴트에서 사용자 모델 사용",
                         key = Prefs.Keys.AGENT_CUSTOM_MODEL,
                         icon = LucideR.drawable.lucide_ic_cpu,
                         iconTint = ColorOSOrangeRed,
@@ -287,7 +287,7 @@ internal fun SettingsScreen(
                     SwitchPref(
                         context = context,
                         prefs = prefs,
-                        title = "仅 /agent 前缀接管",
+                        title = "/agent 접두사가 있을 때만 처리",
                         key = Prefs.Keys.AGENT_REQUIRE_PREFIX,
                         icon = LucideR.drawable.lucide_ic_message_square,
                         iconTint = ColorOSAmberYellow,
@@ -302,7 +302,7 @@ internal fun SettingsScreen(
                     SwitchPref(
                         context = context,
                         prefs = prefs,
-                        title = "长按电源键唤起 Gemini",
+                        title = "전원 버튼을 길게 눌러 Gemini 실행",
                         key = Prefs.Keys.POWER_KEY_TAKEOVER,
                         icon = LucideR.drawable.lucide_ic_power,
                         iconTint = ColorOSOrangeRed,
@@ -311,7 +311,7 @@ internal fun SettingsScreen(
                     SwitchPref(
                         context = context,
                         prefs = prefs,
-                        title = "自动设置 Google 为默认助理",
+                        title = "Google을 기본 어시스턴트로 자동 설정",
                         key = Prefs.Keys.ASSISTANT_AUTO_CONFIG,
                         icon = LucideR.drawable.lucide_ic_sparkles,
                         iconTint = ColorOSVividGreen,
@@ -320,7 +320,7 @@ internal fun SettingsScreen(
                     SwitchPref(
                         context = context,
                         prefs = prefs,
-                        title = "息屏后维持 Hey Google 检测",
+                        title = "화면이 꺼져도 Hey Google 감지 유지",
                         key = Prefs.Keys.HOTWORD_SELF_HEAL,
                         icon = LucideR.drawable.lucide_ic_mic,
                         iconTint = ColorOSAmberYellow,
@@ -329,7 +329,7 @@ internal fun SettingsScreen(
                     SwitchPref(
                         context = context,
                         prefs = prefs,
-                        title = "锁屏唤起自动语音输入",
+                        title = "잠금 화면에서 실행 시 음성 입력 자동 시작",
                         key = Prefs.Keys.LOCKSCREEN_VOICE_COMMAND,
                         icon = LucideR.drawable.lucide_ic_lock,
                         iconTint = ColorOSRed,
@@ -338,14 +338,14 @@ internal fun SettingsScreen(
                     SwitchPref(
                         context = context,
                         prefs = prefs,
-                        title = "亮屏唤起自动语音输入",
+                        title = "화면이 켜진 상태에서 실행 시 음성 입력 자동 시작",
                         key = Prefs.Keys.SCREEN_ON_VOICE_COMMAND,
                         icon = LucideR.drawable.lucide_ic_mic,
                         iconTint = ColorOSLightBlue,
                     )
                     PrefDivider()
                     ArrowPreference(
-                        title = "将 Google App 转为系统应用",
+                        title = "Google 앱을 시스템 앱으로 전환",
                         startAction = {
                             TintedIcon(
                                 icon = LucideR.drawable.lucide_ic_shield,
@@ -365,12 +365,12 @@ internal fun SettingsScreen(
 
             // ── 一圈即搜 ────────────────────────────────────────────────
             item(key = "section_circle_to_search") {
-                SmallTitle("一圈即搜")
+                SmallTitle("서클 투 서치")
                 Card(modifier = Modifier.padding(horizontal = 12.dp).padding(bottom = 12.dp)) {
                     SwitchPref(
                         context = context,
                         prefs = prefs,
-                        title = "手势条长按触发一圈即搜",
+                        title = "제스처 바를 길게 눌러 서클 투 서치 실행",
                         key = Prefs.Keys.GESTURE_BAR_CIRCLE_TO_SEARCH,
                         icon = LucideR.drawable.lucide_ic_search,
                         iconTint = ColorOSRoyalBlue,
@@ -379,7 +379,7 @@ internal fun SettingsScreen(
                     SwitchPref(
                         context = context,
                         prefs = prefs,
-                        title = "双指长按触发一圈即搜",
+                        title = "두 손가락으로 길게 눌러 서클 투 서치 실행",
                         key = Prefs.Keys.DOUBLE_FINGER_CIRCLE_TO_SEARCH,
                         icon = LucideR.drawable.lucide_ic_mouse_pointer_click,
                         iconTint = ColorOSLightBlue,
@@ -389,10 +389,10 @@ internal fun SettingsScreen(
 
             // ── 权限 ────────────────────────────────────────────────────
             item(key = "section_permissions") {
-                SmallTitle("权限")
+                SmallTitle("권한")
                 Card(modifier = Modifier.padding(horizontal = 12.dp).padding(bottom = 12.dp)) {
                     ArrowPreference(
-                        title = "悬浮窗权限",
+                        title = "다른 앱 위에 표시 권한",
                         startAction = {
                             TintedIcon(
                                 icon = LucideR.drawable.lucide_ic_layers,
@@ -401,7 +401,7 @@ internal fun SettingsScreen(
                         },
                         endActions = {
                             Text(
-                                text = if (overlayGranted) "已授权" else "未授权",
+                                text = if (overlayGranted) "허용됨" else "허용되지 않음",
                                 fontSize = MiuixTheme.textStyles.body2.fontSize,
                                 color = if (overlayGranted) {
                                     MiuixTheme.colorScheme.onSurfaceVariantActions
@@ -425,7 +425,7 @@ internal fun SettingsScreen(
                     )
                     PrefDivider()
                     ArrowPreference(
-                        title = "无障碍增强工具",
+                        title = "접근성 강화 도구",
                         startAction = {
                             TintedIcon(
                                 icon = LucideR.drawable.lucide_ic_accessibility,
@@ -435,7 +435,7 @@ internal fun SettingsScreen(
                         endActions = {
                             val enabled = accessibilityGranted || AgentAccessibilityService.isAvailable()
                             Text(
-                                text = if (enabled) "已启用" else "未启用",
+                                text = if (enabled) "사용 중" else "사용 안 함",
                                 fontSize = MiuixTheme.textStyles.body2.fontSize,
                                 color = if (enabled) {
                                     MiuixTheme.colorScheme.onSurfaceVariantActions
@@ -454,7 +454,7 @@ internal fun SettingsScreen(
                     )
                     PrefDivider()
                     SwitchPreference(
-                        title = "强制保持无障碍",
+                        title = "접근성 강제 유지",
                         checked = accessibilityProtectionEnabled,
                         onCheckedChange = { enabled ->
                             if (accessibilityProtectionPending) {
@@ -471,9 +471,9 @@ internal fun SettingsScreen(
                                 val failureMessage = when (result.status) {
                                     AccessibilityProtectionClient.ControlStatus.APPLIED -> null
                                     AccessibilityProtectionClient.ControlStatus.UNAVAILABLE ->
-                                        "无障碍保护后端不可用，请确认 system 作用域已启用并重启"
+                                        "접근성 보호 백엔드를 사용할 수 없습니다. system 범위를 활성화하고 재부팅했는지 확인해 주세요."
                                     AccessibilityProtectionClient.ControlStatus.REJECTED ->
-                                        "无障碍保护请求被系统拒绝"
+                                        "시스템이 접근성 보호 요청을 거부했습니다"
                                 }
                                 if (failureMessage != null) {
                                     Toast.makeText(
@@ -497,10 +497,10 @@ internal fun SettingsScreen(
 
             // ── 关于 ────────────────────────────────────────────────────
             item(key = "section_about") {
-                SmallTitle("关于")
+                SmallTitle("정보")
                 Card(modifier = Modifier.padding(horizontal = 12.dp).padding(bottom = 12.dp)) {
                     ArrowPreference(
-                        title = "源代码",
+                        title = "소스 코드",
                         startAction = {
                             TintedIcon(
                                 icon = LucideR.drawable.lucide_ic_github,
@@ -601,12 +601,12 @@ private fun SystemizerConfirmDialog(
 ) {
     OverlayDialog(
         show = show,
-        title = "将 Google App 转为系统应用",
-        summary = "系统应用享有语音唤醒权限、更少的自启限制，体验接近原生。将通过 Magisk / KernelSU 模块安装，重启后生效。",
+        title = "Google 앱을 시스템 앱으로 전환",
+        summary = "시스템 앱은 음성 호출 권한과 완화된 자동 실행 제한을 적용받습니다. Magisk 또는 KernelSU 모듈로 설치되며 재부팅 후 적용됩니다.",
         onDismissRequest = onDismissRequest,
     ) {
         MiuixDialogActions(
-            confirmText = if (installing) "处理中..." else "确定",
+            confirmText = if (installing) "처리 중..." else "확인",
             cancelEnabled = !installing,
             confirmEnabled = !installing,
             onCancel = onDismissRequest,
@@ -648,7 +648,7 @@ private fun SwitchPref(
             if (putBooleanSync(targetPrefs, key, value)) {
                 checked = value
             } else {
-                Toast.makeText(context.applicationContext, "配置写入失败", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context.applicationContext, "설정을 저장하지 못했습니다.", Toast.LENGTH_SHORT).show()
             }
         },
         startAction = {
@@ -691,16 +691,16 @@ private fun isAgentAccessibilityEnabled(context: Context): Boolean {
 
 private fun SystemizerInstallResult.toToastMessage(): String =
     when (this) {
-        SystemizerInstallResult.AlreadySystemized -> "Google App 已是系统 priv-app"
-        SystemizerInstallResult.GoogleAppMissing -> "未安装 Google App"
-        SystemizerInstallResult.UnsupportedRootManager -> "未检测到 Magisk 或 KernelSU"
-        SystemizerInstallResult.KernelSuMetamoduleMissing -> "KernelSU 需先启用 metamodule 支持"
+        SystemizerInstallResult.AlreadySystemized -> "Google 앱이 이미 시스템 priv-app입니다."
+        SystemizerInstallResult.GoogleAppMissing -> "Google 앱이 설치되어 있지 않습니다."
+        SystemizerInstallResult.UnsupportedRootManager -> "Magisk 또는 KernelSU를 찾지 못했습니다."
+        SystemizerInstallResult.KernelSuMetamoduleMissing -> "KernelSU에서 metamodule 지원을 먼저 사용 설정해야 합니다."
         is SystemizerInstallResult.RootPermissionUnavailable -> when (rootManager) {
-            RootManager.KERNEL_SU -> "请在 KernelSU 中授予 Eta root 权限"
-            RootManager.MAGISK -> "请在 Magisk 中授予 Eta root 权限"
-            RootManager.UNSUPPORTED -> "未获得 root 权限"
+            RootManager.KERNEL_SU -> "KernelSU에서 Eta에 root 권한을 허용하세요."
+            RootManager.MAGISK -> "Magisk에서 Eta에 root 권한을 허용하세요."
+            RootManager.UNSUPPORTED -> "root 권한을 받지 못했습니다."
         }
-        is SystemizerInstallResult.InstalledRebootRequired -> "安装完成，重启后生效"
+        is SystemizerInstallResult.InstalledRebootRequired -> "설치가 완료되었습니다. 재부팅 후 적용됩니다."
         is SystemizerInstallResult.Failed -> commandOutput
             .lineSequence()
             .map { it.trim() }

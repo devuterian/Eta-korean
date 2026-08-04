@@ -67,7 +67,7 @@ internal fun ModelProviderListScreen(
         }
     }
 
-    MiuixScaffoldPage(title = "模型提供商", onBack = onBack) {
+    MiuixScaffoldPage(title = "모델 제공업체", onBack = onBack) {
         item(key = "search") {
             InputField(
                 query = searchQuery,
@@ -75,7 +75,7 @@ internal fun ModelProviderListScreen(
                 onSearch = {},
                 expanded = false,
                 onExpandedChange = {},
-                label = "搜索提供商",
+                label = "제공자 검색",
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 12.dp)
@@ -84,10 +84,10 @@ internal fun ModelProviderListScreen(
         }
 
         item(key = "create_section") {
-            ProviderSection(title = "新增提供商") {
+            ProviderSection(title = "제공자 추가") {
                 ArrowPreference(
-                    title = "新增 OpenAI-compatible",
-                    summary = "支持 ChatGPT, DeepSeek, Kimi, GLM, Qwen等",
+                    title = "OpenAI 호환 제공자 추가",
+                    summary = "ChatGPT, DeepSeek, Kimi, GLM, Qwen 등을 지원합니다.",
                     startAction = {
                         ProviderBrandIcon(ProviderSourceTypes.OPENAI)
                     },
@@ -95,8 +95,8 @@ internal fun ModelProviderListScreen(
                 )
                 ProviderDivider()
                 ArrowPreference(
-                    title = "新增 Anthropic",
-                    summary = "支持 Anthropic Claude 官方或兼容 API",
+                    title = "Anthropic 추가",
+                    summary = "Anthropic Claude 공식 또는 호환 API를 지원합니다.",
                     startAction = {
                         ProviderBrandIcon(ProviderSourceTypes.ANTHROPIC)
                     },
@@ -106,14 +106,14 @@ internal fun ModelProviderListScreen(
         }
 
         item(key = "list_section") {
-            ProviderSection(title = "已配置提供商 (共 ${filteredProviders.size} 个)") {
+            ProviderSection(title = "설정된 제공자 (총 ${filteredProviders.size}개)") {
                 if (filteredProviders.isEmpty()) {
                     Box(
                         modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(
-                            text = if (searchQuery.isBlank()) "暂无模型提供商，请新增" else "未找到匹配的提供商",
+                            text = if (searchQuery.isBlank()) "모델 제공자가 없습니다. 제공자를 추가하세요." else "일치하는 제공자를 찾지 못했습니다.",
                             style = MiuixTheme.textStyles.body2,
                             color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
                         )
@@ -148,12 +148,12 @@ internal fun ModelProviderListScreen(
     if (providerToDelete != null) {
         OverlayDialog(
             show = true,
-            title = "删除提供商",
-            summary = "删除「${providerToDelete?.name}」后将不可恢复。",
+            title = "제공자 삭제",
+            summary = "‘${providerToDelete?.name}’을 삭제하면 복구할 수 없습니다.",
             onDismissRequest = { providerToDelete = null },
         ) {
             MiuixDialogActions(
-                confirmText = "删除",
+                confirmText = "삭제",
                 destructive = true,
                 onCancel = { providerToDelete = null },
                 onConfirm = {
@@ -213,15 +213,15 @@ private fun ProviderListItem(
                 modifier = Modifier.padding(top = 6.dp),
             ) {
                 TagChip(text = provider.typeLabel)
-                TagChip(text = "${provider.models.size} 个模型")
+                TagChip(text = "모델 ${provider.models.size}개")
                 if (provider.isBuiltIn) {
-                    TagChip(text = "内置")
+                    TagChip(text = "내장")
                 }
                 if (!provider.isEnabled) {
-                    TagChip(text = "已禁用", tone = TagChipTone.Warning)
+                    TagChip(text = "사용 안 함", tone = TagChipTone.Warning)
                 }
                 if (isSelected) {
-                    TagChip(text = "当前", tone = TagChipTone.Emphasized)
+                    TagChip(text = "현재", tone = TagChipTone.Emphasized)
                 }
             }
         }
@@ -230,7 +230,7 @@ private fun ProviderListItem(
                 painter = painterResource(
                     if (isSelected) LucideR.drawable.lucide_ic_check else LucideR.drawable.lucide_ic_circle,
                 ),
-                contentDescription = if (isSelected) "已选中" else "设为当前",
+                contentDescription = if (isSelected) "선택됨" else "현재로 설정",
                 tint = if (isSelected) MiuixTheme.colorScheme.primary else MiuixTheme.colorScheme.onSurfaceVariantActions,
             )
         }

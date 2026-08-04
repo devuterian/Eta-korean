@@ -29,7 +29,7 @@ fun MiuixDialogActions(
     onCancel: () -> Unit,
     onConfirm: () -> Unit,
     modifier: Modifier = Modifier,
-    cancelText: String = "取消",
+    cancelText: String = "취소",
     cancelEnabled: Boolean = true,
     confirmEnabled: Boolean = true,
     destructive: Boolean = false,

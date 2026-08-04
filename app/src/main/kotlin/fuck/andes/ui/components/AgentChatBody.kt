@@ -559,7 +559,7 @@ private fun AgentChatMessages(
             ) {
                 Icon(
                     painter = painterResource(LucideR.drawable.lucide_ic_arrow_down),
-                    contentDescription = "回到底部",
+                    contentDescription = "맨 아래로 이동",
                     modifier = Modifier.size(17.dp),
                     tint = MiuixTheme.colorScheme.onSurface,
                 )
@@ -813,28 +813,28 @@ private fun EmptyChatState(
 ) {
     val suggestions = listOf(
         SuggestionItem(
-            title = "分析当前屏幕",
+            title = "현재 화면 분석",
             iconRes = LucideR.drawable.lucide_ic_scan_text,
             iconTint = AccentBlue,
-            prompt = "截图并描述当前屏幕",
+            prompt = "현재 화면을 캡처하고 설명해 줘",
         ),
         SuggestionItem(
-            title = "打开微信",
+            title = "WeChat 열기",
             iconRes = LucideR.drawable.lucide_ic_rocket,
             iconTint = AccentGreen,
-            prompt = "帮我打开微信",
+            prompt = "WeChat을 열어 줘",
         ),
         SuggestionItem(
-            title = "浏览网页",
+            title = "웹 탐색",
             iconRes = LucideR.drawable.lucide_ic_globe,
             iconTint = AccentRed,
-            prompt = "打开 Agent 浏览器，搜索并总结今天的科技新闻要点",
+            prompt = "에이전트 브라우저를 열고 오늘의 주요 기술 뉴스를 검색해 요약해 줘",
         ),
         SuggestionItem(
-            title = "查看内存压力",
+            title = "메모리 압력 확인",
             iconRes = LucideR.drawable.lucide_ic_square_terminal,
             iconTint = AccentYellow,
-            prompt = "读取 /proc/meminfo 和 /proc/pressure/，重点分析 PSI（Pressure Stall Information）指标，总结当前内存压力和系统状态",
+            prompt = "/proc/meminfo와 /proc/pressure/를 읽고 PSI(Pressure Stall Information) 지표를 중심으로 현재 메모리 압력과 시스템 상태를 분석해 줘",
         ),
     )
 
@@ -846,7 +846,7 @@ private fun EmptyChatState(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
-                text = "有什么可以帮你？",
+                text = "무엇을 도와드릴까요?",
                 style = MiuixTheme.textStyles.headline1,
                 color = MiuixTheme.colorScheme.onSurface,
             )

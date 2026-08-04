@@ -39,10 +39,10 @@ internal fun LinuxEnvironmentScreen(
     var resultMessage by remember { mutableStateOf<String?>(null) }
 
     MiuixScaffoldPage(
-        title = "Linux 工具环境",
+        title = "Linux 도구 환경",
         onBack = onBack,
     ) {
-        item(key = "status-title") { SmallTitle("环境状态") }
+        item(key = "status-title") { SmallTitle("환경 상태") }
         item(key = "status-card") {
             Card(
                 modifier = Modifier
@@ -55,10 +55,10 @@ internal fun LinuxEnvironmentScreen(
                     endActions = {
                         TextButton(
                             text = when {
-                                installing -> "安装中"
-                                status.state == AlpineEnvironmentState.READY -> "已就绪"
-                                status.state == AlpineEnvironmentState.BASE_READY -> "继续安装"
-                                else -> "下载并安装"
+                                installing -> "설치 중"
+                                status.state == AlpineEnvironmentState.READY -> "준비됨"
+                                status.state == AlpineEnvironmentState.BASE_READY -> "설치 계속"
+                                else -> "다운로드 및 설치"
                             },
                             enabled = !installing && status.state != AlpineEnvironmentState.READY,
                             onClick = {
@@ -95,7 +95,7 @@ internal fun LinuxEnvironmentScreen(
             }
         }
 
-        item(key = "details-title") { SmallTitle("说明") }
+        item(key = "details-title") { SmallTitle("안내") }
         item(key = "details-card") {
             Card(
                 modifier = Modifier
@@ -103,20 +103,20 @@ internal fun LinuxEnvironmentScreen(
                     .padding(bottom = 12.dp),
             ) {
                 BasicComponent(
-                    title = "与 Android Root Shell 分离",
-                    summary = "系统、应用、日志和 Magisk 操作仍使用 Android 环境；Python、Git、jq、zip 等通用工具使用 Alpine 环境。",
+                    title = "Android Root Shell과 분리됨",
+                    summary = "시스템, 앱, 로그, Magisk 작업은 Android 환경을 사용하고 Python, Git, jq, zip 등의 범용 도구는 Alpine 환경을 사용합니다.",
                 )
                 BasicComponent(
-                    title = "安装内容",
-                    summary = "先下载约 4 MB 的 Alpine 3.24 基础文件系统，再联网安装 Bash、Python、Git、curl、wget、jq、zip/unzip、OpenSSL、SQLite、Vim 与 Nano；当前安装后约占 120 MB。",
+                    title = "설치 내용",
+                    summary = "약 4MB의 Alpine 3.24 기본 파일 시스템을 먼저 다운로드한 뒤 Bash, Python, Git, curl, wget, jq, zip/unzip, OpenSSL, SQLite, Vim, Nano를 설치합니다. 현재 설치 후 약 120MB를 사용합니다.",
                 )
                 BasicComponent(
-                    title = "按需扩展",
-                    summary = "编译任务可在 Linux 环境中执行 apk add build-base clang cmake；额外占用由所选软件包决定。",
+                    title = "필요에 따라 확장",
+                    summary = "컴파일 작업에는 Linux 환경에서 apk add build-base clang cmake를 실행할 수 있습니다. 추가 사용량은 선택한 패키지에 따라 달라집니다.",
                 )
                 BasicComponent(
-                    title = "权限边界",
-                    summary = "环境通过 Root chroot 运行，并用独立 mount namespace 避免挂载泄漏；它提供工具链，不是安全沙箱。",
+                    title = "권한 범위",
+                    summary = "환경은 Root chroot로 실행되며 독립 mount namespace로 마운트 누출을 방지합니다. 도구 체인일 뿐 보안 샌드박스는 아닙니다.",
                 )
             }
         }
@@ -124,19 +124,19 @@ internal fun LinuxEnvironmentScreen(
 }
 
 private fun AlpineEnvironmentStatus.title(): String = when (state) {
-    AlpineEnvironmentState.NOT_INSTALLED -> "尚未安装"
-    AlpineEnvironmentState.BASE_READY -> "基础环境已就绪"
-    AlpineEnvironmentState.READY -> "Alpine ${version ?: ""} 已就绪".trim()
+    AlpineEnvironmentState.NOT_INSTALLED -> "설치되지 않음"
+    AlpineEnvironmentState.BASE_READY -> "기본 환경 준비됨"
+    AlpineEnvironmentState.READY -> "Alpine ${version ?: ""} 준비됨".trim()
 }
 
 private fun AlpineEnvironmentStatus.summary(): String = when (state) {
-    AlpineEnvironmentState.NOT_INSTALLED -> "需要 Root 与 Magisk、KernelSU 或 APatch BusyBox"
-    AlpineEnvironmentState.BASE_READY -> "常用工具安装尚未完成，可以从当前进度继续"
-    AlpineEnvironmentState.READY -> "Agent 可通过 terminal 的 environment=linux 使用完整工具环境"
+    AlpineEnvironmentState.NOT_INSTALLED -> "Root 권한과 Magisk, KernelSU 또는 APatch BusyBox가 필요합니다."
+    AlpineEnvironmentState.BASE_READY -> "범용 도구 설치가 완료되지 않았습니다. 현재 진행 상태에서 계속할 수 있습니다."
+    AlpineEnvironmentState.READY -> "에이전트는 터미널의 environment=linux를 통해 전체 도구 환경을 사용할 수 있습니다."
 }
 
 private fun AlpineInstallProgress.summary(): String {
-    if (stage.displayName != "下载 Alpine 基础环境" || totalBytes <= 0L) {
+    if (stage.displayName != "Alpine 기본 환경 다운로드" || totalBytes <= 0L) {
         return stage.displayName
     }
     val percent = (downloadedBytes * 100L / totalBytes).coerceIn(0L, 100L)
@@ -144,11 +144,11 @@ private fun AlpineInstallProgress.summary(): String {
 }
 
 private fun AlpineInstallResult.toMessage(): String = when (this) {
-    AlpineInstallResult.AlreadyReady -> "Linux 工具环境已经就绪"
-    is AlpineInstallResult.Installed -> "Alpine $version 与常用工具安装完成"
-    is AlpineInstallResult.UnsupportedAbi -> "暂不支持设备架构：$abi"
-    AlpineInstallResult.RootUnavailable -> "未获得 Root 权限，请在 Root 管理器中授权 Eta"
-    AlpineInstallResult.BusyBoxUnavailable -> "Root 环境缺少可用的 BusyBox 或必要 applet"
-    AlpineInstallResult.EnvironmentUnavailable -> "当前 Root 环境无法创建隔离 mount namespace 或 chroot"
-    is AlpineInstallResult.Failed -> "${stage.displayName}失败，请检查网络或稍后重试"
+    AlpineInstallResult.AlreadyReady -> "Linux 도구 환경이 준비되었습니다."
+    is AlpineInstallResult.Installed -> "Alpine $version 및 범용 도구 설치가 완료되었습니다."
+    is AlpineInstallResult.UnsupportedAbi -> "지원하지 않는 기기 아키텍처: $abi"
+    AlpineInstallResult.RootUnavailable -> "Root 권한을 받지 못했습니다. Root 관리자에서 Eta를 허용하세요."
+    AlpineInstallResult.BusyBoxUnavailable -> "Root 환경에 사용 가능한 BusyBox 또는 필수 applet이 없습니다."
+    AlpineInstallResult.EnvironmentUnavailable -> "현재 Root 환경에서 격리된 mount namespace 또는 chroot를 만들 수 없습니다."
+    is AlpineInstallResult.Failed -> "${stage.displayName}에 실패했습니다. 네트워크를 확인하거나 잠시 후 다시 시도하세요."
 }

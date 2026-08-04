@@ -150,9 +150,9 @@ internal fun ModelProviderDetailScreen(
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text("Provider 不存在")
+            Text("제공자가 없습니다.")
             Spacer(modifier = Modifier.height(12.dp))
-            TextButton(text = "返回", onClick = onBack)
+            TextButton(text = "뒤로", onClick = onBack)
         }
         return
     }
@@ -161,13 +161,13 @@ internal fun ModelProviderDetailScreen(
     val isNew = provider == null
     var currentTab by remember { mutableIntStateOf(0) }
     var configDraft by remember(initial.id) { mutableStateOf(ProviderConfigDraft.from(initial)) }
-    val title = if (isNew) "新建提供商" else initial.name
+    val title = if (isNew) "새 제공자" else initial.name
 
     MiuixScaffold(title = title, onBack = onBack) { paddingValues, scrollBehavior ->
         Column(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
             if (!isNew) {
                 TabRow(
-                    tabs = listOf("配置", "模型"),
+                    tabs = listOf("설정", "모델"),
                     selectedTabIndex = currentTab,
                     onTabSelected = { currentTab = it },
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
@@ -222,12 +222,12 @@ private fun ProviderConfigTab(
         overscrollEffect = null,
     ) {
         item(key = "connection") {
-            ProviderSection(title = "连接配置") {
+            ProviderSection(title = "연결 설정") {
                 Column(modifier = Modifier.padding(16.dp)) {
                     TextField(
                         value = draft.name,
                         onValueChange = { onDraftChange(draft.copy(name = it)) },
-                        label = "名称",
+                        label = "이름",
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -252,7 +252,7 @@ private fun ProviderConfigTab(
                                     painter = painterResource(
                                         if (apiKeyVisible) LucideR.drawable.lucide_ic_eye else LucideR.drawable.lucide_ic_eye_off,
                                     ),
-                                    contentDescription = if (apiKeyVisible) "隐藏" else "显示",
+                                    contentDescription = if (apiKeyVisible) "숨기기" else "표시",
                                 )
                             }
                         },
@@ -272,8 +272,8 @@ private fun ProviderConfigTab(
                 if (provider !is AnthropicProviderSetting) {
                     HorizontalDivider()
                     BasicComponent(
-                        title = "Endpoint 模式",
-                        summary = "当前协议使用标准 Chat Completions",
+                        title = "Endpoint 모드",
+                        summary = "현재 프로토콜은 표준 Chat Completions를 사용합니다.",
                         endActions = {
                             Text(
                                 text = "Chat Completions",
@@ -285,18 +285,18 @@ private fun ProviderConfigTab(
                 }
                 HorizontalDivider()
                 BasicComponent(
-                    title = "测试连接",
+                    title = "연결 테스트",
                     summary = testStatus,
                     enabled = !isWorking,
                     onClick = {
                         val validationError = validateProviderDraft(draft)
                         if (validationError != null) {
-                            testStatus = "失败：$validationError"
+                            testStatus = "실패: $validationError"
                             return@BasicComponent
                         }
                         scope.launch {
                             isWorking = true
-                            testStatus = "测试中..."
+                            testStatus = "테스트 중..."
                             try {
                                 testStatus = testConnection(
                                     buildUpdatedProvider(
@@ -320,9 +320,9 @@ private fun ProviderConfigTab(
         }
 
         item(key = "preferences_and_prompt") {
-            ProviderSection(title = "偏好与策略") {
+            ProviderSection(title = "환경설정 및 정책") {
                 SwitchPreference(
-                    title = "启用此 Provider",
+                    title = "이 제공자 사용",
                     checked = draft.isEnabled,
                     onCheckedChange = { onDraftChange(draft.copy(isEnabled = it)) }
                 )
@@ -331,14 +331,14 @@ private fun ProviderConfigTab(
                     TextField(
                         value = draft.systemPrompt,
                         onValueChange = { onDraftChange(draft.copy(systemPrompt = it)) },
-                        label = "系统提示词",
+                        label = "시스템 프롬프트",
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(120.dp),
                         singleLine = false,
                     )
                     Text(
-                        text = "留空使用默认手机 Agent 提示词",
+                        text = "비워 두면 기본 휴대폰 에이전트 프롬프트를 사용합니다.",
                         style = MiuixTheme.textStyles.footnote2,
                         color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
                         modifier = Modifier.padding(top = 8.dp),
@@ -358,10 +358,10 @@ private fun ProviderConfigTab(
             ) {
                 TextButton(
                     text = when {
-                        isWorking -> "保存中..."
-                        creationCommitted -> "已创建"
-                        isNew -> "创建"
-                        else -> "保存配置"
+                        isWorking -> "저장 중..."
+                        creationCommitted -> "생성됨"
+                        isNew -> "만들기"
+                        else -> "설정 저장"
                     },
                     enabled = !isWorking && !creationCommitted,
                     modifier = Modifier.fillMaxWidth(),
@@ -369,7 +369,7 @@ private fun ProviderConfigTab(
                     onClick = {
                         val validationError = validateProviderDraft(draft)
                         if (validationError != null) {
-                            status = "失败：$validationError"
+                            status = "실패: $validationError"
                             return@TextButton
                         }
                         scope.launch {
@@ -395,8 +395,8 @@ private fun ProviderConfigTab(
                                     val ok = RuntimeConfigRepository.syncToRemotePreferences(
                                         FuckAndesApp.serviceInstance
                                     )
-                                    status = if (ok) "已创建、设为当前并同步"
-                                    else "已创建并设为当前，LSPosed 服务未连接"
+                                    status = if (ok) "생성하고 현재 제공자로 설정한 뒤 동기화했습니다."
+                                    else "생성하고 현재 제공자로 설정했습니다. LSPosed 서비스는 연결되지 않았습니다."
                                     creationCommitted = true
                                     onCreated(added.id)
                                 } else {
@@ -408,15 +408,15 @@ private fun ProviderConfigTab(
                                         FuckAndesApp.serviceInstance
                                     )
                                     status = when {
-                                        !built.isEnabled -> "已保存，Provider 未启用"
-                                        ok -> "已保存、设为当前并同步"
-                                        else -> "已保存并设为当前，LSPosed 服务未连接"
+                                        !built.isEnabled -> "저장했습니다. 제공자는 사용 안 함 상태입니다."
+                                        ok -> "저장하고 현재 제공자로 설정한 뒤 동기화했습니다."
+                                        else -> "저장하고 현재 제공자로 설정했습니다. LSPosed 서비스는 연결되지 않았습니다."
                                     }
                                 }
                             } catch (cancelled: CancellationException) {
                                 throw cancelled
                             } catch (throwable: Throwable) {
-                                status = "失败：${throwable.message ?: "保存失败"}"
+                                status = "실패: ${throwable.message ?: "저장 실패"}"
                             } finally {
                                 isWorking = false
                             }
@@ -427,7 +427,7 @@ private fun ProviderConfigTab(
                     Text(
                         text = message,
                         style = MiuixTheme.textStyles.footnote2,
-                        color = if (message.startsWith("失败")) StatusError else StatusSuccess,
+                        color = if (message.startsWith("실패")) StatusError else StatusSuccess,
                         textAlign = TextAlign.Center,
                         modifier = Modifier.padding(top = 8.dp),
                     )
@@ -458,7 +458,7 @@ private fun ProviderConfigTab(
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(
-                            text = if (provider.isBuiltIn) "重置内置配置" else "删除提供商",
+                            text = if (provider.isBuiltIn) "내장 설정 초기화" else "제공자 삭제",
                             fontSize = MiuixTheme.textStyles.headline1.fontSize,
                             fontWeight = FontWeight.Medium,
                             color = MiuixTheme.colorScheme.error,
@@ -476,12 +476,12 @@ private fun ProviderConfigTab(
     if (showDeleteDialog) {
         OverlayDialog(
             show = true,
-            title = "删除提供商",
-            summary = "删除「${provider.name}」后将不可恢复。",
+            title = "제공자 삭제",
+            summary = "‘${provider.name}’을 삭제하면 복구할 수 없습니다.",
             onDismissRequest = { if (!isWorking) showDeleteDialog = false },
         ) {
             MiuixDialogActions(
-                confirmText = if (isWorking) "删除中..." else "删除",
+                confirmText = if (isWorking) "삭제 중..." else "삭제",
                 cancelEnabled = !isWorking,
                 confirmEnabled = !isWorking,
                 destructive = true,
@@ -497,7 +497,7 @@ private fun ProviderConfigTab(
                         } catch (cancelled: CancellationException) {
                             throw cancelled
                         } catch (throwable: Throwable) {
-                            status = "失败：${throwable.message ?: "删除失败"}"
+                            status = "실패: ${throwable.message ?: "删除失败"}"
                             showDeleteDialog = false
                         } finally {
                             isWorking = false
@@ -511,12 +511,12 @@ private fun ProviderConfigTab(
     if (showResetDialog) {
         OverlayDialog(
             show = true,
-            title = "重置内置配置",
-            summary = "将恢复「${provider.name}」的默认配置和官方模型列表，API Key 会保留。",
+            title = "내장 설정 초기화",
+            summary = "‘${provider.name}’의 기본 설정과 공식 모델 목록을 복원합니다. API Key는 유지됩니다.",
             onDismissRequest = { if (!isWorking) showResetDialog = false },
         ) {
             MiuixDialogActions(
-                confirmText = if (isWorking) "重置中..." else "重置",
+                confirmText = if (isWorking) "초기화 중..." else "초기화",
                 cancelEnabled = !isWorking,
                 confirmEnabled = !isWorking,
                 onCancel = { showResetDialog = false },
@@ -526,12 +526,12 @@ private fun ProviderConfigTab(
                         try {
                             ProviderRepository.resetBuiltIn(provider.id)
                             RuntimeConfigRepository.syncToRemotePreferences(FuckAndesApp.serviceInstance)
-                            status = "已重置"
+                            status = "초기화됨"
                             showResetDialog = false
                         } catch (cancelled: CancellationException) {
                             throw cancelled
                         } catch (throwable: Throwable) {
-                            status = "失败：${throwable.message ?: "重置失败"}"
+                            status = "실패: ${throwable.message ?: "重置失败"}"
                             showResetDialog = false
                         } finally {
                             isWorking = false
@@ -576,10 +576,10 @@ private fun ProviderModelsTab(
             overscrollEffect = null,
         ) {
             item(key = "actions") {
-                ProviderSection(title = "模型管理") {
+                ProviderSection(title = "모델 관리") {
                     ArrowPreference(
-                        title = if (isFetching) "拉取中..." else "从远端自动拉取",
-                        summary = "读取 ${provider.baseUrl} 的 /models 列表",
+                        title = if (isFetching) "가져오는 중..." else "원격에서 자동으로 가져오기",
+                        summary = "${provider.baseUrl}의 /models 목록을 읽습니다.",
                         enabled = !isFetching && !isMutatingModel,
                         startAction = {
                             ProviderRoundIcon(
@@ -593,7 +593,7 @@ private fun ProviderModelsTab(
                                 message = null
                                 try {
                                     val models = RemoteModelFetcher.fetch(provider).getOrElse { throwable ->
-                                        message = "失败：${throwable.message ?: throwable.javaClass.simpleName}"
+                                        message = "실패: ${throwable.message ?: throwable.javaClass.simpleName}"
                                         return@launch
                                     }
                                     val chatModels = models.filter(RemoteModelFetcher::isChatCapableModel)
@@ -603,16 +603,16 @@ private fun ProviderModelsTab(
                                     }
                                     val filteredCount = models.size - chatModels.size
                                     message = if (!sync.applied) {
-                                        "远端未返回可用对话模型，已保留现有模型"
+                                        "원격에서 사용 가능한 대화 모델을 반환하지 않아 기존 모델을 유지했습니다."
                                     } else if (filteredCount > 0) {
-                                        "已拉取 ${chatModels.size} 个模型，过滤 $filteredCount 个非对话模型"
+                                        "모델 ${chatModels.size}개를 가져오고 비대화 모델 ${filteredCount}개를 제외했습니다."
                                     } else {
-                                        "已拉取 ${chatModels.size} 个模型"
+                                        "모델 ${chatModels.size}개를 가져왔습니다."
                                     }
                                 } catch (cancelled: CancellationException) {
                                     throw cancelled
                                 } catch (throwable: Throwable) {
-                                    message = "失败：${throwable.message ?: "同步失败"}"
+                                    message = "실패: ${throwable.message ?: "同步失败"}"
                                 } finally {
                                     isFetching = false
                                 }
@@ -621,8 +621,8 @@ private fun ProviderModelsTab(
                     )
                     ProviderDivider()
                     ArrowPreference(
-                        title = "添加自定义模型",
-                        summary = "手动填写展示名称与 Model ID",
+                        title = "맞춤 모델 추가",
+                        summary = "표시 이름과 Model ID를 직접 입력합니다.",
                         enabled = !isFetching && !isMutatingModel,
                         startAction = {
                             ProviderRoundIcon(
@@ -636,7 +636,7 @@ private fun ProviderModelsTab(
                             editingModel = Model(
                                 id = "",
                                 modelId = "",
-                                displayName = "自定义模型",
+                                displayName = "맞춤 모델",
                             )
                         },
                     )
@@ -645,7 +645,7 @@ private fun ProviderModelsTab(
                         Text(
                             text = it,
                             style = MiuixTheme.textStyles.footnote2,
-                            color = if (it.startsWith("失败")) StatusError else StatusSuccess,
+                            color = if (it.startsWith("실패")) StatusError else StatusSuccess,
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
                         )
                     }
@@ -654,7 +654,7 @@ private fun ProviderModelsTab(
 
             item(key = "models_list") {
                 ProviderSection(
-                    title = "模型列表 (共 ${provider.models.size} 个)",
+                    title = "모델 목록 (총 ${provider.models.size}개)",
                     modifier = Modifier.padding(bottom = 24.dp),
                 ) {
                     if (provider.models.isEmpty()) {
@@ -663,7 +663,7 @@ private fun ProviderModelsTab(
                             contentAlignment = Alignment.Center,
                         ) {
                             Text(
-                                text = "暂无模型，请从远端拉取或手动添加",
+                                text = "모델이 없습니다. 원격에서 가져오거나 직접 추가하세요.",
                                 style = MiuixTheme.textStyles.body2,
                                 color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
                             )
@@ -761,11 +761,11 @@ private fun ProviderModelsTab(
                         val saved = ModelRepository.saveModel(provider.id, updated)
                         RuntimeConfigRepository.syncToRemotePreferences(FuckAndesApp.serviceInstance)
                         editingModel = null
-                        message = "已保存：${saved.displayName}"
+                        message = "저장됨: ${saved.displayName}"
                     } catch (cancelled: CancellationException) {
                         throw cancelled
                     } catch (throwable: Throwable) {
-                        editorError = throwable.message ?: "保存失败"
+                        editorError = throwable.message ?: "저장 실패"
                     } finally {
                         isMutatingModel = false
                     }
@@ -783,12 +783,12 @@ private fun ProviderModelsTab(
     modelPendingDelete?.let { model ->
         OverlayDialog(
             show = true,
-            title = "删除模型",
-            summary = "删除「${model.displayName}」后将不可恢复。",
+            title = "모델 삭제",
+            summary = "‘${model.displayName}’을 삭제하면 복구할 수 없습니다.",
             onDismissRequest = { if (!isMutatingModel) modelPendingDelete = null },
         ) {
             MiuixDialogActions(
-                confirmText = if (isMutatingModel) "删除中..." else "删除",
+                confirmText = if (isMutatingModel) "삭제 중..." else "삭제",
                 cancelEnabled = !isMutatingModel,
                 confirmEnabled = !isMutatingModel,
                 destructive = true,
@@ -799,12 +799,12 @@ private fun ProviderModelsTab(
                         try {
                             ModelRepository.deleteModel(provider.id, model.id)
                             RuntimeConfigRepository.syncToRemotePreferences(FuckAndesApp.serviceInstance)
-                            message = "已删除：${model.displayName}"
+                            message = "삭제됨: ${model.displayName}"
                             modelPendingDelete = null
                         } catch (cancelled: CancellationException) {
                             throw cancelled
                         } catch (throwable: Throwable) {
-                            message = "失败：${throwable.message ?: "删除失败"}"
+                            message = "실패: ${throwable.message ?: "删除失败"}"
                             modelPendingDelete = null
                         } finally {
                             isMutatingModel = false
@@ -818,12 +818,12 @@ private fun ProviderModelsTab(
     if (showBatchDeleteDialog) {
         OverlayDialog(
             show = true,
-            title = "删除模型",
-            summary = "删除选中的 ${selectedModelIds.size} 个模型后将不可恢复。",
+            title = "모델 삭제",
+            summary = "선택한 ${selectedModelIds.size}개 모델을 삭제하면 복구할 수 없습니다.",
             onDismissRequest = { if (!isMutatingModel) showBatchDeleteDialog = false },
         ) {
             MiuixDialogActions(
-                confirmText = if (isMutatingModel) "删除中..." else "删除",
+                confirmText = if (isMutatingModel) "삭제 중..." else "삭제",
                 cancelEnabled = !isMutatingModel,
                 confirmEnabled = !isMutatingModel,
                 destructive = true,
@@ -835,14 +835,14 @@ private fun ProviderModelsTab(
                         try {
                             ModelRepository.deleteModels(provider.id, selectedModelIds)
                             RuntimeConfigRepository.syncToRemotePreferences(FuckAndesApp.serviceInstance)
-                            message = "已删除 $deletedCount 个模型"
+                            message = "모델 ${deletedCount}개를 삭제했습니다."
                             showBatchDeleteDialog = false
                             selectionMode = false
                             selectedModelIds = emptySet()
                         } catch (cancelled: CancellationException) {
                             throw cancelled
                         } catch (throwable: Throwable) {
-                            message = "失败：${throwable.message ?: "删除失败"}"
+                            message = "실패: ${throwable.message ?: "删除失败"}"
                             showBatchDeleteDialog = false
                         } finally {
                             isMutatingModel = false
@@ -881,22 +881,22 @@ private fun ModelSelectionBar(
             IconButton(onClick = onExit, enabled = enabled) {
                 Icon(
                     painter = painterResource(LucideR.drawable.lucide_ic_x),
-                    contentDescription = "退出多选",
+                    contentDescription = "다중 선택 종료",
                     tint = MiuixTheme.colorScheme.onSurfaceVariantActions,
                 )
             }
             Text(
-                text = "已选 $selectedCount 个",
+                text = "선택됨: ${selectedCount}개",
                 style = MiuixTheme.textStyles.body2,
                 modifier = Modifier.weight(1f),
             )
             TextButton(
-                text = if (selectedCount == totalCount) "全不选" else "全选",
+                text = if (selectedCount == totalCount) "모두 선택 해제" else "모두 선택",
                 enabled = enabled,
                 onClick = onToggleAll,
             )
             TextButton(
-                text = "删除",
+                text = "삭제",
                 enabled = selectedCount > 0 && enabled,
                 colors = ButtonDefaults.textButtonColorsPrimary(
                     color = MiuixTheme.colorScheme.error,
@@ -957,7 +957,7 @@ private fun ModelListItem(
                     TagChip(text = tag)
                 }
                 if (isSelected) {
-                    TagChip(text = "当前", tone = TagChipTone.Emphasized)
+                    TagChip(text = "현재", tone = TagChipTone.Emphasized)
                 }
             }
         }
@@ -971,7 +971,7 @@ private fun ModelListItem(
             IconButton(onClick = onSetCurrent, enabled = enabled) {
                 Icon(
                     painter = painterResource(if (isSelected) LucideR.drawable.lucide_ic_check else LucideR.drawable.lucide_ic_circle),
-                    contentDescription = if (isSelected) "当前模型" else "设为当前",
+                    contentDescription = if (isSelected) "현재 모델" else "현재로 설정",
                     tint = if (isSelected) MiuixTheme.colorScheme.primary else MiuixTheme.colorScheme.onSurfaceVariantActions,
                 )
             }
@@ -999,14 +999,14 @@ private fun ModelEditDialog(
 
     OverlayDialog(
         show = true,
-        title = if (isNew) "添加模型" else "编辑模型",
+        title = if (isNew) "모델 추가" else "모델 편집",
         onDismissRequest = { if (!isSaving) onDismiss() },
     ) {
         Column {
             TextField(
                 value = displayName,
                 onValueChange = { displayName = it },
-                label = "展示名称",
+                label = "표시 이름",
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                 modifier = Modifier.fillMaxWidth()
@@ -1042,7 +1042,7 @@ private fun ModelEditDialog(
             }
             onDelete?.let { delete ->
                 Text(
-                    text = "删除模型",
+                    text = "모델 삭제",
                     style = MiuixTheme.textStyles.body2,
                     color = MiuixTheme.colorScheme.error,
                     modifier = Modifier
@@ -1053,7 +1053,7 @@ private fun ModelEditDialog(
             }
         }
         MiuixDialogActions(
-            confirmText = if (isSaving) "保存中..." else "保存",
+            confirmText = if (isSaving) "저장 중..." else "저장",
             confirmEnabled = !isSaving && displayName.isNotBlank() && modelId.isNotBlank(),
             cancelEnabled = !isSaving,
             onCancel = onDismiss,
@@ -1103,10 +1103,10 @@ private fun buildUpdatedProvider(
 }
 
 private fun validateProviderDraft(draft: ProviderConfigDraft): String? {
-    if (draft.name.isBlank()) return "名称不能为空"
+    if (draft.name.isBlank()) return "이름을 입력하세요."
     val uri = runCatching { java.net.URI(draft.baseUrl.trim()) }.getOrNull()
     if (uri == null || uri.scheme !in setOf("http", "https") || uri.host.isNullOrBlank()) {
-        return "Base URL 必须是有效的 HTTP(S) 地址"
+        return "Base URL은 올바른 HTTP(S) 주소여야 합니다."
     }
     return null
 }
@@ -1122,9 +1122,9 @@ private fun capabilityTags(model: Model): List<String> = buildList {
             }
         )
     }
-}.ifEmpty { listOf("基础文本") }
+}.ifEmpty { listOf("기본 텍스트") }
 
 private suspend fun testConnection(provider: ProviderSetting): String =
     RemoteModelFetcher.fetch(provider)
-        .map { "成功，拉取到 ${it.size} 个模型" }
-        .getOrElse { throwable -> "失败：${throwable.message ?: throwable.javaClass.simpleName}" }
+        .map { "성공: 모델 ${it.size}개를 가져왔습니다." }
+        .getOrElse { throwable -> "실패: ${throwable.message ?: throwable.javaClass.simpleName}" }

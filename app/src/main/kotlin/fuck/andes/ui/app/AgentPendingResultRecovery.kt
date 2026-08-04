@@ -23,9 +23,9 @@ internal object AgentPendingResultRecovery {
         supplements: List<AgentUiHandoffPayload.Supplement>,
     ): Outcome {
         val content = if (result.ok) {
-            result.content.ifBlank { "已完成。" }
+            result.content.ifBlank { "완료되었습니다." }
         } else {
-            result.error ?: "Agent Runtime 调用失败"
+            result.error ?: "에이전트 런타임 호출 실패"
         }
         val history = AgentRuntimeHistoryReducer.apply(
             state = state,
