@@ -1,0 +1,185 @@
+name: Eta update v2
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: eta-sync-2.5.0
+  cancel-in-progress: true
+
+jobs:
+  update:
+    if: >-
+      github.event.issue.pull_request &&
+      github.event.issue.number == 13 &&
+      contains(github.event.comment.body, '/eta-sync-2.5.0-v2')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+
+    steps:
+      - name: Resolve PR and report start
+        id: pr
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: pr } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+            });
+            core.setOutput('head_ref', pr.head.ref);
+            core.setOutput('head_sha', pr.head.sha);
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: `ETA_UPDATE_STARTED\nrun_id=${context.runId}\nhead_ref=${pr.head.ref}`,
+            });
+
+      - name: Check out control files
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: control
+          fetch-depth: 1
+
+      - name: Check out update branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.pr.outputs.head_ref }}
+          path: work
+          fetch-depth: 0
+          token: ${{ github.token }}
+
+      - name: Prepare merge and localization
+        working-directory: work
+        shell: bash
+        env:
+          OLD_UPSTREAM: 7eeb00cc4da8c857f2a046c4c1c056610e2c0b16
+          KOREAN_BASE: dd68bdd452877d888e37fe7f09d1a668d4022abc
+        run: |
+          set -euo pipefail
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git fetch origin main
+          git remote add upstream https://github.com/Mangi-11/Eta.git || true
+          git fetch upstream main
+          git merge-base --is-ancestor aefd2a4dda1428e64dd0fd0cb09d8ebf94f1fd26 HEAD
+          git merge -s ours --no-commit origin/main
+          rm -rf \
+            .github/update-export-trigger.txt \
+            .github/workflows/export-source.yml \
+            .github/workflows/export-source-target.yml \
+            .github/workflows/audit-localization-target.yml \
+            .github/workflows/actions-smoke-test.yml \
+            .github/workflows/pr-comment-smoke-test.yml \
+            .github/workflows/eta-update-command.yml \
+            .github/workflows/eta-update-v2.yml \
+            .github/eta-update
+          python3 ../control/.github/eta-update/localize.py
+          cp ../control/.github/eta-update/android-apk.yml .github/workflows/android-apk.yml
+          grep -q 'versionName = "2.5.0"' app/build.gradle.kts
+          if grep -q 'versionNameSuffix' app/build.gradle.kts; then
+            echo 'Korean-only version suffix remains.' >&2
+            exit 1
+          fi
+          git diff --check
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Install Android SDK 37
+        shell: bash
+        run: |
+          set -euo pipefail
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager --channel=3 'platform-tools' 'platforms;android-37.0'
+          chmod +x work/gradlew
+
+      - name: Build debug APK
+        working-directory: work
+        shell: bash
+        run: |
+          set -o pipefail
+          ./gradlew --no-daemon --stacktrace --console=plain assembleDebug 2>&1 | tee /tmp/eta-build.log
+          mkdir -p /tmp/eta-apk
+          cp app/build/outputs/apk/debug/app-debug.apk /tmp/eta-apk/Eta-2.5.0.apk
+
+      - name: Commit and push update
+        id: commit
+        working-directory: work
+        shell: bash
+        env:
+          HEAD_REF: ${{ steps.pr.outputs.head_ref }}
+        run: |
+          set -euo pipefail
+          git add -A
+          git commit -m 'Eta 2.5.0 upstream 동기화 및 한국어 현지화'
+          git push origin "HEAD:${HEAD_REF}"
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Upload pre-merge APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Eta-2.5.0
+          path: /tmp/eta-apk/Eta-2.5.0.apk
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
+
+      - name: Report success
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ steps.commit.outputs.sha }}
+        run: |
+          set -euo pipefail
+          REMAINING="$(cat /tmp/eta-remaining-count)"
+          cat > /tmp/eta-success.md <<EOF
+          ETA_UPDATE_SUCCESS
+          version=2.5.0
+          upstream=aefd2a4dda1428e64dd0fd0cb09d8ebf94f1fd26
+          head_sha=${SHA}
+          run_id=${GITHUB_RUN_ID}
+          run_url=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}
+          artifact=Eta-2.5.0
+          apk=Eta-2.5.0.apk
+          remaining_ui_chinese=${REMAINING}
+
+          EOF
+          cat /tmp/eta-localization-report.md >> /tmp/eta-success.md
+          gh pr comment 13 --body-file /tmp/eta-success.md
+
+      - name: Report failure
+        if: failure()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          {
+            echo 'ETA_UPDATE_FAILED'
+            echo "run_id=${GITHUB_RUN_ID}"
+            echo "run_url=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+            echo
+            if [[ -f /tmp/eta-build.log ]]; then
+              echo '```text'
+              tail -n 180 /tmp/eta-build.log
+              echo '```'
+            fi
+          } > /tmp/eta-failure.md
+          gh pr comment 13 --body-file /tmp/eta-failure.md
