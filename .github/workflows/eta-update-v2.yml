@@ -34,12 +34,11 @@ jobs:
               pull_number: context.issue.number,
             });
             core.setOutput('head_ref', pr.head.ref);
-            core.setOutput('head_sha', pr.head.sha);
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.issue.number,
-              body: `ETA_UPDATE_STARTED\nrun_id=${context.runId}\nhead_ref=${pr.head.ref}`,
+              body: `ETA_UPDATE_V2_RETRY_STARTED\nrun_id=${context.runId}\nhead_ref=${pr.head.ref}`,
             });
 
       - name: Check out control files
@@ -72,18 +71,10 @@ jobs:
           git fetch upstream main
           git merge-base --is-ancestor aefd2a4dda1428e64dd0fd0cb09d8ebf94f1fd26 HEAD
           git merge -s ours --no-commit origin/main
-          rm -rf \
-            .github/update-export-trigger.txt \
-            .github/workflows/export-source.yml \
-            .github/workflows/export-source-target.yml \
-            .github/workflows/audit-localization-target.yml \
-            .github/workflows/actions-smoke-test.yml \
-            .github/workflows/pr-comment-smoke-test.yml \
-            .github/workflows/eta-update-command.yml \
-            .github/workflows/eta-update-v2.yml \
-            .github/eta-update
+          git restore --source=origin/main --staged --worktree .github/workflows
+          rm -f .github/update-export-trigger.txt
+          rm -rf .github/eta-update
           python3 ../control/.github/eta-update/localize.py
-          cp ../control/.github/eta-update/android-apk.yml .github/workflows/android-apk.yml
           grep -q 'versionName = "2.5.0"' app/build.gradle.kts
           if grep -q 'versionNameSuffix' app/build.gradle.kts; then
             echo 'Korean-only version suffix remains.' >&2
@@ -120,7 +111,7 @@ jobs:
           mkdir -p /tmp/eta-apk
           cp app/build/outputs/apk/debug/app-debug.apk /tmp/eta-apk/Eta-2.5.0.apk
 
-      - name: Commit and push update
+      - name: Commit and push application update
         id: commit
         working-directory: work
         shell: bash
@@ -151,7 +142,7 @@ jobs:
           set -euo pipefail
           REMAINING="$(cat /tmp/eta-remaining-count)"
           cat > /tmp/eta-success.md <<EOF
-          ETA_UPDATE_SUCCESS
+          ETA_UPDATE_V2_RETRY_SUCCESS
           version=2.5.0
           upstream=aefd2a4dda1428e64dd0fd0cb09d8ebf94f1fd26
           head_sha=${SHA}
@@ -163,7 +154,7 @@ jobs:
 
           EOF
           cat /tmp/eta-localization-report.md >> /tmp/eta-success.md
-          gh pr comment 13 --body-file /tmp/eta-success.md
+          gh pr comment 13 --repo "$GITHUB_REPOSITORY" --body-file /tmp/eta-success.md
 
       - name: Report failure
         if: failure()
@@ -172,7 +163,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           {
-            echo 'ETA_UPDATE_FAILED'
+            echo 'ETA_UPDATE_V2_RETRY_FAILED'
             echo "run_id=${GITHUB_RUN_ID}"
             echo "run_url=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
             echo
@@ -182,4 +173,4 @@ jobs:
               echo '```'
             fi
           } > /tmp/eta-failure.md
-          gh pr comment 13 --body-file /tmp/eta-failure.md
+          gh pr comment 13 --repo "$GITHUB_REPOSITORY" --body-file /tmp/eta-failure.md
