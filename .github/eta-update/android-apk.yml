@@ -1,0 +1,121 @@
+name: Android APK
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: android-apk-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Read version
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="$(sed -nE 's/^[[:space:]]*versionName = "([^"]+)".*/\1/p' app/build.gradle.kts | head -n 1)"
+          if [[ -z "$VERSION" ]]; then
+            echo 'Could not read versionName.' >&2
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "apk_name=Eta-${VERSION}.apk" >> "$GITHUB_OUTPUT"
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: ${{ github.event_name == 'pull_request' }}
+
+      - name: Install Android SDK 37
+        shell: bash
+        run: |
+          set -euo pipefail
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager --channel=3 'platform-tools' 'platforms;android-37.0'
+          chmod +x gradlew
+
+      - name: Build debug APK
+        run: ./gradlew --no-daemon --stacktrace --console=plain assembleDebug
+
+      - name: Name APK
+        shell: bash
+        run: |
+          cp app/build/outputs/apk/debug/app-debug.apk \
+            "app/build/outputs/apk/debug/${{ steps.version.outputs.apk_name }}"
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Eta-${{ steps.version.outputs.version }}
+          path: app/build/outputs/apk/debug/${{ steps.version.outputs.apk_name }}
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
+
+      - name: Publish GitHub Release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+          APK_NAME: ${{ steps.version.outputs.apk_name }}
+        run: |
+          set -euo pipefail
+          APK_PATH="app/build/outputs/apk/debug/$APK_NAME"
+          NOTES=/tmp/eta-release-notes.md
+          cat > "$NOTES" <<EOF
+          Eta ${VERSION} 한국어 현지화 빌드입니다.
+
+          - upstream 버전: ${VERSION}
+          - 빌드: GitHub Actions debug APK
+          - 커밋: ${GITHUB_SHA}
+          - Actions: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}
+          EOF
+          if gh release view "$VERSION" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$VERSION" "$APK_PATH" --repo "$GITHUB_REPOSITORY" --clobber
+            gh release edit "$VERSION" --repo "$GITHUB_REPOSITORY" \
+              --title "Eta $VERSION" --notes-file "$NOTES" --target "$GITHUB_SHA"
+          else
+            gh release create "$VERSION" "$APK_PATH" --repo "$GITHUB_REPOSITORY" \
+              --target "$GITHUB_SHA" --title "Eta $VERSION" --notes-file "$NOTES"
+          fi
+
+      - name: Report Eta 2.5.0 release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.version.outputs.version == '2.5.0'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh pr comment 13 --body "ETA_RELEASE_SUCCESS
+          version=2.5.0
+          main_sha=${GITHUB_SHA}
+          run_id=${GITHUB_RUN_ID}
+          run_url=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}
+          release=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/tag/2.5.0
+          artifact=Eta-2.5.0
+          apk=Eta-2.5.0.apk"
