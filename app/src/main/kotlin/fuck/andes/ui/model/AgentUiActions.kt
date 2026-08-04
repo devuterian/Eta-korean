@@ -1,8 +1,10 @@
 package fuck.andes.ui.model
 
+import fuck.andes.data.model.ReasoningEffort
+
 sealed interface AgentHomeAction {
     data class InputChanged(val text: String) : AgentHomeAction
-    data class ThinkingToggled(val enabled: Boolean) : AgentHomeAction
+    data class ReasoningEffortChanged(val effort: ReasoningEffort) : AgentHomeAction
     data object SendMessage : AgentHomeAction
     data object StopRun : AgentHomeAction
     data class ImageAttached(val uri: String) : AgentHomeAction
@@ -24,7 +26,7 @@ sealed interface PermissionHealthAction {
 sealed interface AgentChatAction {
     data object NavigateBack : AgentChatAction
     data class InputChanged(val text: String) : AgentChatAction
-    data class ThinkingToggled(val enabled: Boolean) : AgentChatAction
+    data class ReasoningEffortChanged(val effort: ReasoningEffort) : AgentChatAction
     data object SendMessage : AgentChatAction
     data object StopRun : AgentChatAction
     data object OpenBrowser : AgentChatAction
@@ -51,4 +53,13 @@ sealed interface AgentSkillsAction {
 sealed interface AgentSystemEnhanceAction {
     data object NavigateBack : AgentSystemEnhanceAction
     data class ToggleItem(val itemId: String) : AgentSystemEnhanceAction
+}
+
+sealed interface AgentMemoryAction {
+    data object NavigateBack : AgentMemoryAction
+    data class ToggleEnabled(val enabled: Boolean) : AgentMemoryAction
+    data class DraftChanged(val content: String) : AgentMemoryAction
+    data object Save : AgentMemoryAction
+    data object Clear : AgentMemoryAction
+    data object DismissNotice : AgentMemoryAction
 }

@@ -16,6 +16,7 @@ import fuck.andes.core.toSafeLogToken
 import android.os.Handler
 import android.os.Looper
 import fuck.andes.config.Prefs
+import fuck.andes.data.model.ReasoningEffort
 import io.github.libxposed.api.XposedModule
 import java.lang.reflect.Method
 import java.lang.reflect.Proxy
@@ -182,7 +183,7 @@ internal object BreenoHooks {
             hooks.missing(
                 id = "breeno.outbound-message",
                 description = "MessageQueueManager.c",
-                detail = "MessageQueueManager/Message를 찾을 수 없어, 출발 메시지 처리를 건너뜁니다."
+                detail = "未找到 MessageQueueManager/Message，跳过出站接管"
             )
             return
         }
@@ -198,7 +199,7 @@ internal object BreenoHooks {
             hooks.missing(
                 id = "breeno.outbound-message",
                 description = "MessageQueueManager.c",
-                detail = "MessageQueueManager.c(Message,boolean,Integer,boolean)를 찾을 수 없습니다."
+                detail = "未找到 MessageQueueManager.c(Message,boolean,Integer,boolean)"
             )
             return
         }
@@ -216,7 +217,7 @@ internal object BreenoHooks {
                 logger.debug { "outbound: ${summarizeOutboundMessage(message)}" }
             } catch (exception: Exception) {
                 logger.warnThrottled("breeno_outbound_log_failed") {
-                    "출발 메시지 기록 실패, type=${exception.safeLogType()}"
+                    "记录出站消息失败，type=${exception.safeLogType()}"
                 }
             }
             chain.proceed()
@@ -233,7 +234,7 @@ internal object BreenoHooks {
             hooks.missing(
                 id = "breeno.inbound-message",
                 description = "MessageProcessor.B",
-                detail = "MessageProcessor를 찾을 수 없어, 도착 메시지 처리를 건너뜁니다."
+                detail = "未找到 MessageProcessor，跳过入站接管"
             )
             return
         }
@@ -247,7 +248,7 @@ internal object BreenoHooks {
             hooks.missing(
                 id = "breeno.inbound-message",
                 description = "MessageProcessor.B",
-                detail = "MessageProcessor.B(String,String)를 찾을 수 없습니다."
+                detail = "未找到 MessageProcessor.B(String,String)"
             )
             return
         }
@@ -267,7 +268,7 @@ internal object BreenoHooks {
                 }
             } catch (exception: Exception) {
                 logger.warnThrottled("breeno_inbound_log_failed") {
-                    "도착 메시지 기록 실패, type=${exception.safeLogType()}"
+                    "记录入站消息失败，type=${exception.safeLogType()}"
                 }
             }
             when {
@@ -293,7 +294,7 @@ internal object BreenoHooks {
             hooks.missing(
                 id = "breeno.cdm-text-request",
                 description = "CdmNode.o",
-                detail = "CdmNode/DmParameter를 찾을 수 없어, 텍스트 요청 관측을 건너뜁니다."
+                detail = "未找到 CdmNode/DmParameter，跳过文本请求观测"
             )
             return
         }
@@ -302,7 +303,7 @@ internal object BreenoHooks {
             hooks.missing(
                 id = "breeno.cdm-text-request",
                 description = "CdmNode.o",
-                detail = "CdmNode.o(DmParameter)를 찾을 수 없습니다."
+                detail = "未找到 CdmNode.o(DmParameter)"
             )
             return
         }
@@ -317,14 +318,14 @@ internal object BreenoHooks {
                 logger.debug { "CDM request: ${summarizeDmParameter(parameter)}" }
             } catch (exception: Exception) {
                 logger.warnThrottled("breeno_cdm_log_failed") {
-                    "CdmNode 요청 기록 실패, type=${exception.safeLogType()}"
+                    "记录 CdmNode 请求失败，type=${exception.safeLogType()}"
                 }
             }
             try {
                 cacheCdmImages(logger, parameter)
             } catch (exception: Exception) {
                 logger.warnThrottled("breeno_cdm_image_cache_failed") {
-                    "CdmNode 이미지 참조 캐시 실패, type=${exception.safeLogType()}"
+                    "缓存 CdmNode 图片引用失败，type=${exception.safeLogType()}"
                 }
             }
             chain.proceed()
@@ -342,7 +343,7 @@ internal object BreenoHooks {
             hooks.missing(
                 id = "breeno.ai-chat-data-center",
                 description = "AIChatDataCenter.r",
-                detail = "AIChatDataCenter/AIChatViewBean을 찾을 수 없어, 대화 UI 처리를 건너뜁니다."
+                detail = "未找到 AIChatDataCenter/AIChatViewBean，跳过对话 UI 接管"
             )
             return
         }
@@ -351,7 +352,7 @@ internal object BreenoHooks {
             hooks.missing(
                 id = "breeno.ai-chat-data-center",
                 description = "AIChatDataCenter.r",
-                detail = "AIChatDataCenter.r(AIChatViewBean)를 찾을 수 없습니다."
+                detail = "未找到 AIChatDataCenter.r(AIChatViewBean)"
             )
             return
         }
@@ -465,7 +466,7 @@ internal object BreenoHooks {
         if (claimedAgentRooms.isEmpty()) return content
         if (content.length > MAX_INBOUND_DIRECTIVE_CHARS) {
             logger.warnThrottled("breeno_native_directive_too_large") {
-                "도착 명령이 파싱 한도를 초과하여, 원본 메시지를 유지합니다."
+                "入站指令超过解析上限，保留原始消息"
             }
             return content
         }
@@ -508,7 +509,7 @@ internal object BreenoHooks {
             }
         } catch (exception: Exception) {
             logger.warnThrottled("breeno_native_directive_filter_failed") {
-                "원본 명령 필터링 실패, type=${exception.safeLogType()}"
+                "过滤原生指令失败，type=${exception.safeLogType()}"
             }
             content
         }
@@ -606,20 +607,25 @@ internal object BreenoHooks {
                 val modelResponse = runCatching {
                     val baseConfig = AgentModelClient.loadConfig()
                     val config = request.thinkingEnabledOverride
-                        ?.let { baseConfig.copy(thinkingEnabled = it) }
+                        ?.let {
+                            baseConfig.copy(
+                                thinkingEnabled = it,
+                                reasoningEffort = ReasoningEffort.fromLegacy(it),
+                            )
+                        }
                         ?: baseConfig
                     if (!Prefs.isEnabled(Prefs.Keys.AGENT_CUSTOM_MODEL)) {
-                        error("Eta 설정에서 'Breeno 사용자 지정 모델'을 먼저 활성화하세요.")
+                        error("请先在 Eta 设置中启用“小布自定义模型”")
                     }
                     val context = AgentAppContext.resolve()
-                        ?: error("Breeno 프로세스 Context를 가져올 수 없습니다.")
+                        ?: error("无法获取小布进程 Context")
                     val images = when (
                         val resolution = BreenoRequestImages.resolve(context, request.imageSnapshot)
                     ) {
                         is BreenoRequestImages.Resolution.Success -> resolution.images
                         is BreenoRequestImages.Resolution.Failure -> {
                             logger.warnThrottled("breeno_${resolution.code.value}") {
-                                "이미지 처리 실패: code=${resolution.code.value}, images=${resolution.imageCount}, " +
+                                "图片处理失败: code=${resolution.code.value}, images=${resolution.imageCount}, " +
                                     "estimated=${resolution.estimatedBytes}, " +
                                     "limit=${resolution.maxBytes}"
                             }
@@ -642,7 +648,7 @@ internal object BreenoHooks {
                     }
                     ackRunId = result.runId.ifBlank { null }
                     if (!result.ok) {
-                        error(result.error ?: "에이전트 Runtime 호출 실패")
+                        error(result.error ?: "Agent Runtime 调用失败")
                     }
                     AgentModelClient.ModelResponse.Text(
                         content = result.content,
@@ -650,7 +656,7 @@ internal object BreenoHooks {
                     )
                 }.getOrElse { throwable ->
                     AgentModelClient.ModelResponse.Text(
-                        "Breeno 커스텀 모델 호출 실패: ${throwable.message ?: throwable.javaClass.simpleName}"
+                        "小布自定义模型调用失败：${throwable.message ?: throwable.javaClass.simpleName}"
                     )
                 }
                 Handler(Looper.getMainLooper()).post {
@@ -707,7 +713,7 @@ internal object BreenoHooks {
                     }.onFailure { throwable ->
                         if (deliveryMarked) handledRuntimeRunIds.remove(deliveredRunId)
                         logger.error(
-                            "Breeno: 커스텀 모델 응답 주입 실패, type=${throwable.safeLogType()}"
+                            "Breeno: 注入自定义模型响应失败，type=${throwable.safeLogType()}"
                         )
                     }
                     activeAgentRun.compareAndSet(runState, null)
@@ -740,7 +746,7 @@ internal object BreenoHooks {
         }.getOrElse { throwable ->
             if (!scheduled) startedAgentRequests.remove(requestKey)
             logger.error(
-                "Breeno: 커스텀 모델 요청 처리 실패, 원본 요청을 통과시킵니다, type=${throwable.safeLogType()}"
+                "Breeno: 接管自定义模型请求失败，放行原请求，type=${throwable.safeLogType()}"
             )
             scheduled
         }
@@ -793,7 +799,7 @@ internal object BreenoHooks {
                 AgentRuntimeClient(context, logger).drainCompletedRuns()
             }.getOrElse { throwable ->
                 logger.warnThrottled("breeno_pending_drain_failed") {
-                    "Breeno: 에이전트 미전달 결과 가져오기 실패, type=${throwable.safeLogType()}"
+                    "Breeno: 拉取 Agent 未交付结果失败，type=${throwable.safeLogType()}"
                 }
                 emptyList()
             }
@@ -823,14 +829,14 @@ internal object BreenoHooks {
         val runId = completedRun.result.runId.ifBlank { completedRun.handoff.id }
         val request = textRequestFromHandoff(completedRun.handoff, runId)
         if (request == null) {
-            logger.debug { "Breeno: Breeno가 아닌 에이전트의 미전달 결과는 무시합니다." }
+            logger.debug { "Breeno: 忽略非小布 Agent 未交付结果" }
             return
         }
         val result = completedRun.result
         val content = if (result.ok) {
             result.content
         } else {
-            "Breeno 커스텀 모델 호출 실패: ${result.error ?: "에이전트 Runtime 호출 실패"}"
+            "小布自定义模型调用失败：${result.error ?: "Agent Runtime 调用失败"}"
         }
         val response = AgentModelClient.ModelResponse.Text(
             content = content,
@@ -865,7 +871,7 @@ internal object BreenoHooks {
         }.onFailure { throwable ->
             if (deliveryMarked) handledRuntimeRunIds.remove(runId)
             logger.error(
-                "Breeno: 미전달 에이전트 결과 주입 실패, type=${throwable.safeLogType()}"
+                "Breeno: 注入未交付 Agent 结果失败，type=${throwable.safeLogType()}"
             )
         }
     }
@@ -950,6 +956,7 @@ internal object BreenoHooks {
                     .ifBlank { runId },
                 title = archiveTitle(userText),
                 thinkingEnabled = thinkingEnabledOverride,
+                reasoningEffort = thinkingEnabledOverride?.let(ReasoningEffort::fromLegacy),
                 adapterPayload = JSONObject()
                     .put("recordId", recordId)
                     .put("originalRecordId", originalRecordId)
@@ -964,9 +971,9 @@ internal object BreenoHooks {
     private fun archiveTitle(userText: String): String {
         val firstLine = userText.lineSequence().firstOrNull().orEmpty().trim()
         return if (firstLine.isBlank()) {
-            "Breeno 대화"
+            "小布对话"
         } else {
-            "Breeno: ${firstLine.take(BREENO_ARCHIVE_TITLE_CHARS)}"
+            "小布：${firstLine.take(BREENO_ARCHIVE_TITLE_CHARS)}"
         }
     }
 
@@ -1021,7 +1028,7 @@ internal object BreenoHooks {
         val enqueueResult = pendingRuntimeAcks.enqueue(runId)
         if (enqueueResult == PendingAckState.EnqueueResult.OVERFLOW) {
             logger.warnThrottled("breeno_ack_pending_overflow") {
-                "Breeno: 확인 대기 결과가 한도에 도달, Runtime 영구 큐에서 복원합니다."
+                "Breeno: 待确认结果已达上限，将从 Runtime 持久队列恢复"
             }
         }
         scheduleRuntimeAckDrain(logger)
@@ -1037,7 +1044,7 @@ internal object BreenoHooks {
         } catch (_: RejectedExecutionException) {
             pendingAckDrainRunning.set(false)
             logger.warnThrottled("breeno_ack_rejected") {
-                "Breeno: 에이전트 백그라운드 큐가 가득 찼습니다. 결과 확인을 재시도합니다."
+                "Breeno: Agent 后台队列已满，将重试结果确认"
             }
             scheduleRuntimeAckRetry(logger)
         }
@@ -1063,7 +1070,7 @@ internal object BreenoHooks {
                         pendingRuntimeAcks.enqueue(runId)
                         deferRemainingWork = true
                         logger.warnThrottled("breeno_ack_unavailable") {
-                            "Breeno: 에이전트 Runtime을 일시적으로 사용할 수 없습니다. 결과 확인을 재시도합니다."
+                            "Breeno: Agent Runtime 暂不可用，将重试结果确认"
                         }
                         break
                     }
@@ -1071,7 +1078,7 @@ internal object BreenoHooks {
                     pendingRuntimeAcks.enqueue(runId)
                     deferRemainingWork = true
                     logger.warnThrottled("breeno_ack_failed") {
-                        "Breeno: 에이전트 결과 확인 실패, 재시도합니다, type=${exception.safeLogType()}"
+                        "Breeno: 确认 Agent 结果失败，将重试，type=${exception.safeLogType()}"
                     }
                     break
                 }
@@ -1084,7 +1091,7 @@ internal object BreenoHooks {
                     pendingRuntimeAcks.requestRescan()
                     deferRemainingWork = true
                     logger.warnThrottled("breeno_ack_rescan_failed") {
-                        "Breeno: 확인 대기 결과 복구 실패, 재시도합니다, type=${throwable.safeLogType()}"
+                        "Breeno: 恢复待确认结果失败，将重试，type=${throwable.safeLogType()}"
                     }
                     emptyList()
                 }
@@ -1101,13 +1108,13 @@ internal object BreenoHooks {
                 ackableRuns.forEach { recoveredRunId ->
                     runCatching {
                         check(client.ackResult(recoveredRunId)) {
-                            "에이전트 런타임 ACK 미제출"
+                            "Agent Runtime ACK 未提交"
                         }
                     }.onFailure { throwable ->
                         pendingRuntimeAcks.enqueue(recoveredRunId)
                         deferRemainingWork = true
                         logger.warnThrottled("breeno_ack_rescan_item_failed") {
-                            "Breeno: 복구 결과 확인 실패, 재시도합니다, type=${throwable.safeLogType()}"
+                            "Breeno: 确认恢复结果失败，将重试，type=${throwable.safeLogType()}"
                         }
                     }
                 }
@@ -1137,7 +1144,7 @@ internal object BreenoHooks {
         if (!pendingAckRetryBudget.tryAcquire()) {
             pendingAckRetryScheduled.set(false)
             logger.warnThrottled("breeno_ack_retry_exhausted") {
-                "Breeno: 에이전트 결과 확인 재시도 한도 도달, 다음 이벤트를 기다립니다"
+                "Breeno: Agent 结果确认重试已达上限，等待后续事件继续处理"
             }
             return
         }
@@ -1151,7 +1158,7 @@ internal object BreenoHooks {
         if (!posted) {
             pendingAckRetryScheduled.set(false)
             logger.warnThrottled("breeno_ack_retry_post_failed") {
-                "Breeno: 에이전트 결과 확인 재시도 스케줄 불가"
+                "Breeno: 无法调度 Agent 结果确认重试"
             }
         }
     }
@@ -1166,7 +1173,7 @@ internal object BreenoHooks {
             true
         } catch (_: RejectedExecutionException) {
             logger.warnThrottled(rejectionKey) {
-                "Breeno: 에이전트 백그라운드 큐가 가득 차서 비핵심 작업을 건너뜀"
+                "Breeno: Agent 后台队列已满，已跳过非关键任务"
             }
             false
         }
@@ -1304,7 +1311,7 @@ internal object BreenoHooks {
 
                 is AgentEvent.ToolStarted -> {
                     if (!created && pendingReasoning.isEmpty()) return
-                    reasoningState = "${event.name.toBreenoToolLabel()} 사용 중"
+                    reasoningState = "正在使用${event.name.toBreenoToolLabel()}"
                     scheduleFlush(force = true)
                 }
 
@@ -1414,7 +1421,7 @@ internal object BreenoHooks {
             }.getOrElse { throwable ->
                 disabled = true
                 logger.warnThrottled("breeno_stream_injection_failed") {
-                    "Breeno: 스트림 인젝션 실패, 최종 인젝션으로 대체, type=${throwable.safeLogType()}"
+                    "Breeno: 流式注入失败，回退最终注入，type=${throwable.safeLogType()}"
                 }
                 false
             }
@@ -1423,10 +1430,10 @@ internal object BreenoHooks {
         private fun String.toBreenoToolLabel(): String =
             when (this) {
                 "terminal",
-                "run_command" -> "시스템 도구"
-                "open_app" -> "앱 도구"
-                "screenshot" -> "스크린 도구"
-                else -> "도구"
+                "run_command" -> "系统工具"
+                "open_app" -> "应用工具"
+                "screenshot" -> "屏幕工具"
+                else -> "工具"
             }
     }
 
@@ -1568,7 +1575,7 @@ internal object BreenoHooks {
             val roomId = request.roomId.ifBlank { currentRoomId(classLoader) }
             if (roomId.isBlank()) {
                 logger.warnThrottled("breeno_history_room_missing") {
-                    "Breeno: 히스토리 기록 건너뜀, roomId 없음"
+                    "Breeno: 跳过历史写入，roomId 为空"
                 }
                 onFinished(false)
                 return
@@ -1630,14 +1637,14 @@ internal object BreenoHooks {
                             logger.debug { "Breeno history persisted" }
                         } else {
                             logger.warnThrottled("breeno_history_persist_rejected") {
-                                "Breeno: 서버에서 히스토리 완전 저장 실패"
+                                "Breeno: 服务端未完整保存历史记录"
                             }
                         }
                         onFinished(historySaved)
                     }
                 }.onFailure { throwable ->
                     logger.warnThrottled("breeno_history_answer_dispatch_failed") {
-                        "Breeno: 답변 히스토리 제출 실패, type=${throwable.safeLogType()}"
+                        "Breeno: 提交回答历史失败，type=${throwable.safeLogType()}"
                     }
                     onFinished(false)
                 }
@@ -1645,7 +1652,7 @@ internal object BreenoHooks {
             logger.debug { "Breeno history persist requested" }
         }.onFailure { throwable ->
             logger.warnThrottled("breeno_history_persist_failed") {
-                "Breeno: 히스토리 기록 실패, type=${throwable.safeLogType()}"
+                "Breeno: 写入历史记录失败，type=${throwable.safeLogType()}"
             }
             onFinished(false)
         }
@@ -1669,7 +1676,7 @@ internal object BreenoHooks {
                 ackRuntimeResult(logger, runId)
             } else {
                 logger.warnThrottled("breeno_history_pending_${runId.hashCode()}") {
-                    "Breeno: 히스토리 저장 미완료, 런타임 결과 보존"
+                    "Breeno: 历史保存未完成，保留 Runtime 结果以便恢复"
                 }
             }
         }
@@ -1950,16 +1957,16 @@ internal object BreenoHooks {
             }
             BreenoRequestImages.SnapshotCache.StoreResult.STORED_FAILURE ->
                 logger.warnThrottled("breeno_image_cache_size_limit") {
-                    "Breeno: 이미지 참조 캐시 데이터 한도 초과, 실패 상태 저장됨"
+                    "Breeno: 图片引用缓存数据超过上限，已保存显式失败状态"
                 }
             BreenoRequestImages.SnapshotCache.StoreResult.EMPTY -> Unit
             BreenoRequestImages.SnapshotCache.StoreResult.TOO_MANY_ALIASES ->
                 logger.warnThrottled("breeno_image_cache_alias_limit") {
-                    "Breeno: 이미지 참조 캐시 별칭 한도 초과, 캐시 거부됨"
+                    "Breeno: 图片引用缓存别名超过上限，已拒绝缓存"
                 }
             BreenoRequestImages.SnapshotCache.StoreResult.TOO_LARGE ->
                 logger.warnThrottled("breeno_image_cache_size_limit") {
-                    "Breeno: 이미지 참조 캐시 용량 부족, 실패 상태 저장 불가"
+                    "Breeno: 图片引用缓存容量不足，无法保存失败状态"
                 }
         }
     }

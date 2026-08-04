@@ -49,7 +49,7 @@ internal object ColorDirectHooks {
             hooks.missing(
                 id = "colordirect.collect-info",
                 description = "CollectInfoActivity.M(Intent)",
-                detail = "CollectInfoActivity를 찾을 수 없어 두 손가락 스크린 인식 Activity를 인계할 수 없습니다."
+                detail = "未找到 CollectInfoActivity，无法接管双指识屏 Activity 入口"
             )
             return
         }
@@ -63,7 +63,7 @@ internal object ColorDirectHooks {
             hooks.missing(
                 id = "colordirect.collect-info",
                 description = "CollectInfoActivity.M(Intent)",
-                detail = "CollectInfoActivity.M(Intent)를 찾을 수 없습니다."
+                detail = "未找到 CollectInfoActivity.M(Intent)"
             )
             return
         }
@@ -95,20 +95,20 @@ internal object ColorDirectHooks {
     private fun tryStartCircleToSearch(context: Context, logger: ModuleLogger): Boolean {
         val now = SystemClock.uptimeMillis()
         if (now - lastHandledUptime <= ModuleConfig.INTERCEPT_DEDUP_WINDOW_MS) {
-            logger.debug { "$SOURCE: 중복 제거 창에 적중, 중복된 두 손가락 스크린 인식 무시" }
+            logger.debug { "$SOURCE: 命中去重窗口，吞掉重复双指识屏" }
             return true
         }
 
-        if (!CircleToSearchInvoker.isAvailable(context, logger, SOURCE, "Breeno 두 손가락 스크린 인식 롤백")) {
+        if (!CircleToSearchInvoker.isAvailable(context, logger, SOURCE, "回退小布双指识屏")) {
             return false
         }
 
-        if (!CircleToSearchInvoker.trigger(logger, "$SOURCE 두 손가락으로 화면 인식")) {
+        if (!CircleToSearchInvoker.trigger(logger, "$SOURCE 双指识屏")) {
             return false
         }
 
         lastHandledUptime = now
-        logger.debug { "$SOURCE: 두 손가락 화면 인식 감지, 서클 투 서치로 전달됨" }
+        logger.debug { "$SOURCE: 命中双指识屏，已转发 Circle to Search" }
         return true
     }
 

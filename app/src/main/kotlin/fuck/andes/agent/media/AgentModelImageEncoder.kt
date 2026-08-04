@@ -53,6 +53,13 @@ internal object AgentModelImageEncoder {
         mimeType = "image/jpeg",
         quality = PREVIEW_JPEG_QUALITY,
     )
+    private val toolVisionProfile = EncodingProfile(
+        maxLongEdge = 1_600,
+        maxPixels = 1_500_000L,
+        format = Bitmap.CompressFormat.JPEG,
+        mimeType = "image/jpeg",
+        quality = 82,
+    )
 
     fun screen(
         bytes: ByteArray,
@@ -75,6 +82,21 @@ internal object AgentModelImageEncoder {
         source: String,
     ): AgentModelClient.ModelImage =
         encodeBitmap(bitmap, source, screenProfile, flattenAlpha = false)
+
+    /** 文件工具图片仅在发送模型前缩放压缩，保持多图请求的体积可控。 */
+    fun toolVision(
+        bytes: ByteArray,
+        source: String,
+        mimeHint: String = "image/jpeg",
+    ): AgentModelClient.ModelImage? = runCatching {
+        if (!bytes.hasSupportedImageMagic()) return@runCatching null
+        transcodeBytes(
+            bytes = bytes,
+            source = source,
+            bounds = inspectBounds(bytes, mimeHint),
+            profile = toolVisionProfile,
+        )
+    }.getOrNull()
 
     fun preview(
         context: Context,
@@ -130,7 +152,7 @@ internal object AgentModelImageEncoder {
         profile: EncodingProfile,
         flattenAlpha: Boolean,
     ): AgentModelClient.ModelImage {
-        require(!bitmap.isRecycled && bitmap.width > 0 && bitmap.height > 0) { "이미지 비트맵을 사용할 수 없습니다." }
+        require(!bitmap.isRecycled && bitmap.width > 0 && bitmap.height > 0) { "图片位图不可用" }
         val encodedBitmap = renderBitmap(
             bitmap = bitmap,
             target = targetSize(bitmap.width, bitmap.height, profile),
@@ -143,11 +165,11 @@ internal object AgentModelImageEncoder {
             ).coerceAtLeast(32 * 1024)
             val output = ByteArrayOutputStream(initialCapacity)
             check(encodedBitmap.compress(profile.format, profile.quality, output)) {
-                "이미지 인코딩에 실패했습니다."
+                "图片编码失败"
             }
             val encoded = output.toByteArray()
             require(encoded.isNotEmpty() && encoded.size <= MAX_AGENT_IMAGE_BYTES) {
-                "이미지 데이터가 너무 큽니다: ${encoded.size}"
+                "图片数据过大：${encoded.size}"
             }
             return AgentModelClient.ModelImage(
                 reference = "data:${profile.mimeType};base64,${Base64.encodeToString(encoded, Base64.NO_WRAP)}",
@@ -190,8 +212,8 @@ internal object AgentModelImageEncoder {
     }
 
     private fun inspectBounds(bytes: ByteArray, mimeHint: String): ImageBounds {
-        require(bytes.isNotEmpty()) { "이미지 내용이 비어 있습니다." }
-        require(bytes.size <= MAX_AGENT_IMAGE_BYTES) { "이미지 데이터가 너무 큽니다: ${bytes.size}" }
+        require(bytes.isNotEmpty()) { "图片内容为空" }
+        require(bytes.size <= MAX_AGENT_IMAGE_BYTES) { "图片数据过大：${bytes.size}" }
         val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)
         return ImageBounds(
@@ -264,7 +286,7 @@ internal object AgentModelImageEncoder {
         if (uri.scheme == "content") {
             return {
                 context.contentResolver.openInputStream(uri)
-                    ?: error("로컬 이미지를 열 수 없습니다.")
+                    ?: error("无法打开本地图片")
             }
         }
         val file = when (uri.scheme) {

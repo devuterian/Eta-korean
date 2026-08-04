@@ -17,35 +17,16 @@ class AgentDeviceToolCatalogTest {
         assertTrue("set_alarm" in direct)
         assertFalse("read_sms_code" in direct)
         assertTrue("read_sms_code" in reads)
+        assertTrue("search_coloros_notes" in reads)
+        assertTrue("search_coloros_recordings" in reads)
+        assertTrue("search_recording_summaries" in reads)
+        assertTrue("search_qq_chat_images" in reads)
+        assertTrue("search_wechat_chat_images" in reads)
+        assertFalse("read_image" in reads)
+        assertFalse("search_messages" in direct)
         assertFalse("send_message" in reads)
-        assertTrue("send_message" in actions)
+        assertFalse("send_message" in actions)
         assertTrue("app_state_control" in actions)
-    }
-
-    @Test
-    fun messageSchemaRequiresExplicitModeAndBoundedText() {
-        val tools = AgentToolCatalog.build(
-            terminalTools = false,
-            browserTools = false,
-            deviceDirectTools = false,
-            deviceSensitiveReadTools = false,
-            deviceSensitiveActionTools = true,
-        )
-        val function = (0 until tools.length())
-            .asSequence()
-            .map { tools.getJSONObject(it).getJSONObject("function") }
-            .first { it.getString("name") == "send_message" }
-        val parameters = function.getJSONObject("parameters")
-        val required = parameters.getJSONArray("required")
-        val names = (0 until required.length()).map(required::getString).toSet()
-
-        assertTrue(names.containsAll(setOf("contact", "message", "mode")))
-        assertTrue(
-            parameters.getJSONObject("properties")
-                .getJSONObject("message")
-                .getInt("maxLength") == 2_000,
-        )
-        assertTrue(function.getString("description").contains("绝不自动重试"))
     }
 
     private fun names(

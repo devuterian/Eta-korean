@@ -497,7 +497,7 @@ private fun ProviderConfigTab(
                         } catch (cancelled: CancellationException) {
                             throw cancelled
                         } catch (throwable: Throwable) {
-                            status = "실패: ${throwable.message ?: "삭제 실패"}"
+                            status = "실패: ${throwable.message ?: "删除失败"}"
                             showDeleteDialog = false
                         } finally {
                             isWorking = false
@@ -531,7 +531,7 @@ private fun ProviderConfigTab(
                         } catch (cancelled: CancellationException) {
                             throw cancelled
                         } catch (throwable: Throwable) {
-                            status = "실패: ${throwable.message ?: "초기화 실패"}"
+                            status = "실패: ${throwable.message ?: "重置失败"}"
                             showResetDialog = false
                         } finally {
                             isWorking = false
@@ -612,7 +612,7 @@ private fun ProviderModelsTab(
                                 } catch (cancelled: CancellationException) {
                                     throw cancelled
                                 } catch (throwable: Throwable) {
-                                    message = "실패: ${throwable.message ?: "동기화 실패"}"
+                                    message = "실패: ${throwable.message ?: "同步失败"}"
                                 } finally {
                                     isFetching = false
                                 }
@@ -804,7 +804,7 @@ private fun ProviderModelsTab(
                         } catch (cancelled: CancellationException) {
                             throw cancelled
                         } catch (throwable: Throwable) {
-                            message = "실패: ${throwable.message ?: "삭제 실패"}"
+                            message = "실패: ${throwable.message ?: "删除失败"}"
                             modelPendingDelete = null
                         } finally {
                             isMutatingModel = false
@@ -842,7 +842,7 @@ private fun ProviderModelsTab(
                         } catch (cancelled: CancellationException) {
                             throw cancelled
                         } catch (throwable: Throwable) {
-                            message = "실패: ${throwable.message ?: "삭제 실패"}"
+                            message = "실패: ${throwable.message ?: "删除失败"}"
                             showBatchDeleteDialog = false
                         } finally {
                             isMutatingModel = false

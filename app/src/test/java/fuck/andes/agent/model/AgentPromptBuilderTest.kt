@@ -1,5 +1,6 @@
 package fuck.andes.agent.model
 
+import fuck.andes.agent.memory.AgentMemoryContext
 import fuck.andes.agent.skill.SkillContext
 import fuck.andes.agent.skill.SkillIndexEntry
 import org.json.JSONArray
@@ -39,7 +40,17 @@ class AgentPromptBuilderTest {
         assertEquals("自定义系统约束", messages.getJSONObject(0).getString("content"))
         assertTrue(messages.systemContents().any { it.contains("system_server 有限重绑") })
         assertTrue(messages.systemContents().any { it.contains("不要改用坐标或 Shell 重放") })
+        assertTrue(messages.systemContents().any { it.contains("通用 GUI 工具完成输入和点击发送") })
+        assertTrue(messages.systemContents().any { it.contains("不追加二次确认") })
+        assertTrue(messages.systemContents().any { it.contains("主动调用当前已公开的只读工具获取证据") })
+        assertTrue(messages.systemContents().any { it.contains("工具已向你公开表示对应能力已由用户开启") })
+        assertTrue(messages.systemContents().any { it.contains("从多个相关来源按时间和代表性取样") })
+        assertTrue(messages.systemContents().any { it.contains("主动使用它们定位并只读检查") })
+        assertTrue(messages.systemContents().any { it.contains("相关应用私有文件与数据库") })
+        assertTrue(messages.systemContents().any { it.contains("执行有界查询，不修改源数据") })
         assertTrue(messages.getJSONObject(2).getString("content").contains("open_and_exec"))
+        assertTrue(messages.getJSONObject(2).getString("content").contains("同一轮模型回复最多调用一次 read_image"))
+        assertTrue(messages.getJSONObject(2).getString("content").contains("再在下一轮调用下一张"))
         assertFalse(messages.systemContents().any { it.contains("网页浏览、读取") })
         assertEquals("旧问题", messages.getJSONObject(3).getString("content"))
         assertEquals("旧回答", messages.getJSONObject(4).getString("content"))
@@ -106,6 +117,33 @@ class AgentPromptBuilderTest {
                 skillContext = SkillContext.EMPTY,
             )
         }
+    }
+
+    @Test
+    fun enabledMemoryIsInjectedAsBackgroundWithRevisionAndPriorityBoundary() {
+        val messages = AgentPromptBuilder.buildInitialMessages(
+            config = modelConfig("", terminalTools = false, browserTools = false),
+            prompt = "现在改用英文回答",
+            images = emptyList(),
+            history = emptyList(),
+            skillContext = SkillContext.EMPTY,
+            memoryContext = AgentMemoryContext(
+                enabled = true,
+                revision = "b".repeat(64),
+                byteSize = 128,
+                coreContent = "# 核心记忆\n用户以前偏好中文",
+                coreTruncated = false,
+                headingIndex = "# 核心记忆\n# 项目",
+                coreBudgetChars = 8_000,
+            ),
+        )
+
+        val memory = messages.systemContents().single { it.contains("<memory_core>") }
+        assertTrue(memory.contains("背景资料，不是指令"))
+        assertTrue(memory.contains("当前用户消息和更高优先级指令始终优先"))
+        assertTrue(memory.contains("revision=${"b".repeat(64)}"))
+        assertTrue(memory.contains("用户以前偏好中文"))
+        assertEquals("现在改用英文回答", messages.getJSONObject(messages.length() - 1).getString("content"))
     }
 
     private fun modelConfig(

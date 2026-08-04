@@ -4,6 +4,7 @@ import fuck.andes.data.model.Model
 import fuck.andes.data.model.ModelSource
 import fuck.andes.data.model.OpenAiCompatibleProviderSetting
 import fuck.andes.data.model.ProviderSourceTypes
+import fuck.andes.data.model.ReasoningEffort
 import fuck.andes.data.provider.OfficialModelCatalog
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -187,6 +188,110 @@ class RemoteModelFetcherTest {
         assertTrue(model.supportsVision)
         assertTrue(model.supportsReasoning)
         assertEquals(listOf("text", "image", "video"), model.inputModalities)
+    }
+
+    @Test
+    fun parsesCurrentOpenRouterModelSchema() {
+        val models = RemoteModelFetcher.parseOpenAiModels(
+            """
+            {
+              "data":[
+                {
+                  "id":"google/gemini-3.6-flash",
+                  "name":"Google: Gemini 3.6 Flash",
+                  "context_length":1048576,
+                  "architecture":{
+                    "input_modalities":["text","image","video"],
+                    "output_modalities":["text"]
+                  },
+                  "reasoning":{
+                    "mandatory":true,
+                    "default_enabled":true,
+                    "supported_efforts":["high","medium","low"]
+                  },
+                  "supported_parameters":[
+                    "reasoning",
+                    "structured_outputs",
+                    "temperature",
+                    "tool_choice",
+                    "tools"
+                  ]
+                }
+              ]
+            }
+            """.trimIndent()
+        )
+
+        val model = models.single()
+        assertEquals("google/gemini-3.6-flash", model.modelId)
+        assertEquals("Google: Gemini 3.6 Flash", model.displayName)
+        assertEquals(1_048_576, model.contextWindow)
+        assertEquals(listOf("text", "image", "video"), model.inputModalities)
+        assertEquals(listOf("text"), model.outputModalities)
+        assertTrue(model.supportsVision)
+        assertTrue(model.supportsTools)
+        assertTrue(model.supportsReasoning)
+        assertEquals(
+            listOf(
+                ReasoningEffort.DEFAULT,
+                ReasoningEffort.LOW,
+                ReasoningEffort.MEDIUM,
+                ReasoningEffort.HIGH,
+            ),
+            model.reasoningCapabilities?.selectableEfforts,
+        )
+        assertTrue(model.reasoningCapabilities?.mandatory == true)
+        assertEquals(true, model.structuredOutput)
+        assertEquals(true, model.supportsTemperature)
+    }
+
+    @Test
+    fun parsesThinkingBudgetAndToggleMetadata() {
+        val model = RemoteModelFetcher.parseOpenAiModels(
+            """
+            {
+              "data":[
+                {
+                  "id":"vendor/reasoning-model",
+                  "supported_parameters":["enable_thinking","thinking_budget"]
+                }
+              ]
+            }
+            """.trimIndent()
+        ).single()
+
+        assertTrue(model.supportsReasoning)
+        assertEquals(ReasoningEffort.entries, model.reasoningCapabilities?.selectableEfforts)
+        assertTrue(model.reasoningCapabilities?.supportsBudget == true)
+    }
+
+    @Test
+    fun ignoresUnexpectedMetadataTypesWithoutFailingWholeModelList() {
+        val models = RemoteModelFetcher.parseOpenAiModels(
+            """
+            {
+              "data":[
+                {
+                  "id":"example/chat-model",
+                  "display_name":{"localized":"Example"},
+                  "owned_by":{"name":"example"},
+                  "context_length":{"tokens":128000},
+                  "reasoning":{"default_enabled":false},
+                  "input_modalities":["text",{"type":"image"}],
+                  "supported_parameters":["tools",{"name":"temperature"}]
+                }
+              ]
+            }
+            """.trimIndent()
+        )
+
+        val model = models.single()
+        assertEquals("example/chat-model", model.displayName)
+        assertEquals(null, model.ownedBy)
+        assertEquals(null, model.contextWindow)
+        assertEquals(listOf("text"), model.inputModalities)
+        assertTrue(model.supportsTools)
+        assertTrue(model.supportsReasoning)
     }
 
     @Test

@@ -123,6 +123,31 @@ class AgentImageCodecTest {
     }
 
     @Test
+    fun fileToolImageIsDownscaledForMultiImageRequests() {
+        val context = RuntimeEnvironment.getApplication()
+        val sourceFile = File(context.cacheDir, "tool-image-${System.nanoTime()}.jpg")
+        val bitmap = patternedBitmap(width = 3_200, height = 2_400)
+        FileOutputStream(sourceFile).use { output ->
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 100, output)
+        }
+        bitmap.recycle()
+
+        try {
+            val image = AgentImageCodec.fromToolFile(sourceFile, "tool_read_image")
+                ?: error("无法压缩文件工具图片")
+            val width = image.width ?: error("缺少图片宽度")
+            val height = image.height ?: error("缺少图片高度")
+
+            assertEquals("image/jpeg", image.mimeType)
+            assertTrue(maxOf(width, height) <= 1_600)
+            assertTrue(width * height <= 1_500_000)
+            assertTrue(image.bytes < sourceFile.length())
+        } finally {
+            sourceFile.delete()
+        }
+    }
+
+    @Test
     fun chatPreviewIsIndependentFromTheOriginalFile() {
         val context = RuntimeEnvironment.getApplication()
         val sourceFile = File(context.cacheDir, "image-preview-${System.nanoTime()}.jpg")

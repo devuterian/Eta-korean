@@ -10,7 +10,7 @@ internal object AgentGestureToolCatalog {
             .put(
                 AgentToolSchema.function(
                     name = "tap",
-                    description = "터치 좌표입니다. 기본적으로 최근 observe_screen 스크린샷의 픽셀 좌표를 사용합니다. 좌표가 ui_nodes의 center에서 온 경우 coordinate_space=screen으로 설정하세요.",
+                    description = "点击坐标。默认使用最近一次 observe_screen 截图里的像素坐标；如果坐标来自 ui_nodes 的 center，请设置 coordinate_space=screen。",
                     parameters = JSONObject()
                         .put("type", "object")
                         .put(
@@ -26,7 +26,7 @@ internal object AgentGestureToolCatalog {
             .put(
                 AgentToolSchema.function(
                     name = "tap_area",
-                    description = "사각형 영역의 중앙을 터치합니다. 기본적으로 최근 observe_screen 스크린샷의 픽셀 좌표를 사용하며, 큰 버튼, 큰 리스트 항목, 보이는 텍스트 영역에 우선 사용하세요.",
+                    description = "点击矩形区域中心。默认使用最近一次 observe_screen 截图里的像素坐标；大按钮、大列表项和可见文字区域优先用这个工具。",
                     parameters = JSONObject()
                         .put("type", "object")
                         .put(
@@ -44,7 +44,7 @@ internal object AgentGestureToolCatalog {
             .put(
                 AgentToolSchema.function(
                     name = "tap_element",
-                    description = "지정된 관찰 스냅샷의 UI 노드를 터치합니다. index와 observation_id는 동일한 observe_screen에서 가져와야 하며, 만료 시 재관찰이 필요합니다. 실행 전 Eta 무장애 서비스 연결을 확인합니다.",
+                    description = "点击指定观察快照中的 UI 节点。index 与 observation_id 必须来自同一次最近的 observe_screen；若观察已过期，先重新观察。Runtime 会在执行前确认 Eta 无障碍服务已经连接。",
                     parameters = JSONObject()
                         .put("type", "object")
                         .put(
@@ -54,13 +54,13 @@ internal object AgentGestureToolCatalog {
                                     "index",
                                     JSONObject()
                                         .put("type", "integer")
-                                        .put("description", "동일 observe_screen에서 반환된 UI 노드 index입니다.")
+                                        .put("description", "同一次 observe_screen 返回的 UI 节点 index。")
                                 )
                                 .put(
                                     "observation_id",
                                     JSONObject()
                                         .put("type", "string")
-                                        .put("description", "index와 동일한 최근 observe_screen에서 가져온 observation_id입니다.")
+                                        .put("description", "与 index 来自同一次最近 observe_screen 的 observation_id。")
                                 )
                         )
                         .put("required", JSONArray().put("index").put("observation_id"))
@@ -69,7 +69,7 @@ internal object AgentGestureToolCatalog {
             .put(
                 AgentToolSchema.function(
                     name = "long_press",
-                    description = "길게 누를 좌표입니다. 기본적으로 최근 observe_screen 스크린샷의 픽셀 좌표를 사용합니다. 좌표가 ui_nodes의 center에서 온 경우 coordinate_space=screen으로 설정하세요.",
+                    description = "长按坐标。默认使用最近一次 observe_screen 截图里的像素坐标；如果坐标来自 ui_nodes 的 center，请设置 coordinate_space=screen。",
                     parameters = JSONObject()
                         .put("type", "object")
                         .put(
@@ -81,7 +81,7 @@ internal object AgentGestureToolCatalog {
                                     "duration_ms",
                                     JSONObject()
                                         .put("type", "integer")
-                                        .put("description", "길게 누르는 시간(300~3000ms), 기본값 800ms")
+                                        .put("description", "长按时长，300 到 3000，默认 800")
                                 )
                                 .put("coordinate_space", AgentToolSchema.coordinateSpace())
                         )
@@ -91,7 +91,7 @@ internal object AgentGestureToolCatalog {
             .put(
                 AgentToolSchema.function(
                     name = "long_press_element",
-                    description = "지정된 관찰 스냅샷의 UI 노드를 길게 누릅니다. index와 observation_id는 동일한 최근 observe_screen에서 가져와야 합니다. 관찰이 만료되면 다시 관찰하세요. 실행 전에 Runtime이 Eta 접근성 서비스 연결을 확인합니다.",
+                    description = "长按指定观察快照中的 UI 节点。index 与 observation_id 必须来自同一次最近的 observe_screen；若观察已过期，先重新观察。Runtime 会在执行前确认 Eta 无障碍服务已经连接。",
                     parameters = JSONObject()
                         .put("type", "object")
                         .put(
@@ -101,19 +101,19 @@ internal object AgentGestureToolCatalog {
                                     "index",
                                     JSONObject()
                                         .put("type", "integer")
-                                        .put("description", "동일 observe_screen에서 반환된 UI 노드 index입니다.")
+                                        .put("description", "同一次 observe_screen 返回的 UI 节点 index。")
                                 )
                                 .put(
                                     "observation_id",
                                     JSONObject()
                                         .put("type", "string")
-                                        .put("description", "index와 동일한 최근 observe_screen에서 가져온 observation_id입니다.")
+                                        .put("description", "与 index 来自同一次最近 observe_screen 的 observation_id。")
                                 )
                                 .put(
                                     "duration_ms",
                                     JSONObject()
                                         .put("type", "integer")
-                                        .put("description", "길게 누르는 시간(300~3000ms), 기본값 800ms")
+                                        .put("description", "长按时长，300 到 3000，默认 800")
                                 )
                         )
                         .put("required", JSONArray().put("index").put("observation_id"))
@@ -122,7 +122,7 @@ internal object AgentGestureToolCatalog {
             .put(
                 AgentToolSchema.function(
                     name = "swipe",
-                    description = "한 좌표에서 다른 좌표로 스와이프합니다. 기본적으로 최근 observe_screen 스크린샷의 픽셀 좌표를 사용합니다. 위로 스와이프하면 리스트가 아래로 이동합니다.",
+                    description = "从一个坐标滑动到另一个坐标。默认使用最近一次 observe_screen 截图里的像素坐标。向上滑动会让列表向下滚动。",
                     parameters = JSONObject()
                         .put("type", "object")
                         .put(
@@ -136,7 +136,7 @@ internal object AgentGestureToolCatalog {
                                     "duration_ms",
                                     JSONObject()
                                         .put("type", "integer")
-                                        .put("description", "스와이프 시간: 100~2000, 기본값 500")
+                                        .put("description", "滑动时长，100 到 2000，默认 500")
                                 )
                                 .put("coordinate_space", AgentToolSchema.coordinateSpace())
                         )
@@ -146,7 +146,7 @@ internal object AgentGestureToolCatalog {
             .put(
                 AgentToolSchema.function(
                     name = "scroll",
-                    description = "콘텐츠 방향에 따라 현재 화면을 스크롤합니다: down은 아래, up은 위, left는 왼쪽, right는 오른쪽 내용을 표시합니다.",
+                    description = "按内容浏览方向滚动当前屏幕：down 显示下方内容，up 显示上方内容，left 显示左侧内容，right 显示右侧内容。",
                     parameters = JSONObject()
                         .put("type", "object")
                         .put(
@@ -165,7 +165,7 @@ internal object AgentGestureToolCatalog {
             .put(
                 AgentToolSchema.function(
                     name = "scroll_element",
-                    description = "지정된 관찰 스냅샷의 스크롤 가능한 UI 노드를 콘텐츠 방향으로 스크롤합니다: down은 아래, up은 위, left는 왼쪽, right는 오른쪽 내용을 표시합니다. index와 observation_id는 동일한 최근 observe_screen에서 가져와야 합니다. 관찰이 만료되면 다시 관찰하세요. 실행 전에 Runtime이 Eta 접근성 서비스 연결을 확인합니다.",
+                    description = "按内容浏览方向滚动指定观察快照中的可滚动 UI 节点：down 显示下方内容，up 显示上方内容，left 显示左侧内容，right 显示右侧内容。index 与 observation_id 必须来自同一次最近的 observe_screen；若观察已过期，先重新观察。Runtime 会在执行前确认 Eta 无障碍服务已经连接。",
                     parameters = JSONObject()
                         .put("type", "object")
                         .put(
@@ -175,20 +175,20 @@ internal object AgentGestureToolCatalog {
                                     "index",
                                     JSONObject()
                                         .put("type", "integer")
-                                        .put("description", "동일한 observe_screen에서 반환된 스크롤 가능한 UI 노드 index입니다.")
+                                        .put("description", "同一次 observe_screen 返回的可滚动 UI 节点 index。")
                                 )
                                 .put(
                                     "observation_id",
                                     JSONObject()
                                         .put("type", "string")
-                                        .put("description", "index와 동일한 최근 observe_screen에서 가져온 observation_id입니다.")
+                                        .put("description", "与 index 来自同一次最近 observe_screen 的 observation_id。")
                                 )
                                 .put(
                                     "direction",
                                     JSONObject()
                                         .put("type", "string")
                                         .put("enum", JSONArray().put("up").put("down").put("left").put("right"))
-                                        .put("description", "콘텐츠 방향: down은 아래, up은 위 내용을 표시합니다.")
+                                        .put("description", "内容浏览方向；down 显示下方内容，up 显示上方内容。")
                                 )
                         )
                         .put("required", JSONArray().put("index").put("observation_id").put("direction"))

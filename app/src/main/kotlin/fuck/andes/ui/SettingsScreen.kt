@@ -127,7 +127,7 @@ internal fun SettingsScreen(
         selectedProvider?.models?.find { it.id == selectedModelId }
     }
     val providerSummary = selectedProvider?.let { provider ->
-        "${provider.name} / ${selectedModel?.displayName ?: "未选择模型"}"
+        "${provider.name} / ${selectedModel?.displayName ?: "모델을 선택하지 않음"}"
     } ?: "설정되지 않음"
 
     // prefs 绑定到 XposedService：service 到达时切换到 RemotePreferences（跨进程提交到
@@ -175,79 +175,8 @@ internal fun SettingsScreen(
             item(key = "section_agent") {
                 SmallTitle("Agent")
                 Card(modifier = Modifier.padding(horizontal = 12.dp).padding(bottom = 12.dp)) {
-                    SwitchPref(
-                        context = context,
-                        prefs = prefs,
-                        title = "기본으로 심층 사고 사용",
-                        key = Prefs.Keys.AGENT_THINKING_ENABLED,
-                        icon = LucideR.drawable.lucide_ic_brain,
-                        iconTint = ColorOSRoyalBlue,
-                    )
-                    PrefDivider()
-                    SwitchPref(
-                        context = context,
-                        prefs = prefs,
-                        title = "웹 탐색 도구 사용",
-                        summary = "백그라운드 브라우저에서 웹페이지를 읽고 조작합니다. 자동으로 전면 전환하지 않습니다.",
-                        key = Prefs.Keys.AGENT_BROWSER_TOOLS,
-                        icon = LucideR.drawable.lucide_ic_globe,
-                        iconTint = ColorOSVividGreen,
-                    )
-                    PrefDivider()
-                    SwitchPref(
-                        context = context,
-                        prefs = prefs,
-                        title = "기기 직접 제어 도구 사용",
-                        summary = "알람, 타이머, 미디어, 음량, 기기 상태를 화면 조작 없이 직접 제어합니다.",
-                        key = Prefs.Keys.AGENT_DEVICE_DIRECT_TOOLS,
-                        icon = LucideR.drawable.lucide_ic_smartphone,
-                        iconTint = ColorOSVividGreen,
-                    )
-                    PrefDivider()
-                    SwitchPref(
-                        context = context,
-                        prefs = prefs,
-                        title = "민감한 기기 정보 읽기 허용",
-                        summary = "알림, SMS 인증번호, 저장된 Wi‑Fi 비밀번호, 시스템 설정, 로그를 포함합니다. 원본 결과는 보관하지 않습니다.",
-                        key = Prefs.Keys.AGENT_DEVICE_SENSITIVE_READ_TOOLS,
-                        icon = LucideR.drawable.lucide_ic_eye,
-                        iconTint = ColorOSAmberYellow,
-                    )
-                    PrefDivider()
-                    SwitchPref(
-                        context = context,
-                        prefs = prefs,
-                        title = "민감한 기기 작업 허용",
-                        summary = "WeChat 메시지 전송, 앱 정지, 시스템 설정 및 네트워크 스위치 변경을 포함합니다. 사용 시 모델이 직접 호출할 수 있습니다.",
-                        key = Prefs.Keys.AGENT_DEVICE_SENSITIVE_ACTION_TOOLS,
-                        icon = LucideR.drawable.lucide_ic_shield_alert,
-                        iconTint = ColorOSAmberYellow,
-                    )
-                    PrefDivider()
-                    SwitchPref(
-                        context = context,
-                        prefs = prefs,
-                        title = "터미널/파일 도구 사용",
-                        summary = "에이전트가 Android user/root Shell을 사용하고 휴대폰 파일을 읽거나 쓸 수 있습니다.",
-                        key = Prefs.Keys.AGENT_TERMINAL_TOOLS,
-                        icon = LucideR.drawable.lucide_ic_square_terminal,
-                        iconTint = ColorOSAmberYellow,
-                    )
-                    PrefDivider()
                     ArrowPreference(
-                        title = "Linux 도구 환경",
-                        summary = "Python, Git, jq, zip 등 범용 명령어를 설치합니다. 현재 약 120MB를 사용합니다.",
-                        startAction = {
-                            TintedIcon(
-                                icon = LucideR.drawable.lucide_ic_square_terminal,
-                                tint = ColorOSVividGreen,
-                            )
-                        },
-                        onClick = { onNavigate(AppRoute.LinuxEnvironment) },
-                    )
-                    PrefDivider()
-                    ArrowPreference(
-                        title = "모델 제공자",
+                        title = "모델 제공업체",
                         summary = providerSummary,
                         startAction = {
                             TintedIcon(
@@ -257,18 +186,99 @@ internal fun SettingsScreen(
                         },
                         onClick = { onNavigate(AppRoute.ModelProviders) },
                     )
+                    PrefDivider()
+                    SwitchPref(
+                        context = context,
+                        prefs = prefs,
+                        title = "기본으로 심층 사고 사용",
+                        key = Prefs.Keys.AGENT_THINKING_ENABLED,
+                        icon = LucideR.drawable.lucide_ic_brain,
+                        iconTint = ColorOSRoyalBlue,
+                    )
+                    PrefDivider()
+                    ArrowPreference(
+                        title = "메모리",
+                        startAction = {
+                            TintedIcon(
+                                icon = LucideR.drawable.lucide_ic_brain,
+                                tint = ColorOSOrange,
+                            )
+                        },
+                        onClick = { onNavigate(AppRoute.Memory) },
+                    )
                 }
             }
 
-            // ── 시스템 어시스턴트 연동 ──────────────────────────────────────────────
+            // ── 工具 ───────────────────────────────────────────────────
+            item(key = "section_tools") {
+                SmallTitle("도구")
+                Card(modifier = Modifier.padding(horizontal = 12.dp).padding(bottom = 12.dp)) {
+                    SwitchPref(
+                        context = context,
+                        prefs = prefs,
+                        title = "웹 브라우징 도구 사용",
+                        key = Prefs.Keys.AGENT_BROWSER_TOOLS,
+                        icon = LucideR.drawable.lucide_ic_globe,
+                        iconTint = ColorOSVividGreen,
+                    )
+                    PrefDivider()
+                    SwitchPref(
+                        context = context,
+                        prefs = prefs,
+                        title = "기기 직접 제어 도구 사용",
+                        key = Prefs.Keys.AGENT_DEVICE_DIRECT_TOOLS,
+                        icon = LucideR.drawable.lucide_ic_smartphone,
+                        iconTint = ColorOSVividGreen,
+                    )
+                    PrefDivider()
+                    SwitchPref(
+                        context = context,
+                        prefs = prefs,
+                        title = "민감한 기기 정보 읽기 허용",
+                        key = Prefs.Keys.AGENT_DEVICE_SENSITIVE_READ_TOOLS,
+                        icon = LucideR.drawable.lucide_ic_eye,
+                        iconTint = ColorOSAmberYellow,
+                    )
+                    PrefDivider()
+                    SwitchPref(
+                        context = context,
+                        prefs = prefs,
+                        title = "민감한 기기 작업 허용",
+                        key = Prefs.Keys.AGENT_DEVICE_SENSITIVE_ACTION_TOOLS,
+                        icon = LucideR.drawable.lucide_ic_shield_alert,
+                        iconTint = ColorOSAmberYellow,
+                    )
+                    PrefDivider()
+                    SwitchPref(
+                        context = context,
+                        prefs = prefs,
+                        title = "터미널/파일 도구 사용",
+                        key = Prefs.Keys.AGENT_TERMINAL_TOOLS,
+                        icon = LucideR.drawable.lucide_ic_square_terminal,
+                        iconTint = ColorOSAmberYellow,
+                    )
+                    PrefDivider()
+                    ArrowPreference(
+                        title = "Linux 도구 환경",
+                        startAction = {
+                            TintedIcon(
+                                icon = LucideR.drawable.lucide_ic_square_terminal,
+                                tint = ColorOSVividGreen,
+                            )
+                        },
+                        onClick = { onNavigate(AppRoute.LinuxEnvironment) },
+                    )
+                }
+            }
+
+            // ── 系统助手接管 ──────────────────────────────────────────────
             item(key = "section_assistant_takeover") {
                 SmallTitle("시스템 어시스턴트 연동")
                 Card(modifier = Modifier.padding(horizontal = 12.dp).padding(bottom = 12.dp)) {
                     SwitchPref(
                         context = context,
                         prefs = prefs,
-                        title = "시스템 어시스턴트에서 사용자 지정 모델 사용",
-                        summary = "Breeno와 슈퍼 샤오아이가 이 설정을 함께 사용합니다",
+                        title = "시스템 어시스턴트에서 사용자 모델 사용",
                         key = Prefs.Keys.AGENT_CUSTOM_MODEL,
                         icon = LucideR.drawable.lucide_ic_cpu,
                         iconTint = ColorOSOrangeRed,
@@ -277,8 +287,7 @@ internal fun SettingsScreen(
                     SwitchPref(
                         context = context,
                         prefs = prefs,
-                        title = "/agent 접두사에서만 연동",
-                        summary = "Breeno와 슈퍼 샤오아이에 모두 적용됩니다",
+                        title = "/agent 접두사가 있을 때만 처리",
                         key = Prefs.Keys.AGENT_REQUIRE_PREFIX,
                         icon = LucideR.drawable.lucide_ic_message_square,
                         iconTint = ColorOSAmberYellow,
@@ -320,7 +329,7 @@ internal fun SettingsScreen(
                     SwitchPref(
                         context = context,
                         prefs = prefs,
-                        title = "잠금 화면에서 실행 시 자동 음성 입력",
+                        title = "잠금 화면에서 실행 시 음성 입력 자동 시작",
                         key = Prefs.Keys.LOCKSCREEN_VOICE_COMMAND,
                         icon = LucideR.drawable.lucide_ic_lock,
                         iconTint = ColorOSRed,
@@ -329,7 +338,7 @@ internal fun SettingsScreen(
                     SwitchPref(
                         context = context,
                         prefs = prefs,
-                        title = "화면이 켜진 상태에서 실행 시 자동 음성 입력",
+                        title = "화면이 켜진 상태에서 실행 시 음성 입력 자동 시작",
                         key = Prefs.Keys.SCREEN_ON_VOICE_COMMAND,
                         icon = LucideR.drawable.lucide_ic_mic,
                         iconTint = ColorOSLightBlue,
@@ -370,7 +379,7 @@ internal fun SettingsScreen(
                     SwitchPref(
                         context = context,
                         prefs = prefs,
-                        title = "두 손가락을 길게 눌러 서클 투 서치 실행",
+                        title = "두 손가락으로 길게 눌러 서클 투 서치 실행",
                         key = Prefs.Keys.DOUBLE_FINGER_CIRCLE_TO_SEARCH,
                         icon = LucideR.drawable.lucide_ic_mouse_pointer_click,
                         iconTint = ColorOSLightBlue,
@@ -446,7 +455,6 @@ internal fun SettingsScreen(
                     PrefDivider()
                     SwitchPreference(
                         title = "접근성 강제 유지",
-                        summary = "system_server가 Eta 서비스를 보호하고 연결이 끊기면 제한적으로 다시 연결합니다. 끄면 시스템 설정에 개입하지 않습니다.",
                         checked = accessibilityProtectionEnabled,
                         onCheckedChange = { enabled ->
                             if (accessibilityProtectionPending) {
@@ -621,7 +629,6 @@ private fun SwitchPref(
     context: Context,
     prefs: SharedPreferences?,
     title: String,
-    summary: String? = null,
     key: String,
     icon: Int,
     iconTint: Color,
@@ -633,7 +640,6 @@ private fun SwitchPref(
     }
     SwitchPreference(
         title = title,
-        summary = summary,
         checked = checked,
         onCheckedChange = { value ->
             // 同步提交；RemotePreferences.commit() 失败（binder 提交失败）时回滚 UI 状态，

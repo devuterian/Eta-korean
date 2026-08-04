@@ -66,6 +66,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.composables.icons.lucide.R as LucideR
 import fuck.andes.agent.browser.AgentBrowserSession
+import fuck.andes.data.model.ReasoningEffort
 import fuck.andes.ui.model.AgentChatMessageUi
 import fuck.andes.ui.model.AgentMessageUi
 import fuck.andes.ui.model.PendingImageUi
@@ -108,10 +109,11 @@ fun AgentChatBody(
     messages: List<AgentChatMessageUi>,
     input: String,
     isStreaming: Boolean,
-    thinkingEnabled: Boolean,
+    reasoningEffort: ReasoningEffort,
+    availableReasoningEfforts: List<ReasoningEffort>,
     pendingImages: List<PendingImageUi>,
     onInputChange: (String) -> Unit,
-    onThinkingChange: (Boolean) -> Unit,
+    onReasoningEffortChange: (ReasoningEffort) -> Unit,
     onSend: () -> Unit,
     onStop: () -> Unit,
     onAttachImage: (String) -> Unit,
@@ -175,17 +177,18 @@ fun AgentChatBody(
         scrollState = scrollState,
         input = input,
         isStreaming = isStreaming,
-        thinkingEnabled = thinkingEnabled,
+        reasoningEffort = reasoningEffort,
+        availableReasoningEfforts = availableReasoningEfforts,
         pendingImages = pendingImages,
         showEmptySuggestions = !isKeyboardVisible,
         keepBottomAnchored = keepBottomAnchored,
         onBottomAnchorChanged = { keepBottomAnchored = it },
         onInputChange = onInputChange,
-        onThinkingChange = onThinkingChange,
+        onReasoningEffortChange = onReasoningEffortChange,
         onSend = {
             sentFromKeyboard = true
             // 发送即重新锚定底部：用户从历史上方直接发送时，同帧内 isStreaming 与
-            // 新消息一起到位，立即맨 아래로 이동并恢复后续的流式平滑跟底。
+            // 新消息一起到位，立即回到底部并恢复后续的流式平滑跟底。
             keepBottomAnchored = true
             onSend()
         },
@@ -208,13 +211,14 @@ private fun AgentChatScaffold(
     scrollState: LazyListState,
     input: String,
     isStreaming: Boolean,
-    thinkingEnabled: Boolean,
+    reasoningEffort: ReasoningEffort,
+    availableReasoningEfforts: List<ReasoningEffort>,
     pendingImages: List<PendingImageUi>,
     showEmptySuggestions: Boolean,
     keepBottomAnchored: Boolean,
     onBottomAnchorChanged: (Boolean) -> Unit,
     onInputChange: (String) -> Unit,
-    onThinkingChange: (Boolean) -> Unit,
+    onReasoningEffortChange: (ReasoningEffort) -> Unit,
     onSend: () -> Unit,
     onStop: () -> Unit,
     onAttachImage: (String) -> Unit,
@@ -247,10 +251,11 @@ private fun AgentChatScaffold(
                 messageBackdrop = messageBackdrop.takeIf { frostEnabled },
                 input = input,
                 isStreaming = isStreaming,
-                thinkingEnabled = thinkingEnabled,
+                reasoningEffort = reasoningEffort,
+                availableReasoningEfforts = availableReasoningEfforts,
                 pendingImages = pendingImages,
                 onInputChange = onInputChange,
-                onThinkingChange = onThinkingChange,
+                onReasoningEffortChange = onReasoningEffortChange,
                 onSend = onSend,
                 onStop = onStop,
                 onAttachImage = onAttachImage,
@@ -683,10 +688,11 @@ private fun AgentChatBottomBar(
     messageBackdrop: LayerBackdrop?,
     input: String,
     isStreaming: Boolean,
-    thinkingEnabled: Boolean,
+    reasoningEffort: ReasoningEffort,
+    availableReasoningEfforts: List<ReasoningEffort>,
     pendingImages: List<PendingImageUi>,
     onInputChange: (String) -> Unit,
-    onThinkingChange: (Boolean) -> Unit,
+    onReasoningEffortChange: (ReasoningEffort) -> Unit,
     onSend: () -> Unit,
     onStop: () -> Unit,
     onAttachImage: (String) -> Unit,
@@ -753,10 +759,11 @@ private fun AgentChatBottomBar(
             AgentChatInputBar(
                 input = input,
                 isStreaming = isStreaming,
-                thinkingEnabled = thinkingEnabled,
+                reasoningEffort = reasoningEffort,
+                availableReasoningEfforts = availableReasoningEfforts,
                 pendingImages = pendingImages,
                 onInputChange = onInputChange,
-                onThinkingChange = onThinkingChange,
+                onReasoningEffortChange = onReasoningEffortChange,
                 onSend = onSend,
                 onStop = onStop,
                 onAttachImage = onAttachImage,

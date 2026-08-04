@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.MutablePreferences
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import fuck.andes.data.model.Settings
@@ -20,6 +21,7 @@ internal object SettingsDataStore {
 
     private val SELECTED_PROVIDER_ID = stringPreferencesKey("selected_provider_id")
     private val SELECTED_MODEL_ID = stringPreferencesKey("selected_model_id")
+    private val MEMORY_ENABLED = booleanPreferencesKey("memory_enabled")
 
     private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = STORE_NAME)
 
@@ -46,6 +48,7 @@ internal object SettingsDataStore {
                 Settings(
                     selectedProviderId = prefs[SELECTED_PROVIDER_ID],
                     selectedModelId = prefs[SELECTED_MODEL_ID],
+                    memoryEnabled = prefs[MEMORY_ENABLED] ?: true,
                 )
             }
     }
@@ -58,10 +61,12 @@ internal object SettingsDataStore {
             val current = Settings(
                 selectedProviderId = prefs[SELECTED_PROVIDER_ID],
                 selectedModelId = prefs[SELECTED_MODEL_ID],
+                memoryEnabled = prefs[MEMORY_ENABLED] ?: true,
             )
             val updated = transform(current)
             prefs.putOrRemove(SELECTED_PROVIDER_ID, updated.selectedProviderId)
             prefs.putOrRemove(SELECTED_MODEL_ID, updated.selectedModelId)
+            prefs[MEMORY_ENABLED] = updated.memoryEnabled
         }
     }
 
@@ -70,6 +75,9 @@ internal object SettingsDataStore {
 
     fun selectedModelIdFlow(): Flow<String?> =
         settingsFlow().map { it.selectedModelId }
+
+    fun memoryEnabledFlow(): Flow<Boolean> =
+        settingsFlow().map { it.memoryEnabled }
 
     suspend fun setSelectedProviderId(id: String?) {
         updateSettings { it.copy(selectedProviderId = id) }
@@ -86,6 +94,10 @@ internal object SettingsDataStore {
                 selectedModelId = modelId,
             )
         }
+    }
+
+    suspend fun setMemoryEnabled(enabled: Boolean) {
+        updateSettings { it.copy(memoryEnabled = enabled) }
     }
 
     private fun ensureInitialized() {

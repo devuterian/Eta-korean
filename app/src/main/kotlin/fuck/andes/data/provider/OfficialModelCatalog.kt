@@ -243,7 +243,9 @@ internal object OfficialModelCatalog {
     )
 
     fun modelsForProvider(provider: ProviderSetting): List<Model> =
-        modelsForCatalogId(catalogIdFor(provider)).withStableSortOrder()
+        modelsForCatalogId(catalogIdFor(provider))
+            .map { it.withCatalogReasoningCapabilities(catalogIdFor(provider)) }
+            .withStableSortOrder()
 
     fun enrich(provider: ProviderSetting, models: List<Model>): List<Model> =
         enrich(catalogId = catalogIdFor(provider), models = models)
@@ -267,6 +269,12 @@ internal object OfficialModelCatalog {
                 attachment = model.attachment ?: official.attachment,
                 toolCall = model.toolCall ?: official.toolCall,
                 reasoning = model.reasoning ?: official.reasoning,
+                reasoningCapabilities = if (model.reasoning == false) {
+                    null
+                } else {
+                    model.reasoningCapabilities
+                        ?: official.withCatalogReasoningCapabilities(catalogId).reasoningCapabilities
+                },
                 structuredOutput = model.structuredOutput ?: official.structuredOutput,
                 supportsTemperature = model.supportsTemperature ?: official.supportsTemperature,
             )
@@ -275,6 +283,12 @@ internal object OfficialModelCatalog {
 
     private fun modelsForCatalogId(catalogId: String?): List<Model> =
         modelsByCatalogId[catalogId].orEmpty()
+
+    private fun Model.withCatalogReasoningCapabilities(catalogId: String?): Model =
+        copy(
+            reasoningCapabilities = reasoningCapabilities
+                ?: catalogId?.let { ReasoningCapabilityResolver.catalogCapabilities(it, modelId) }
+        )
 
     private fun List<Model>.withStableSortOrder(): List<Model> =
         mapIndexed { index, model -> model.copy(sortOrder = index) }

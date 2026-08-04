@@ -9,6 +9,8 @@ import fuck.andes.agent.model.AgentConversationCodec
 import fuck.andes.agent.model.AgentModelClient
 import fuck.andes.data.model.CustomBody
 import fuck.andes.data.model.CustomHeader
+import fuck.andes.data.model.ModelReasoningCapabilities
+import fuck.andes.data.model.ReasoningEffort
 import java.io.Closeable
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.serialization.encodeToString
@@ -24,7 +26,7 @@ import kotlinx.serialization.json.Json
  */
 internal object AgentRuntimeWire {
     internal class PayloadTooLargeException(sizeBytes: Int) : IllegalArgumentException(
-        "에이전트 런타임 요청의 메타데이터가 너무 큽니다($sizeBytes 바이트). 입력이나 대화 기록을 줄인 후 다시 시도하세요."
+        "Agent Runtime 请求元数据过大（$sizeBytes bytes）；请缩短输入或会话历史后重试"
     )
 
     /** bind 获取服务端 Messenger 的 Intent action。 */
@@ -69,6 +71,7 @@ internal object AgentRuntimeWire {
     private const val KEY_API_KEY = "api_key"
     private const val KEY_MODEL = "model"
     private const val KEY_MODEL_DISPLAY_NAME = "model_display_name"
+    private const val KEY_CONTEXT_WINDOW = "context_window"
     private const val KEY_SYSTEM_PROMPT = "system_prompt"
     private const val KEY_ANTHROPIC_VERSION = "anthropic_version"
     private const val KEY_OPENAI_ENDPOINT_MODE = "openai_endpoint_mode"
@@ -78,6 +81,8 @@ internal object AgentRuntimeWire {
     private const val KEY_DEVICE_SENSITIVE_READ_TOOLS = "device_sensitive_read_tools"
     private const val KEY_DEVICE_SENSITIVE_ACTION_TOOLS = "device_sensitive_action_tools"
     private const val KEY_THINKING_ENABLED = "thinking_enabled"
+    private const val KEY_REASONING_EFFORT = "reasoning_effort"
+    private const val KEY_REASONING_CAPABILITIES_JSON = "reasoning_capabilities_json"
     private const val KEY_EXTRA_BODY_JSON = "extra_body_json"
     private const val KEY_CUSTOM_HEADERS_JSON = "custom_headers_json"
     private const val KEY_CUSTOM_BODY_JSON = "custom_body_json"
@@ -114,7 +119,7 @@ internal object AgentRuntimeWire {
     private const val MAX_RESULT_REASONING_CHARS = 32_000
     private const val MAX_DRAIN_CONTENT_CHARS = 16_000
     private const val MAX_DRAIN_REASONING_CHARS = 4_000
-    private const val TRUNCATED_SUFFIX = "\n\n[프로세스 간 결과가 너무 길어 일부가 잘렸습니다.]"
+    private const val TRUNCATED_SUFFIX = "\n\n[跨进程结果过长，已截断]"
     private const val MAX_START_REQUEST_PARCEL_BYTES = 768 * 1024
 
     data class RunRequest(
@@ -183,10 +188,10 @@ internal object AgentRuntimeWire {
     }
 
     fun toBundle(request: RunRequest, images: List<WireImage>): Bundle {
-        require(images.size == request.images.size) { "이미지 전송 항목과 요청 이미지 수가 일치하지 않습니다." }
+        require(images.size == request.images.size) { "图片传输项与请求图片数量不一致" }
         val imageBundles = images.map { image ->
             require((image.remoteUrl == null) xor (image.fileDescriptor == null)) {
-                "이미지 전송 항목에는 원격 URL 또는 파일 디스크립터만 포함되어야 합니다."
+                "图片传输项必须且只能包含远程 URL 或文件描述符"
             }
             Bundle().apply {
                 image.remoteUrl?.let { putString(KEY_IMAGE_URL, it) }
@@ -227,6 +232,7 @@ internal object AgentRuntimeWire {
         putString(KEY_API_KEY, request.config.apiKey)
         putString(KEY_MODEL, request.config.model)
         putString(KEY_MODEL_DISPLAY_NAME, request.config.modelDisplayName)
+        request.config.contextWindow?.let { putInt(KEY_CONTEXT_WINDOW, it) }
         putString(KEY_SYSTEM_PROMPT, request.config.systemPrompt)
         putString(KEY_ANTHROPIC_VERSION, request.config.anthropicVersion)
         putString(KEY_OPENAI_ENDPOINT_MODE, request.config.openAiEndpointMode)
@@ -235,7 +241,11 @@ internal object AgentRuntimeWire {
         putBoolean(KEY_DEVICE_DIRECT_TOOLS, request.config.deviceDirectTools)
         putBoolean(KEY_DEVICE_SENSITIVE_READ_TOOLS, request.config.deviceSensitiveReadTools)
         putBoolean(KEY_DEVICE_SENSITIVE_ACTION_TOOLS, request.config.deviceSensitiveActionTools)
-        putBoolean(KEY_THINKING_ENABLED, request.config.thinkingEnabled)
+        putBoolean(KEY_THINKING_ENABLED, request.config.effectiveReasoningEffort.enablesReasoning)
+        putString(KEY_REASONING_EFFORT, request.config.effectiveReasoningEffort.wireValue)
+        request.config.reasoningCapabilities?.let {
+            putString(KEY_REASONING_CAPABILITIES_JSON, json.encodeToString(it))
+        }
         putString(KEY_EXTRA_BODY_JSON, request.config.extraBodyJson)
         putString(KEY_CUSTOM_HEADERS_JSON, json.encodeToString(request.config.customHeaders))
         putString(KEY_CUSTOM_BODY_JSON, json.encodeToString(request.config.customBody))
@@ -267,7 +277,7 @@ internal object AgentRuntimeWire {
                 val reference = image.getString(KEY_IMAGE_URL)
                     ?: image.getString(KEY_DATA_URL) // 兼容升级前仍内联 data URL 的入口进程。
                 require((reference == null) xor (descriptor == null)) {
-                    "이미지 전송 항목에는 참조 또는 파일 디스크립터만 포함되어야 합니다."
+                    "图片传输项必须且只能包含引用或文件描述符"
                 }
                 images += WireImage(
                     remoteUrl = reference,
@@ -302,7 +312,7 @@ internal object AgentRuntimeWire {
     fun runRequestFromBundle(bundle: Bundle): RunRequest =
         incomingRunRequestFromBundle(bundle).use { incoming ->
             require(incoming.images.none { it.fileDescriptor != null }) {
-                "파일 디스크립터가 포함된 요청은 먼저 런타임 백그라운드에서 실체화되어야 합니다."
+                "包含文件描述符的请求必须先在 Runtime 后台物化"
             }
             incoming.request.copy(
                 images = incoming.images.map { image ->
@@ -334,6 +344,7 @@ internal object AgentRuntimeWire {
                 apiKey = bundle.getString(KEY_API_KEY).orEmpty(),
                 model = bundle.getString(KEY_MODEL).orEmpty(),
                 modelDisplayName = bundle.getString(KEY_MODEL_DISPLAY_NAME).orEmpty(),
+                contextWindow = bundle.optionalInt(KEY_CONTEXT_WINDOW),
                 systemPrompt = bundle.getString(KEY_SYSTEM_PROMPT).orEmpty(),
                 anthropicVersion = bundle.getString(KEY_ANTHROPIC_VERSION).orEmpty()
                     .ifBlank { fuck.andes.data.model.AnthropicProviderSetting.DEFAULT_ANTHROPIC_VERSION },
@@ -355,6 +366,15 @@ internal object AgentRuntimeWire {
                 deviceSensitiveActionTools =
                     bundle.getBoolean(KEY_DEVICE_SENSITIVE_ACTION_TOOLS, false),
                 thinkingEnabled = bundle.getBoolean(KEY_THINKING_ENABLED),
+                reasoningEffort = if (bundle.containsKey(KEY_REASONING_EFFORT)) {
+                    ReasoningEffort.fromWireValue(bundle.getString(KEY_REASONING_EFFORT))
+                        ?: ReasoningEffort.DEFAULT
+                } else {
+                    ReasoningEffort.fromLegacy(bundle.getBoolean(KEY_THINKING_ENABLED))
+                },
+                reasoningCapabilities = decodeReasoningCapabilities(
+                    bundle.getString(KEY_REASONING_CAPABILITIES_JSON)
+                ),
                 extraBodyJson = bundle.getString(KEY_EXTRA_BODY_JSON).orEmpty(),
                 customHeaders = decodeCustomHeaders(bundle.getString(KEY_CUSTOM_HEADERS_JSON)),
                 customBody = decodeCustomBody(bundle.getString(KEY_CUSTOM_BODY_JSON))
@@ -735,5 +755,9 @@ internal object AgentRuntimeWire {
     private fun decodeCustomBody(raw: String?): List<CustomBody> =
         if (raw.isNullOrBlank()) emptyList()
         else runCatching { json.decodeFromString<List<CustomBody>>(raw) }.getOrDefault(emptyList())
+
+    private fun decodeReasoningCapabilities(raw: String?): ModelReasoningCapabilities? =
+        if (raw.isNullOrBlank()) null
+        else runCatching { json.decodeFromString<ModelReasoningCapabilities>(raw) }.getOrNull()
 
 }

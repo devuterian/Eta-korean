@@ -222,10 +222,10 @@ internal object AgentBrowserSession {
 
     fun resetFromUser(): BrowserToolResult {
         val context = appContext
-            ?: return errorResult("reset", "BROWSER_NOT_INITIALIZED", "브라우저가 아직 초기화되지 않았습니다.")
+            ?: return errorResult("reset", "BROWSER_NOT_INITIALIZED", "浏览器尚未初始化")
         return operationLock.withLock {
             interrupted.set(true)
-            currentLoadWaiter?.complete(LoadOutcome(false, "CANCELLED", "작업이 취소되었습니다."))
+            currentLoadWaiter?.complete(LoadOutcome(false, "CANCELLED", "操作已取消"))
             callOnMain {
                 destroyWebViewOnMain()
                 CookieManager.getInstance().removeAllCookies(null)
@@ -250,7 +250,7 @@ internal object AgentBrowserSession {
         operationEpoch.incrementAndGet()
         activeOperationEpoch = 0L
         navigationGeneration.incrementAndGet()
-        currentLoadWaiter?.complete(LoadOutcome(false, "CANCELLED", "작업이 취소되었습니다."))
+        currentLoadWaiter?.complete(LoadOutcome(false, "CANCELLED", "操作已取消"))
         mainHandler.post {
             runCatching { webView?.stopLoading() }
             currentLoading = false
@@ -289,7 +289,7 @@ internal object AgentBrowserSession {
 
     private fun executeFromExistingContext(action: String, userInitiated: Boolean): BrowserToolResult {
         val context = appContext
-            ?: return errorResult(action, "BROWSER_NOT_INITIALIZED", "브라우저가 아직 초기화되지 않았습니다.")
+            ?: return errorResult(action, "BROWSER_NOT_INITIALIZED", "浏览器尚未初始化")
         return executeInternal(
             context = context,
             args = JSONObject().put("action", action),
@@ -306,10 +306,10 @@ internal object AgentBrowserSession {
         initialize(context)
         val action = args.optString("action").trim().lowercase(Locale.ROOT)
         if (action !in SUPPORTED_ACTIONS) {
-            return errorResult(action.ifBlank { "unknown" }, "INVALID_ACTION", "브라우저 액션이 유효하지 않거나 누락되었습니다.")
+            return errorResult(action.ifBlank { "unknown" }, "INVALID_ACTION", "浏览器 action 无效或缺失")
         }
         if (Looper.myLooper() == Looper.getMainLooper()) {
-            return errorResult(action, "MAIN_THREAD_CALL", "브라우저 작업은 메인 스레드를 차단할 수 없습니다.")
+            return errorResult(action, "MAIN_THREAD_CALL", "浏览器操作不能阻塞主线程")
         }
 
         return operationLock.withLock {
@@ -317,7 +317,7 @@ internal object AgentBrowserSession {
                 return@withLock errorResult(
                     action = action,
                     code = "USER_CONTROL_ACTIVE",
-                    message = "사용자가 브라우저를 직접 조작 중입니다. 브라우저 페이지를 벗어난 후 계속 진행하세요.",
+                    message = "用户正在接管浏览器，请等待用户离开浏览器页面后再继续",
                     status = "blocked",
                 )
             }
@@ -346,7 +346,7 @@ internal object AgentBrowserSession {
                         "go_forward" -> historyNavigation(action, backwards = false)
                         "reload" -> reload()
                         "wait_for_selector" -> waitForSelector(args)
-                        else -> throw BrowserFailure("INVALID_ACTION", "브라우저 액션이 유효하지 않습니다.")
+                        else -> throw BrowserFailure("INVALID_ACTION", "浏览器 action 无效")
                     }
                 }.getOrElse { throwable -> failureResult(action, throwable) }
             } finally {
@@ -359,7 +359,7 @@ internal object AgentBrowserSession {
 
     private fun navigate(args: JSONObject): BrowserToolResult {
         val rawUrl = args.optString("url").trim()
-        if (rawUrl.isBlank()) throw BrowserFailure("INVALID_ARGUMENT", "navigate에 url이 없습니다.")
+        if (rawUrl.isBlank()) throw BrowserFailure("INVALID_ARGUMENT", "navigate 缺少 url")
         val view = ensureWebView()
         val epoch = activeOperationEpoch
         val waiter = LoadWaiter()
@@ -370,7 +370,7 @@ internal object AgentBrowserSession {
         callOnMain {
             requireActiveOperation(epoch)
             if (navigationGeneration.get() != generation) {
-                throw BrowserFailure("NAVIGATION_SUPERSEDED", "페이지 이동이 새로운 작업으로 대체되었습니다.", "cancelled")
+                throw BrowserFailure("NAVIGATION_SUPERSEDED", "页面导航已被新的操作替代", "cancelled")
             }
             currentError = null
             currentHttpStatus = null
@@ -390,10 +390,10 @@ internal object AgentBrowserSession {
                     view.stopLoading()
                     currentLoading = false
                     currentPageVisible = committedMainFrameUrl.isNotBlank()
-                    currentError = "페이지 로딩 시간이 초과되었습니다."
+                    currentError = "页面加载超时"
                     publishSnapshotOnMain()
                 }
-                throw BrowserFailure("NAVIGATION_TIMEOUT", "페이지 로딩 시간이 초과되었습니다.", status = "timeout")
+                throw BrowserFailure("NAVIGATION_TIMEOUT", "页面加载超时", status = "timeout")
             }
         } finally {
             if (currentLoadWaiter === waiter) currentLoadWaiter = null
@@ -402,7 +402,7 @@ internal object AgentBrowserSession {
         throwIfInterrupted()
 
         currentHttpStatus?.takeIf { it >= 400 }?.let { code ->
-            throw BrowserFailure("HTTP_$code", "웹페이지가 HTTP ${code}를 반환했습니다.")
+            throw BrowserFailure("HTTP_$code", "网页返回 HTTP $code")
         }
         return toolResult(
             baseEnvelope("navigate", ok = true, status = "ok")
@@ -453,7 +453,7 @@ internal object AgentBrowserSession {
 
     private fun type(args: JSONObject): BrowserToolResult {
         if (!args.has("text") || args.isNull("text")) {
-            throw BrowserFailure("INVALID_ARGUMENT", "type에 text가 없습니다.")
+            throw BrowserFailure("INVALID_ARGUMENT", "type 缺少 text")
         }
         val inputText = args.optString("text")
         val submit = args.optBoolean("submit", false)
@@ -480,7 +480,7 @@ internal object AgentBrowserSession {
         val view = requirePage()
         val direction = args.optString("direction", "down").lowercase(Locale.ROOT)
             .takeIf { it == "up" || it == "down" }
-            ?: throw BrowserFailure("INVALID_ARGUMENT", "direction은 up 또는 down만 지원합니다.")
+            ?: throw BrowserFailure("INVALID_ARGUMENT", "direction 仅支持 up 或 down")
         val amount = args.optInt("amount", 600).coerceIn(1, 5_000)
         val selector = validatedSelector(args, required = false)
         val value = evaluateObject(view, BrowserDomScripts.scroll(selector, direction, amount))
@@ -523,7 +523,7 @@ internal object AgentBrowserSession {
             val targetIndex = history.currentIndex + if (backwards) -1 else 1
             targetIndex in 0 until history.size
         }
-        if (!hasTarget) throw BrowserFailure("HISTORY_UNAVAILABLE", "사용 가능한 브라우징 기록이 없습니다.")
+        if (!hasTarget) throw BrowserFailure("HISTORY_UNAVAILABLE", "当前没有可用的浏览记录")
         val epoch = activeOperationEpoch
         val generation = navigationGeneration.incrementAndGet()
         callOnMain {
@@ -576,7 +576,7 @@ internal object AgentBrowserSession {
         return toolResult(
             mergeValue(baseEnvelope("wait_for_selector", false, "not_found"), state)
                 .put("code", "ELEMENT_NOT_FOUND")
-                .put("message", "대기 중인 웹 요소가 나타나지 않았습니다.")
+                .put("message", "等待的网页元素未出现")
         )
     }
 
@@ -585,10 +585,10 @@ internal object AgentBrowserSession {
         val hasX = args.has("coordinate_x") && !args.isNull("coordinate_x")
         val hasY = args.has("coordinate_y") && !args.isNull("coordinate_y")
         if (hasX != hasY) {
-            throw BrowserFailure("INVALID_ARGUMENT", "coordinate_x와 coordinate_y를 모두 입력해야 합니다.")
+            throw BrowserFailure("INVALID_ARGUMENT", "coordinate_x 与 coordinate_y 必须同时提供")
         }
         if (selector == null && !hasX) {
-            throw BrowserFailure("INVALID_ARGUMENT", "selector 또는 coordinate_x/coordinate_y가 필요합니다.")
+            throw BrowserFailure("INVALID_ARGUMENT", "需要 selector 或 coordinate_x/coordinate_y")
         }
         val x = if (hasX) args.optInt("coordinate_x") else null
         val y = if (hasY) args.optInt("coordinate_y") else null
@@ -602,7 +602,7 @@ internal object AgentBrowserSession {
     private fun validatedSelector(args: JSONObject, required: Boolean): String? {
         val selector = args.optString("selector").trim()
         if (selector.isBlank()) {
-            if (required) throw BrowserFailure("INVALID_ARGUMENT", "CSS selector가 없습니다.")
+            if (required) throw BrowserFailure("INVALID_ARGUMENT", "缺少 CSS selector")
             return null
         }
         return selector
@@ -611,7 +611,7 @@ internal object AgentBrowserSession {
     private fun requirePage(): WebView {
         val view = ensureWebView()
         if (!snapshots.value.available || currentUrl.isBlank()) {
-            throw BrowserFailure("NO_PAGE", "현재 웹페이지가 없습니다. 먼저 navigate를 호출하세요.")
+            throw BrowserFailure("NO_PAGE", "当前没有网页，请先调用 navigate")
         }
         throwIfInterrupted()
         return view
@@ -627,19 +627,19 @@ internal object AgentBrowserSession {
         if (snapshots.value.isLoading) {
             navigationGeneration.incrementAndGet()
             mainHandler.post { runCatching { webView?.stopLoading() } }
-            throw BrowserFailure("ACTION_TIMEOUT", "웹페이지 조작 후 페이지 로딩이 시간 초과되었습니다.", "timeout")
+            throw BrowserFailure("ACTION_TIMEOUT", "网页操作后的页面加载超时", "timeout")
         }
     }
 
     private fun throwIfInterrupted() {
         if (interrupted.get() || activeOperationEpoch == 0L) {
-            throw BrowserFailure("CANCELLED", "작업이 취소되었습니다.", "cancelled")
+            throw BrowserFailure("CANCELLED", "操作已取消", "cancelled")
         }
     }
 
     private fun requireActiveOperation(epoch: Long) {
         if (epoch == 0L || activeOperationEpoch != epoch || interrupted.get()) {
-            throw BrowserFailure("CANCELLED", "작업이 취소되었습니다.", "cancelled")
+            throw BrowserFailure("CANCELLED", "操作已取消", "cancelled")
         }
     }
 
@@ -738,14 +738,14 @@ internal object AgentBrowserSession {
         val future = CompletableFuture<String>()
         mainHandler.post {
             if (webView !== view || interrupted.get() || activeOperationEpoch != epoch || epoch == 0L) {
-                future.completeExceptionally(BrowserFailure("CANCELLED", "작업이 취소되었습니다.", "cancelled"))
+                future.completeExceptionally(BrowserFailure("CANCELLED", "操作已取消", "cancelled"))
             } else {
                 runCatching {
                     view.evaluateJavascript(BrowserDomScripts.wrap(body)) { raw ->
                         if (!interrupted.get() && activeOperationEpoch == epoch) {
                             future.complete(raw ?: "null")
                         } else {
-                            future.completeExceptionally(BrowserFailure("CANCELLED", "작업이 취소되었습니다.", "cancelled"))
+                            future.completeExceptionally(BrowserFailure("CANCELLED", "操作已取消", "cancelled"))
                         }
                     }
                 }.onFailure(future::completeExceptionally)
@@ -761,7 +761,7 @@ internal object AgentBrowserSession {
                 activeOperationEpoch = 0L
             }
             mainHandler.post { runCatching { view.stopLoading() } }
-            throw BrowserFailure("SCRIPT_TIMEOUT", "웹페이지 응답이 시간 초과되었습니다.", "timeout")
+            throw BrowserFailure("SCRIPT_TIMEOUT", "网页响应超时", "timeout")
         } catch (error: ExecutionException) {
             throw error.cause ?: error
         }
@@ -773,21 +773,21 @@ internal object AgentBrowserSession {
         val outer = runCatching { JSONTokener(raw).nextValue() }.getOrNull()
         val decoded = when (outer) {
             is String -> outer
-            null, JSONObject.NULL -> throw BrowserFailure("SCRIPT_FAILED", "웹페이지에서 읽을 수 있는 결과가 없습니다.")
+            null, JSONObject.NULL -> throw BrowserFailure("SCRIPT_FAILED", "网页没有返回可读结果")
             else -> outer.toString()
         }
         val envelope = runCatching { JSONObject(decoded) }
-            .getOrElse { throw BrowserFailure("SCRIPT_FAILED", "웹페이지 결과 형식이 올바르지 않습니다.") }
+            .getOrElse { throw BrowserFailure("SCRIPT_FAILED", "网页结果格式无效") }
         if (!envelope.optBoolean("ok", false)) {
             val code = envelope.optString("error")
             val message = when {
                 code.contains("TARGET_NOT_FOUND") ||
                     code.contains("TARGET_NOT_VISIBLE") ||
-                    code.contains("TARGET_OCCLUDED") -> "대상 웹페이지 요소가 보이지 않거나 다른 내용에 가려져 있습니다."
-                code.contains("TARGET_DISABLED") -> "대상 웹페이지 요소를 현재 조작할 수 없습니다."
-                code.contains("TARGET_NOT_EDITABLE") -> "대상 웹페이지 요소에 입력할 수 없습니다."
-                code.contains("not a valid selector", ignoreCase = true) -> "CSS 선택자가 올바르지 않습니다."
-                else -> "웹페이지 요소 조작에 실패했습니다."
+                    code.contains("TARGET_OCCLUDED") -> "目标网页元素不可见或被其他内容遮挡"
+                code.contains("TARGET_DISABLED") -> "目标网页元素当前不可操作"
+                code.contains("TARGET_NOT_EDITABLE") -> "目标网页元素不可输入"
+                code.contains("not a valid selector", ignoreCase = true) -> "CSS selector 无效"
+                else -> "网页元素操作失败"
             }
             throw BrowserFailure("SCRIPT_FAILED", message)
         }
@@ -858,7 +858,7 @@ internal object AgentBrowserSession {
 
     private fun failureResult(action: String, throwable: Throwable): BrowserToolResult {
         val failure = throwable as? BrowserFailure
-        val message = failure?.message ?: "브라우저 조작에 실패했습니다."
+        val message = failure?.message ?: "浏览器操作失败"
         if (failure?.code !in setOf("CANCELLED", "USER_CONTROL_ACTIVE")) {
             runCatching {
                 callOnMain {
@@ -940,7 +940,7 @@ internal object AgentBrowserSession {
             future.get(JAVASCRIPT_TIMEOUT_MS, TimeUnit.MILLISECONDS)
         } catch (_: TimeoutException) {
             future.cancel(true)
-            throw BrowserFailure("MAIN_THREAD_TIMEOUT", "브라우저 메인 스레드 응답이 시간 초과되었습니다.", "timeout")
+            throw BrowserFailure("MAIN_THREAD_TIMEOUT", "浏览器主线程响应超时", "timeout")
         } catch (error: ExecutionException) {
             throw error.cause ?: error
         }
@@ -990,7 +990,7 @@ internal object AgentBrowserSession {
 
         override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
             if (!request.isForMainFrame) return
-            setNavigationErrorOnMain("NETWORK_ERROR", "페이지 로딩에 실패했습니다. 네트워크 연결을 확인하세요.")
+            setNavigationErrorOnMain("NETWORK_ERROR", "页面加载失败，请检查网络连接")
         }
 
         override fun onReceivedHttpError(
@@ -1001,7 +1001,7 @@ internal object AgentBrowserSession {
             if (!request.isForMainFrame) return
             currentHttpStatus = errorResponse.statusCode
             if (errorResponse.statusCode >= 400) {
-                currentError = "웹페이지에서 HTTP ${errorResponse.statusCode}를 반환했습니다."
+                currentError = "网页返回 HTTP ${errorResponse.statusCode}"
             }
             publishSnapshotOnMain()
         }
@@ -1010,14 +1010,14 @@ internal object AgentBrowserSession {
             mainHandler.post {
                 if (webView === view) {
                     destroyWebViewOnMain()
-                    currentError = "웹페이지 렌더링 프로세스가 종료되었습니다. 페이지를 다시 열어주세요."
+                    currentError = "网页渲染进程已退出，请重新打开页面"
                     currentLoading = false
                     currentPageVisible = false
                     committedMainFrameUrl = ""
                     publishSnapshotOnMain()
                 }
             }
-            currentLoadWaiter?.complete(LoadOutcome(false, "RENDERER_GONE", "웹 렌더링 프로세스가 종료되었습니다."))
+            currentLoadWaiter?.complete(LoadOutcome(false, "RENDERER_GONE", "网页渲染进程已退出"))
             return true
         }
     }

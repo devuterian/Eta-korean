@@ -540,7 +540,7 @@ private fun SupplementInput(
             )
             Spacer(modifier = Modifier.width(8.dp))
             TextButton(
-                text = "전송",
+                text = "보내기",
                 onClick = onSend,
                 enabled = value.isNotBlank(),
                 minWidth = 44.dp,
@@ -569,7 +569,7 @@ internal fun AgentResultCard(
 
     val isFailed = state.phase == AgentOverlayPhase.FAILED
     val dotColor = phaseAccent(state.phase)
-    val statusLabel = if (isFailed) "실행 실패" else "완료"
+    val statusLabel = if (isFailed) "실행 실패" else "완료됨"
     val content = state.detailText.ifBlank { state.statusText }
     val textColor = MiuixTheme.colorScheme.onSurface
 
@@ -632,7 +632,7 @@ internal fun AgentResultCard(
                         ) {
                             Icon(
                                 painter = painterResource(LucideR.drawable.lucide_ic_x),
-                                contentDescription = "닫기",
+                                contentDescription = "끄기",
                                 modifier = Modifier.size(16.dp),
                                 tint = MiuixTheme.colorScheme.onSurfaceVariantActions,
                             )

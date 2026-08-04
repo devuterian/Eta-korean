@@ -1,168 +1,320 @@
-# Eta 한국어판
+# Eta
 
-<p align="center"><strong>Android용 시스템 수준 AI 에이전트</strong></p>
+**简体中文** | [English](README_EN.md)
 
-<p align="center">구조화된 기기 도구, 크로스 앱 GUI 조작, Root Shell, Linux 터미널을 한 에이전트에서 조합하는 ColorOS용 Android AI 에이전트입니다.</p>
+<p><img src="https://img.shields.io/badge/Kotlin-2.4.0-7F52FF?logo=kotlin&amp;logoColor=white" alt="Kotlin 2.4.0"> <img src="https://img.shields.io/badge/AGP-9.3.1-3DDC84?logo=android&amp;logoColor=white" alt="AGP 9.3.1"> <img src="https://img.shields.io/badge/minSdk-34-3DDC84?logo=android&amp;logoColor=white" alt="minSdk 34"> <img src="https://img.shields.io/badge/Coverage-ColorOS%20%26%20HyperOS-1677FF" alt="Coverage ColorOS and HyperOS"></p>
 
-> 이 저장소는 [Mangi-11/Eta](https://github.com/Mangi-11/Eta)의 한국어 현지화 포크입니다. 앱의 사용자 노출 문구와 에이전트 메시지를 한국어로 번역하며, 원본의 도구 식별자·프로토콜·외부 앱 자동화용 고정 문자열은 호환성을 위해 유지합니다.
+**面向 Android 的第三方系统级 AI Agent**
 
-Eta는 libxposed API 102 기반 Xposed 모듈이며 ColorOS 16을 대상으로 합니다. Breeno와 Xiaomi 슈퍼 샤오아이의 대화 요청을 같은 에이전트 런타임으로 전달하고, BYOK 방식으로 사용자가 선택한 모델을 연결합니다. 앱 본체가 기본 작업 공간이며 Gemini 호출과 서클 투 서치 관련 초기 훅도 포함합니다.
+让模型更懂用户，直接调用系统 API、读取本机数据、控制设备，通过 GUI Agent 跨应用操作，并借助 Root / Linux 终端完成复杂任务。
 
-## 화면
+AI 手机的分水岭，不是会不会点一杯奶茶、叫一份外卖，而是它是否真的懂你。相册、便签、日程、通知和文件记录着你的生活，也应该成为 AI 理解你、为你做事的上下文。它不只是一件替你完成任务的工具，也可以在一次次理解中，成为更懂你的伙伴。
 
-| GUI 에이전트 | Breeno BYOK |
-| :---: | :---: |
-| ![GUI 에이전트](docs/Screenshots/demo_gui_agent.gif) | ![Breeno BYOK](docs/Screenshots/demo_tools.gif) |
+Eta 想把这样的能力交还给用户。无需等待厂商预装，它能从相册、日历、ColorOS 便签与录音摘要，甚至 QQ、微信的聊天图片缓存中找到与你有关的线索；遇到没有开放接口的应用，就交给 GUI Agent；更复杂的任务，则进入 Root Shell 与 Linux。
 
-| 채팅 홈 | 시스템 분석 | 기기 직접 제어 |
-| :---: | :---: | :---: |
-| ![채팅 홈](docs/Screenshots/chat_home.jpg) | ![시스템 분석](docs/Screenshots/chat_breeno_analysis.jpg) | ![기기 직접 제어](docs/Screenshots/chat_device_direct.jpg) |
+> [!NOTE]
+> Eta 支持 ColorOS 与 HyperOS，覆盖 OPPO 系（OPPO / 一加 / 真我）和小米系设备。App 本体是核心工作台并承载完整 Agent Runtime；小布与小爱只作为系统入口接入，共用 BYOK 自定义模型配置。完整功能需要 Root 和 LSPosed。
 
-| 설정 | 도구 | 스킬 |
-| :---: | :---: | :---: |
-| ![설정](docs/Screenshots/settings.jpg) | ![도구](docs/Screenshots/tools.jpg) | ![스킬](docs/Screenshots/skills.jpg) |
+## 界面预览
 
-## 주요 기능
+|                         GUI Agent                         |                         小布助手 BYOK：电源键启动                         |
+| :-------------------------------------------------------: | :-----------------------------------------------------------------------: |
+| <img src="docs/Screenshots/demo_gui_agent.gif" width="320" alt="GUI Agent"> | <img src="docs/Screenshots/demo_tools.gif" width="320" alt="小布助手 BYOK：电源键启动"> |
 
-Eta는 모델이 명령을 생성하고, 시스템이 실행 결과를 돌려주며, 모델이 다음 단계를 결정하는 에이전트 루프로 작동합니다.
+|              App 本体聊天首页              |                      小布：执行 Shell 命令                      |                       设备直达                       |
+| :-----------------------------------------: | :------------------------------------------------------------: | :--------------------------------------------------: |
+| ![聊天首页](docs/Screenshots/chat_home.jpg) | ![小布：执行 Shell 命令](docs/Screenshots/chat_breeno_analysis.jpg) | ![设备直达](docs/Screenshots/chat_device_direct.jpg) |
 
-### GUI 조작
+|                  设置                  |                工具能力                |                 Skills                 |
+| :------------------------------------: | :-------------------------------------: | :------------------------------------: |
+| ![设置](docs/Screenshots/settings.jpg) | ![工具能力](docs/Screenshots/tools.jpg) | ![Skills](docs/Screenshots/skills.jpg) |
 
-- 화면 캡처와 접근성 노드 읽기
-- 노드 또는 좌표 탭, 길게 누르기, 방향 스크롤
-- 앱 실행, 외부 링크 열기, 키 입력, 알림창 제어
-- 텍스트 입력, 교체, 클립보드 작업
-- 실행 중 오버레이와 제스처 피드백 표시
+## 核心能力
 
-### 구조화된 기기 도구
+Agent 不会问一句答一句就结束。它在一个 loop 里运转：模型发指令，系统执行，结果写回上下文，模型再决定下一步。如此往复，直到做完。
 
-가능한 작업은 설정 화면을 직접 조작하지 않고 Android 시스템 인터페이스로 실행합니다.
+Eta 有三条可以组合使用的执行路径：有稳定系统接口时调用结构化设备工具，没有合适接口时通过 GUI 操作应用，需要完整计算环境时进入 Android Shell 或 Linux 工具环境。
 
-- 알람과 타이머 생성
-- 미디어 재생 제어와 채널별 음량 조절
-- 배터리, 메모리, 저장공간, 네트워크 상태 조회
-- Wi-Fi와 블루투스 제어
-- 메모리·저장공간 사용량이 큰 앱 조회
-- 알림, SMS 인증번호, 저장된 Wi-Fi 정보, 제한된 시스템 로그 조회
-- 보호 규칙 안에서 앱 중지·동결·복원 및 일부 Settings 수정
-- 정확한 연락처 일치 후 WeChat 메시지 입력 또는 전송
+### 设备直达：让 AI 调用系统，而不是学习怎么点手机
 
-민감 정보 읽기와 민감한 기기 조작은 별도 설정으로 기본 비활성화되어 있습니다. 도구 인수는 스키마와 실행기에서 검증되며, 핵심 시스템 패키지와 보안 관련 설정은 보호됩니다.
+> 当普通手机 Agent 还在截图、找按钮、猜坐标时，Eta 已经把任务交给 Android 系统直接完成。
 
-### Xiaomi 슈퍼 샤오아이
+“明早 7 点叫我起床”“暂停音乐”“把媒体音量调到 30%”“开启 Wi‑Fi”“看看哪个应用最占空间”——Eta 会把这些自然语言转换成参数明确的设备工具调用。模型不需要先打开设置、等待动画、识别开关，再祈祷界面没有改版。用户需要了解自己时，它也能按任务检索相册、日历、联系人、通话、短信、便签、录音等本机数据，把手机从单纯的执行终端变成 Agent 的上下文来源。
 
-지원되는 슈퍼 샤오아이 버전에서는 시스템 어시스턴트 요청을 Eta 모델로 전달하고, 텍스트·이미지 입력과 스트리밍 결과 카드 및 음성 읽기를 연동합니다. 정확한 앱 버전이 맞지 않으면 원래 동작을 유지합니다.
+这不是在 System Prompt 里写几句“我可以控制手机”。Eta 为模型提供了一套真正可执行的结构化设备工具：`set_alarm`、`set_timer`、`set_device_state`、`set_volume`、`device_status`……每个工具都有独立的参数 Schema、权限分组、执行器和结构化结果。模型负责决定做什么，Runtime 负责可靠地在这台手机上完成。
 
-### 내장 브라우저
+这也不是一张做到这里就封顶的功能清单。结构化设备工具是 Eta 会持续扩展的核心能力层：后续更多系统状态、设备控制和应用动作会不断以独立 Schema 与专用执行器接入。能直达的能力就不再堆 GUI 脚本，让模型可用的手机能力随着版本持续增长。
 
-`browser_use`는 Eta 내부의 공유 WebView 세션을 사용합니다. JavaScript 페이지를 로드하고 본문과 링크를 추출하며, 요소 검색·조작·스크롤·캡처를 지원합니다.
+- **时间与媒体**：直接创建闹钟和计时器，控制播放、暂停、切歌，并按媒体、铃声、通知和闹钟通道精确调整音量
+- **设备状态**：读取电池、充电、内存、存储、系统版本、运行时间和当前网络，直接开启或关闭 Wi‑Fi、蓝牙
+- **应用洞察**：找出最占内存的进程和最占存储的应用，不必打开系统管家逐页查找
+- **深度系统能力**：读取通知和短信验证码，查询已保存的 Wi‑Fi 凭据与 Android Settings，获取有界系统日志
+- **个人数据直达**：检索相册图片、音频、录音、共享文件、下载、日历、联系人、通话记录和短信；在 ColorOS 上还可检索便签、待办、录音与录音摘要
+- **聊天图片发现**：从 QQ、微信已验证的聊天图片缓存目录中查找最近图片，只返回有界的文件元数据和路径，不读取消息数据库、聊天正文或视频
+- **通用图片读取**：通过 `read_image` 读取系统相册 URI 或任意本机绝对图片路径，再作为视觉输入交给模型；多张图片逐张读取，避免一次请求塞入多图而卡住
+- **设备管理**：修改非安全关键 Settings，停止、冻结或恢复指定应用；核心系统包和安全关键设置始终受保护
 
-- HTTPS만 허용
-- SSL 오류를 무시하지 않음
-- URL, DNS, 호스트 수, Service Worker 제한 적용
-- 웹 콘텐츠를 신뢰할 수 없는 데이터로 취급
-- 자동 제어 중 비 GET 요청 차단
-- 로그인, 구매, 메시지 전송, 삭제 등은 사용자가 직접 인계받아 수행
+有稳定系统接口的任务优先直达；只有 Android 或目标应用没有提供合适接口时，才退回无障碍 GUI。GUI 仍然是 Eta 跨应用操作的通用能力，但不再是每件事都必须经过的笨重中间层。
 
-### 터미널과 파일
+| 普通 GUI Agent                     | Eta 设备直达                       |
+| ---------------------------------- | ---------------------------------- |
+| 截图、识别按钮、模拟点击           | 调用职责明确的结构化工具           |
+| 依赖坐标、文案和当前页面布局       | 优先依赖 Android 系统接口          |
+| 页面改版、弹窗或动画都可能打断流程 | 多数操作不受设置页面变化影响       |
+| 只能观察界面是否“看起来成功”     | 执行器返回可供模型继续判断的结果   |
+| 所有能力都挤在同一套 GUI 操作里    | 不同能力拥有独立 Schema 和执行边界 |
 
-사용자가 활성화한 경우 `user` 또는 `root` 권한으로 Shell 명령, 파일 작업, 로그 조회, 스크립트 실행을 지원합니다.
+Eta 不要求用户背固定口令，也不会拿一份关键词表审核一句话“够不够明确”。相应能力开启后，模型可以根据任务直接调用。安全也不是靠每一步都反问用户，而是落在真正执行动作的地方：
 
-- `android`: Android 시스템, 앱, 로그, Magisk와 기기 파일 작업
-- `linux`: 선택적으로 설치하는 Alpine 환경. Python, Git, Bash, jq, zip, OpenSSL, SQLite 등 제공
+- 设备能力分为“设备直达、敏感信息读取、敏感设备操作”三组开关，当前均默认开启；Runtime 每次执行前都会重新读取，用户可随时关闭
+- 工具参数必须通过 Schema 和执行器校验；核心包、安全关键设置和越界参数不会因为模型坚持要求就被放行
+- 短信验证码、Wi‑Fi 密码、通知正文、日志和个人数据检索结果只在当前回合提供给模型，原始参数与结果不会写入持久会话
+- 记忆读取结果和写入参数同样只供当前回合使用，持久会话与运行轨迹只保留脱敏操作摘要
 
-Linux 환경은 격리된 보안 샌드박스가 아닙니다.
+### GUI 操作
 
-### 스킬
+- **屏幕与控件**：截图、读取带快照标识的无障碍节点、按节点或坐标点击，以及带位移验证的四向滚动
+- **应用与系统**：启动 App、把链接显式交给外部应用、模拟按键、下拉通知栏、搜索应用
+- **文本与剪贴板**：输入文字、设置剪贴板、粘贴、等待特定文本出现
+- **运行可视化**：前台操作时显示浮层与手势反馈，让你知道它正在点哪里、怎么滑
 
-- 공개 GitHub 저장소와 선별 목록에서 스킬 탐색·설치
-- 단일 스킬 ZIP 가져오기
-- 기존 사용자 스킬 충돌 검증
-- 내장 스킬 덮어쓰기 금지
-- 필요한 시점에만 스킬 본문과 리소스 읽기
+### 网页浏览
 
-설치는 파일 저장과 색인 생성만 수행하며 패키지 안의 스크립트를 자동 실행하지 않습니다.
+`browser_use` 是运行在 Eta 内的 Agent 浏览器，不是简单调用系统 `ACTION_VIEW`。它可以在不抢占前台的情况下加载 JavaScript 网页、提取保留标题/段落/列表/链接等结构的正文、查找并操作页面元素、提交表单、滚动和截图；用户想查看过程时，可在 App 中挂载同一个 WebView 直接接管。外部打开链接仍由独立的 `open_uri` 工具负责，两种能力不会混淆。
 
-## 설치
+Eta 不对浏览器请求执行额外的 URL、DNS、IP、主机数量、请求方法、重定向或 Service Worker 拦截，页面直接交给系统 WebView 加载。浏览器允许本地内容、混合内容、第三方 Cookie、自动媒体播放和表单提交；系统 WebView 与 Android 平台自身的协议支持、TLS 校验和权限行为保持不变。网页工具可在设置中关闭。
 
-1. libxposed API 102를 지원하는 LSPosed 환경에 APK를 설치합니다.
-2. 모듈 범위에 `system`, `SystemUI`, Google 앱, Breeno 및 지원되는 Xiaomi 슈퍼 샤오아이 프로세스를 포함합니다.
-3. 기기를 재부팅합니다.
-4. Eta 앱에서 모델 제공자, API Key, 사용할 모델을 설정합니다.
-5. 필요에 따라 오버레이, 접근성, 앱 목록, 위치, 백그라운드 권한을 부여합니다.
-6. 필요한 기능만 선택해 Breeno 연동, 민감 정보 조회, 민감 기기 조작, 터미널·파일 도구를 활성화합니다.
+### 终端与文件
 
-## 지원 환경과 주의사항
+在用户授权下执行 `user` 或 `root` shell 命令，读写文件、列目录、跑脚本、查日志、改配置。会话式 shell 保持 cwd 和环境变量，异步任务后台执行并分段读取输出。终端/文件工具当前默认开启，用户可在设置中关闭。
 
-- 대상 시스템: ColorOS 16
-- Android 최소 버전: API 34
-- Xposed 훅 지점은 OPPO·Google 앱 구현에 의존하므로 시스템이나 앱의 큰 업데이트 후 재적응이 필요할 수 있습니다.
-- Root, Xposed, 접근성, 터미널 기능은 기기 제어 범위가 큽니다. 기능별 권한과 실행 결과를 확인한 뒤 사용해야 합니다.
-- 외부 앱의 로그인, 결제, 자동화 방지 정책은 Eta가 우회하지 않습니다.
+终端按用途分为两个环境：
 
-## 빌드
+- `android` 是原生 Android Shell，负责系统、应用、日志、Magisk 和设备文件操作。Root 会话会自动发现 Magisk、KernelSU 或 APatch 提供的 BusyBox，并以 standalone `ash` 补齐不在系统 PATH 中的 applet。
+- `linux` 是可选安装的 Alpine 工具环境，负责 Python、Git、Bash、jq、zip、OpenSSL、SQLite 等通用任务。Eta 下载固定版本的官方 minirootfs 并校验 SHA-256，在 App 私有目录中解压，通过独立 mount namespace + Root chroot 运行；它不是安全沙箱，也不会取代 Android 环境。
 
-이 포크는 GitHub Actions에서 다음 검사를 수행합니다.
+### 记忆
 
-```text
-./gradlew testDebugUnitTest
-./gradlew lintDebug
-./gradlew assembleDebug
-```
+Eta 使用 App 私有目录中的单一 `MEMORY.md` 保存跨对话长期记忆，不额外调用提取模型或运行后台整理任务。当前对话的主模型根据需要调用 `memory_get` 与 `memory_write`，负责去重、修正冲突和删除过期信息。
 
-성공한 워크플로 실행의 Artifacts에서 설치 가능한 디버그 APK를 받을 수 있습니다.
+- **按需注入**：每轮只自动提供预算内的 `# 核心记忆`、标题索引和文件 revision；详细章节由模型按任务检索，不把整个文件反复塞进上下文
+- **动态预算**：核心注入量根据当前模型上下文窗口计算；窗口未知时按 128K 处理，并始终为历史、工具、图片和回复预留空间
+- **原子更新**：文件上限为 1 MiB UTF-8 字节，模型使用 revision 进行局部更新，冲突时必须重新读取；完整文件通过 `AtomicFile` 覆盖，失败保留旧内容
+- **用户控制**：设置页可查看用量、编辑完整 Markdown、清空或关闭记忆；关闭不会删除文件，但 Runtime 会立即停止注入并拒绝新的记忆工具调用
 
-로컬 빌드 요구사항:
+### Skills
 
-- JDK 25
-- Gradle Wrapper 9.6.1
-- Android SDK 37
+- **AI 安装**：Eta 可以浏览公开 GitHub 仓库、列出候选 Skill，并直接安装模型选定的候选；也支持 `$skill-installer`
+- **本地 ZIP**：在 Skills 页面选择只包含一个 Skill 的 ZIP 包导入；压缩包会先在 App 私有目录中完成路径、大小、结构和 `SKILL.md` 校验，再写入正式目录
+- **冲突保护**：同名用户 Skill 默认不覆盖；GitHub 安装发生单个可替换冲突时，可按同一仓库、提交、路径和 ID 精确重试，内置 Skill 永远不会被导入包覆盖
+- **按需读取**：模型先看到已启用 Skill 的索引，需要时再读取正文和引用资源。新安装的 Skill 从下一轮对话开始可用
+
+安装 Skill 只会保存文件并建立索引，不会自动执行包内脚本，也不会改变终端/文件工具的用户设置。目前 AI 安装仅支持公开 GitHub 仓库，不接受私有仓库 Token。
+
+### 会话与结果
+
+- **结果归档**：外部入口触发的运行结果会归档到 App 会话，即使 App 进程被杀也会尝试恢复
+
+## 使用场景
+
+- **设备直达操作** — “明早 7 点设个闹钟”“暂停音乐”“把媒体音量调到 30%”，优先走结构化系统接口
+- **理解本机上下文** — “看一下我明天的日程”“找出上周的通话和便签”“描述相册最新一张照片”，按需检索系统或厂商数据源
+- **聊天图片回顾** — “看看我最近的 QQ / 微信聊天图片，猜猜我在忙什么”，先发现缓存路径，再由视觉工具逐张读取代表性图片
+- **跨 App GUI 操作** — “帮我把应用里的待办项目都处理了”，没有对应直达工具时才由 Agent 看屏幕、找按钮、执行
+- **跨 App 比价** — 截图分析淘宝商品，自动打开京东搜索同款并返回结果
+- **网页研究** — 在后台阅读 JavaScript 渲染的文档或资讯页面，保留同一浏览会话；遇到验证码时由用户直接接管
+- **终端任务** — “清一下后台，查 LSPosed 日志看 Hook 有没有异常，再看看 Magisk 模块生效了没”——Agent 可以执行 shell 命令、读系统日志、查模块状态、改配置，把意图转化为终端操作
+- **系统助手入口触发复杂任务** — 从小布或超级小爱发起请求，让 Agent 执行多步流程
+
+## 模型与 BYOK
+
+Agent 的能力取决于你用什么模型。
+
+- **OpenAI-compatible** 与 **Anthropic** 双协议，支持 SSE 流式传输、流式工具调用、图片输入、推理内容
+- **内置提供商**：OpenAI、Anthropic、阿里百炼、DeepSeek、Kimi、MiMo、MiniMax、StepFun、硅基流动、OpenRouter
+- **厂商品牌图标**：已知提供商在列表中显示本地品牌原色图标，未知或自定义接口保留通用图标；素材来源与许可见 [第三方声明](docs/THIRD_PARTY_NOTICES.md)
+- **自定义提供商**：自定义 HTTP/HTTPS Base URL、API Key、请求头、body JSON；HTTP 会明文传输 API Key、提示词与模型内容
+- **模型管理**：内置官方目录、远程拉取列表、自定义模型、启停管理；新增项仅在确认保存后入库，远程同步只更新远程来源，不删除手工模型。`/models` 明确返回的能力元数据优先，缺失时才由内置提供商的官方目录补齐；官方预设按提供商隔离，不把某个平台尚未提供的模型复制到它的目录中
+- **会话历史**：新会话先作为本地草稿存在，发送第一条消息后才进入历史列表
+
+BYOK（Bring Your Own Key）意味着 Agent 能力跟随你选择的模型，而不是被单一内置服务商限制。
+
+## 系统入口接管
+
+### 系统助手接入
+
+系统助手接入覆盖 ColorOS 小布，并提供 HyperOS 超级小爱适配。两者均由基于 [libxposed API 102](https://github.com/libxposed/api) 的 Xposed 模块实现；在这条链路中，Xposed 只承担入口适配，实际任务仍由 Eta 的 Agent Runtime 执行。
+
+- **小布接管**：接管小布对话入口，继承当前房间的文本上下文并解析图片输入，交给同一套 Agent Runtime 处理。支持 BYOK，默认只在 `/agent` 前缀下触发
+- **超级小爱接管**：从终态 ASR 与 `setQueryInfo` 识别当前问话，再按查询文本关联小爱重新生成的 `Nlp.Request` Event ID；支持文本与单张本地图片或截图，并会阻止已接管轮次抢跑的原生 Agent Action。前缀、图片解析或任务入队任一前置检查失败时回到原生链路
+
+### Google 能力解锁与入口创建
+
+以下两项功能面向 ColorOS，不依赖系统原本提供对应入口：
+
+- **Gemini 解锁**：接管原本属于小布助手的电源键和默认数字助理链路，让 ColorOS 可以直接唤起 Gemini，并补齐锁屏语音、亮屏语音与息屏热词行为
+- **一圈即搜**：启用并修正原本不可用的 Android `contextual_search` 服务与 Google App 资格，再把手势条长按和双指识屏改造成触发入口，不改系统文件
+
+Gemini 解锁与一圈即搜是 Eta 早期建立的 Google 能力解锁功能，目前不是开发重点，但仍会维护。
+
+## 安装
+
+<details>
+<summary><b>展开安装步骤</b></summary>
+
+1. 安装 APK 并打开 Eta
+2. 配置模型提供商、API Key 和当前模型
+3. 按需授予悬浮窗、无障碍、应用列表读取、位置和后台运行等权限；位置仅在 Agent 调用时间与位置工具时读取，如需从小布等后台入口执行位置任务，应授予“始终允许”
+4. 按需开启设备直达、敏感信息读取、敏感设备操作和终端/文件工具；终端身份由用户明确选择为 `user` 或 `root`，需要 Python、Git 等通用命令时可另行安装 Linux 工具环境
+5. 在系统设置中开启 Eta 无障碍服务；如需自动恢复，可在 Eta 设置页显式开启“强制保持无障碍”
+6. 如需系统助手接入或 Google 能力解锁，再在支持 libxposed API 102 的 LSPosed 环境中启用模块，确认作用域包含 `system`、`SystemUI`、Google App、小布识屏、小布助手和超级小爱，然后重启手机
+
+</details>
+
+### 强制保持无障碍
+
+该能力默认关闭。开启后，注入 `system_server` 的保护后端会校验 Eta 的服务声明、调用
+UID 与 APK 签名，并在无障碍服务列表、总开关、Eta 安装包或 owner 用户解锁状态变化时
+校正配置。它保留其他无障碍服务，不依赖 App 自启动，也不执行周期轮询。
+
+如果服务仍在启用列表中但没有真实连接，保护后端只重启 Eta 自身，并最多逐步尝试三轮；
+持续失败后冷却一分钟。ColorOS 持续反删设置时，写回间隔会从 300 ms 退避到 30 秒，
+稳定一分钟后恢复。关闭开关只停止保护，不会替用户关闭当前服务。
+
+GUI 工具执行前仍会确认真实服务连接。保护未开启、system 作用域未生效或重绑超时时，
+本次动作会明确失败，不会改用 Root 或 Shell 偷偷修改无障碍设置。
+
+若 App 控制入口不可用，可用 ADB 停止保护后再从系统设置关闭服务：
 
 ```bash
-./gradlew assembleDebug
+adb shell settings put global eta_accessibility_protection_enabled 0
 ```
 
-APK 경로:
+删除该设置会恢复默认关闭状态。开发阶段主动更换签名且确认 APK 来源可信时，还需清除旧
+signer 钉扎值：
 
-```text
-app/build/outputs/apk/debug/app-debug.apk
+```bash
+adb shell settings delete global eta_app_signer_sha256
 ```
 
-## 프로젝트 구조
+## 边界与限制
 
-```text
-app/src/main/kotlin/fuck/andes/
-├── ModuleMain.kt          Xposed 모듈 진입점
-├── hook/                  시스템·Google·Breeno·슈퍼 샤오아이 훅
-├── agent/runtime/         에이전트 런타임과 IPC
-├── agent/model/           모델 제공자와 프로토콜
-├── agent/tool/            로컬 도구 실행기
-├── agent/browser/         내장 브라우저
-├── agent/device/          Root·접근성 기기 제어
-├── agent/terminal/        Android·Alpine 터미널
-├── agent/overlay/         실행 오버레이
-├── agent/skill/           스킬 설치·검증·색인
-├── data/                  Room과 저장소 계층
-└── ui/                    Compose UI
+- **第三方集成限制**：Eta 无法获得原厂系统组件的全部私有权限，交互 UI、动画衔接和系统级一致性会弱于厂商内置助手
+- **版本兼容性**：系统入口 Hook 强依赖 ROM、系统组件和目标 App 的具体实现，系统或 App 大版本更新后可能需要重新适配
+- **HyperOS 验证状态**：超级小爱 `7.13.32.0016`（`507013032`）已通过真机验证
+- **授权边界**：Xposed、`root`、无障碍和悬浮窗均按需启用；终端与敏感设备能力可在设置中独立关闭，前台 GUI 操作保留浮层、手势反馈和用户接管能力
+
+## 与豆包手机助手的区别
+
+豆包手机助手证明了手机 AI 的方向：从聊天框走向系统级操作。但它是超级 App，有平台资源，也有平台约束——跨 App 接管会撞上第三方应用登录异常、人机验证和银行 App 风险提示。厂商要维护商业关系、支付安全和监管合规，天然被生态绑住手脚。
+
+本项目走第三方开发者路线：不代表手机厂商，不需要维护预装合作。用户愿意解锁、`root`、启用 Xposed 和无障碍，就应该能把自己的手机入口接给自己选择的 Agent。风险边界由用户决定，工具必须透明可见，敏感操作必须能随时停止和接管。
+
+我们也不打算让 Agent 为了开个 Wi‑Fi、设个闹钟就在设置页面里来回找按钮。Android 已经有稳定接口的能力，Eta 就直接做成结构化工具交给模型：少一点截图、猜坐标和祈祷页面没改版，多一点真正可验证的系统执行。能直达系统，就没必要假装自己只会点屏幕。
+
+更重要的是，我们把终端执行能力放进了 Agent Runtime。普通手机 AI 只会点屏幕，但 Agent 一旦能在用户授权下执行 shell 命令、读写文件、跑脚本、改配置，它就具备了和主流 Coding Agent 同类的"把意图转化为操作"的能力。GUI 是手机表层，终端才是完整计算环境。
+
+## 对 AI 手机与 Agentic OS 的展望
+
+> [!NOTE]
+> 本节描述 Eta 对未来 AI 手机的产品与架构判断，不是当前版本已经完整实现的功能清单。
+
+未来的 AI 手机不应只是预装一个更强的聊天助手，也不应把“替用户点击屏幕”当作终点。它更可能从以 App 和 GUI 为中心的操作系统，逐步转向以用户意图、上下文和 Agent Runtime 为中心的 **Agentic OS**：用户表达目标，系统在授权边界内理解当前情境并完成规划，再选择合适的应用、服务、设备与硬件能力执行，验证结果后向用户交付。
+
+传统 GUI 通过一层层页面和菜单，把人的模糊需求收敛成机器能够处理的具体操作。当模型能够理解自然语言、屏幕、语音、环境和历史状态时，这个结构化过程可以更多地由系统承担。App 不会因此消失，而会逐渐从用户完成任务的唯一入口，转变为 Agent 背后的服务、数据和专业界面，并通过 API、CLI、MCP 等机器接口暴露能力；GUI 则继续承担信息展示、关键确认和用户接管。
+
+系统还可以成为模型的**上下文提供层**。普通 AI App 主要看到用户本轮主动输入的文字、图片和文件；系统级 Agent 则可以按任务读取当前屏幕与通知，以及相册、日程、联系人、通话、短信、便签、录音、设备状态等本机数据，再结合时间、位置、使用习惯、个人偏好和跨设备任务进度理解用户。Eta 已经实现其中一部分：模型可以调用职责明确的检索工具获得有界结果，并用独立的通用图片工具读取明确路径。它的价值不是无差别全盘扫描，而是在正确时机取得完成当前任务所需的上下文，让模型理解用户正在做什么、此前发生了什么以及下一步需要什么。更完整的原厂方案仍应提供敏感度分级、来源说明、使用记录与随时撤回能力。
+
+在执行层，Agentic OS 应根据权限、能力可用性、速度、稳定性和风险选择路径：
+
+1. **系统能力与数据直达**：系统 API、Provider、已验证的本机数据源和专用设备工具直接读取状态与任务上下文、控制硬件或完成系统动作，不必打开页面模拟点击。
+2. **第三方 App 结构化直达**：当应用或服务提供 API、CLI、MCP、AppFunctions 或其他机器接口时，模型可以直接读取业务状态并调用能力，不进入第三方 App 的 GUI。这是速度、稳定性和可验证性更好的理想路径。
+3. **GUI Agent 补齐未开放生态**：当第三方 App 没有提供任何可用的 API、CLI、MCP 或开放协议时，再通过截图、无障碍节点、视觉模型和坐标操作完成任务。GUI 原本是为人设计的，依赖页面布局和视觉识别，也不天然向模型提供稳定语义、状态与可验证结果，因此对模型并不友好，更适合作为长尾兼容和过渡方案。
+4. **Shell/Linux 扩展计算边界**：在用户明确授权下，Android Shell、文件系统与 Linux 工具可以承载系统诊断、脚本、开发和复杂计算任务，为 Agent 提供完整计算环境。
+
+> [!IMPORTANT]
+> API、CLI、MCP 都可以成为 Agent 直接操作第三方 App 或服务的机器接口，但前提是对方公开提供或通过生态合作授权。Root 可以让 Eta 读取用户设备上已存在、格式已经验证的 Provider 或文件数据，例如聊天图片缓存，但这不等于获得第三方 App 的业务 API，更不能自动理解私有协议。Eta 不开放任意数据库、URI 或 SQL 给模型；面对没有开放接口、也没有专门数据适配的第三方业务，仍需由 GUI Agent 操作。
+
+一套完整的 Agentic OS 可以被理解为以下连续链路：
+
+```mermaid
+flowchart LR
+    perception["感知<br/>语音 · 屏幕 · 通知 · 环境"] --> context["理解与记忆<br/>任务 · 偏好 · 历史 · 跨设备"]
+    context --> orchestrator["规划与编排<br/>意图 · 风险 · 工具路由"]
+    orchestrator --> execution["执行<br/>系统工具 · 第三方 API / CLI / MCP<br/>GUI Agent · Shell / Linux"]
+    execution --> outcome["验证与主动服务<br/>状态校验 · 失败恢复 · 提醒"]
+    outcome -. "反馈与记忆更新" .-> context
 ```
 
-에이전트 루프와 런타임 설계는 [docs/AGENT_RUNTIME.md](docs/AGENT_RUNTIME.md), 시스템 훅과 RemotePreferences 구조는 [docs/TECHNICAL.md](docs/TECHNICAL.md)를 참고하세요. 기술 문서는 현재 원문을 유지합니다.
+| 架构阶段 | 未来 Agentic OS | Eta 当前覆盖 |
+| -------- | --------------- | ------------ |
+| 感知与上下文 | 屏幕、语音、通知、日程、时间与位置、使用习惯、长期记忆与跨设备状态 | 图片输入与本机路径读取、屏幕观察、无障碍节点、时间与位置、设备状态、近期通知、相册、文件、日历、联系人、通话、短信、ColorOS 便签与录音、QQ / 微信聊天图片缓存、会话历史与按需长期记忆 |
+| 规划与编排 | 意图识别、任务规划、风险判断与模型调度 | Agent Loop、工具 Schema、系统约束、补充指令与取消 |
+| 能力路由 | 系统能力直接调用；第三方 App 通过 API、CLI、MCP 等接口直达，GUI 覆盖未开放生态 | Android 系统工具、系统与厂商 Provider、已验证的本机文件数据、GUI Agent、浏览器、Skills 与终端工具；不包含第三方 App 私有业务接口 |
+| 执行环境 | App、系统服务、文件、传感器、算力单元与多设备 | Android user/root Shell、文件工具与 Alpine Linux |
+| 结果闭环 | 状态验证、失败恢复、按风险确认与主动服务 | 结构化工具结果、重新观察、状态等待、事件流、结果归档与用户接管 |
 
-## 원본과 크레딧
+对原厂 Agentic OS 而言，相比普通 AI App 的独特价值不只是模型更聪明，而是能够在用户授权和数据治理边界内获得连续的系统上下文，维护可控的长期记忆，调度跨应用与跨设备能力，并把回答转化为经过验证的实际结果。主动服务也必须保持克制：上下文应按任务最小化注入，数据来源与用途应透明，持续感知应按需且可见，敏感能力应显式授权，高风险操作应结合用户指令和风险等级确认，执行过程应可停止、可接管，结果应能够校验和追溯。
 
-- 원본 프로젝트: [Mangi-11/Eta](https://github.com/Mangi-11/Eta)
-- Pi Coding Agent
-- OpenOmniBot
-- Operit
+Eta 作为第三方项目，正在验证这条路线中可以在现有 Android、Root、无障碍和用户授权边界内实现的部分：以同一套 Agent Runtime 编排系统与个人数据工具、通用图片视觉、GUI、浏览器、Shell、Linux、Skills 与按需长期记忆，让 Android 能力直达、本机上下文读取和第三方 App 的通用界面操作互为补充。更完整的 Agentic OS 仍需要跨设备记忆与状态同步、端侧模型、硬件资源调度、数据治理和第三方生态共同演进。
 
-제3자 자산과 라이선스 정보는 [docs/THIRD_PARTY_NOTICES.md](docs/THIRD_PARTY_NOTICES.md)에 있습니다.
+## 项目结构
 
-## 라이선스
+核心代码在 `app/src/main/kotlin/`：
 
-Eta 소스 코드는 개인 학습, 연구, 수정 및 비상업적 용도로 사용할 수 있습니다. 전체 조건은 [PolyForm Noncommercial License 1.0.0](LICENSE)을 따릅니다.
+```
+ModuleMain.kt              Xposed 模块入口
+Application 层             App 初始化
 
-저자의 서면 허가 없이 이 프로젝트, 소스 코드, APK 또는 수정 버전을 판매하거나 유료 배포·유료 설치 등 상업적 서비스를 제공할 수 없습니다. 상업적 사용 허가는 [Mangi-11](https://github.com/Mangi-11)에게 문의해야 합니다.
+hook/system/               system_server Hook
+hook/google/               Google App 进程 Hook
+hook/colordirect/          ColorDirectService Hook
+hook/breeno/               小布入口接管
+hook/xiaoai/               超级小爱入口接管
 
-제3자 의존성, 아이콘 및 브랜드 자료에는 각각의 라이선스가 적용됩니다. 자세한 내용은 [제3자 고지](docs/THIRD_PARTY_NOTICES.md)를 참고하세요.
+agent/runtime/             Agent Runtime、跨进程协议、结果归档
+agent/memory/              长期记忆的上下文预算与按需注入
+agent/model/               模型提供商抽象、SSE 解析
+agent/tool/                本机工具执行器
+agent/browser/             共享离屏浏览器、网页读取与交互
+agent/device/              root / 无障碍 / input 设备控制
+agent/terminal/            Android/Alpine 会话式 shell、环境安装与文件工具
+agent/overlay/             运行浮层与手势反馈
+agent/skill/               Skills 解析、安装、安全读取与索引
+agent/accessibility/       无障碍服务、节点快照、保护控制与连接状态检查
 
-외부 코드 기여는 원본 프로젝트의 CLA 절차가 마련된 뒤 병합될 수 있습니다. 그전에는 Issue를 통한 제안과 문제 보고가 권장됩니다.
+data/db/                   Room：会话、模型提供商、运行归档
+data/repository/           仓库层
+data/provider/             内置模型提供商与官方模型目录
+
+ui/app/                    App 根状态、导航
+ui/screens/                各功能页面
+ui.pages/providers/        模型提供商管理
+ui/components/             通用组件
+systemizer/                Google App 系统化安装器
+config/Prefs.kt            RemotePreferences 配置
+```
+
+Agent Loop、工具批次、steering 与 transcript 语义见 [docs/AGENT_RUNTIME.md](docs/AGENT_RUNTIME.md)。Gemini、一圈即搜和 RemotePreferences 链路见 [docs/TECHNICAL.md](docs/TECHNICAL.md)。
+
+## 参考与致谢
+
+Eta 的开发过程中参考或关注过以下开源项目：
+
+- [Pi Coding Agent](https://github.com/earendil-works/pi)：Eta Agent Runtime 的核心参考，包括 Agent Loop、工具调用、steering 与 transcript 状态管理
+- [OpenOmniBot](https://github.com/omnimind-ai/OpenOmniBot)：Android 端 AI Agent 方向的参考项目
+- [Operit](https://github.com/AAswordman/Operit)：Android Shell 与完整 Linux 工具环境分层的产品形态参考
+
+Eta 结合自身的 Xposed 系统入口、Android Runtime、IPC 与模型协议边界进行了独立实现。
+
+## 许可证
+
+Eta 的源代码公开，欢迎用于个人学习、研究、修改和非商业用途。完整条款请参阅 [PolyForm Noncommercial License 1.0.0](LICENSE)。
+
+未经作者书面授权，不得销售本项目、其源码、APK 或修改版本，也不得基于本项目提供付费分发、收费代装或其他商业服务。如需商业授权，请通过 GitHub 联系 [蛮吉（Mangi-11）](https://github.com/Mangi-11)。
+
+第三方依赖、图标和品牌素材适用各自的许可证，不由 Eta 的许可证重新授权，详情见[第三方声明](docs/THIRD_PARTY_NOTICES.md)。
+
+为确保项目能够统一授予商业许可，外部代码贡献需要在贡献者许可协议（CLA）流程建立后才能合并；在此之前欢迎通过 Issue 提交建议和问题。
+
+<sub>Community: <a href="https://linux.do">LINUX DO</a></sub>

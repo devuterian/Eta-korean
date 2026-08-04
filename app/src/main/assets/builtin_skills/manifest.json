@@ -23,7 +23,7 @@
     {
       "id": "skill-installer",
       "name": "skill-installer",
-      "description": "선별된 디렉터리나 공개 GitHub 저장소에서 스킬을 찾아 설치합니다. 사용자가 설치 가능한 항목 조회, 설치, 업데이트를 명시적으로 요청하거나 $skill-installer를 호출할 때만 사용합니다.",
+      "description": "从 curated 目录或公共 GitHub 仓库发现并安装 Skills。仅在用户明确请求列出可安装项、安装、更新，或调用 $skill-installer 时使用。",
       "assetPath": "builtin_skills/skill-installer",
       "hasScripts": false,
       "hasReferences": false,

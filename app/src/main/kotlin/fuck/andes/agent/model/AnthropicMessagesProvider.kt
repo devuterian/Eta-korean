@@ -66,7 +66,7 @@ internal object AnthropicMessagesProvider : AgentProviderClient {
                 runController.throwIfCancelled()
                 if (!response.isSuccessful) {
                     val errorBody = response.body.string()
-                    error("Anthropic 인터페이스에서 HTTP ${response.code} 반환: ${errorBody.compactError()}")
+                    error("Anthropic 接口返回 HTTP ${response.code}：${errorBody.compactError()}")
                 }
                 val assistant = readStreamingAssistantMessage(response.body.byteStream(), runController, onEvent)
                 onEvent(ProviderEvent.Completed(assistant.optString("finish_reason").ifBlank { null }))
@@ -129,8 +129,8 @@ internal object AnthropicMessagesProvider : AgentProviderClient {
                 val system = systemParts.joinToString("\n\n").trim()
                 if (system.isNotBlank()) request.put("system", system)
                 convertTools(tools)?.let { request.put("tools", it) }
-                ProviderReasoning.applyAnthropicRequest(request, config)
                 RequestBodyMerge.mergeCustomBody(request, config.customBody)
+                ProviderReasoning.applyAnthropicRequest(request, config)
             }
     }
 
@@ -267,7 +267,7 @@ internal object AnthropicMessagesProvider : AgentProviderClient {
             }
         }
         dispatch()
-        if (!sawMessageStop) error("Anthropic SSE 스트림이 정상적으로 종료되지 않았습니다")
+        if (!sawMessageStop) error("Anthropic SSE 流未正常结束")
 
         return JSONObject()
             .put("role", "assistant")

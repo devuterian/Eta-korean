@@ -71,7 +71,6 @@ internal object AgentOverlayVisibilityPolicy {
         "paste_text",
         "press_key",
         "open_system_panel",
-        "send_message",
     )
 
     private val foregroundOperationTools = setOf(

@@ -9,10 +9,12 @@ import fuck.andes.data.model.CustomProviderSetting
 import fuck.andes.data.model.Model
 import fuck.andes.data.model.OpenAiCompatibleProviderSetting
 import fuck.andes.data.model.ProviderSetting
+import fuck.andes.data.model.ReasoningEffort
 import fuck.andes.data.model.runtimeProviderType
 import fuck.andes.data.model.selectedOrFirstModel
 import fuck.andes.data.provider.BuiltinProviders
 import fuck.andes.data.provider.ProviderSourceRegistry
+import fuck.andes.data.provider.ReasoningCapabilityResolver
 import io.github.libxposed.service.XposedService
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -82,15 +84,18 @@ internal object RuntimeConfigRepository {
             ?.trim()
             ?.takeIf { it.isNotBlank() }
             ?: BuiltinProviders.DEFAULT_SYSTEM_PROMPT
+        val sourceType = ProviderSourceRegistry.resolve(provider)
+        val reasoningCapabilities = ReasoningCapabilityResolver.resolve(sourceType, model)
         return AgentModelClient.ModelConfig(
             providerId = provider.id,
             providerName = provider.name,
             providerType = provider.runtimeProviderType,
-            providerSourceType = ProviderSourceRegistry.resolve(provider),
+            providerSourceType = sourceType,
             baseUrl = provider.baseUrl.trim(),
             apiKey = provider.apiKey.trim(),
             model = model.modelId.trim(),
             modelDisplayName = model.displayName.trim(),
+            contextWindow = model.contextWindow,
             systemPrompt = systemPrompt,
             anthropicVersion = (provider as? AnthropicProviderSetting)?.anthropicVersion
                 ?: AnthropicProviderSetting.DEFAULT_ANTHROPIC_VERSION,
@@ -99,6 +104,10 @@ internal object RuntimeConfigRepository {
                 is CustomProviderSetting -> provider.endpointMode
                 is AnthropicProviderSetting -> ""
             },
+            thinkingEnabled = reasoningCapabilities != null,
+            reasoningEffort = reasoningCapabilities?.let { ReasoningEffort.DEFAULT }
+                ?: ReasoningEffort.OFF,
+            reasoningCapabilities = reasoningCapabilities,
             customHeaders = provider.customHeaders + model.customHeaders,
             customBody = provider.customBody + model.customBody,
         )

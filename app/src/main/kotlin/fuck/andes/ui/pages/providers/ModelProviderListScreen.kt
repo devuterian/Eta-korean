@@ -67,7 +67,7 @@ internal fun ModelProviderListScreen(
         }
     }
 
-    MiuixScaffoldPage(title = "모델 제공자", onBack = onBack) {
+    MiuixScaffoldPage(title = "모델 제공업체", onBack = onBack) {
         item(key = "search") {
             InputField(
                 query = searchQuery,

@@ -3,6 +3,7 @@ package fuck.andes.agent.runtime
 import android.content.SharedPreferences
 import fuck.andes.agent.model.AgentModelClient
 import fuck.andes.config.Prefs
+import fuck.andes.data.model.ReasoningEffort
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -35,7 +36,9 @@ internal object AgentRuntimePolicy {
         config: AgentModelClient.ModelConfig,
         permissions: Permissions,
     ): AgentModelClient.ModelConfig {
-        val thinkingEnabled = config.thinkingEnabled && permissions.thinking
+        val requestedEffort = config.effectiveReasoningEffort
+        val effectiveEffort = if (permissions.thinking) requestedEffort else ReasoningEffort.OFF
+        val thinkingEnabled = effectiveEffort.enablesReasoning
         val constrained = config.copy(
             terminalTools = config.terminalTools && permissions.terminalTools,
             browserTools = config.browserTools && permissions.browserTools,
@@ -45,6 +48,7 @@ internal object AgentRuntimePolicy {
             deviceSensitiveActionTools =
                 config.deviceSensitiveActionTools && permissions.deviceSensitiveActionTools,
             thinkingEnabled = thinkingEnabled,
+            reasoningEffort = effectiveEffort,
         )
         if (thinkingEnabled) return constrained
         return constrained.copy(

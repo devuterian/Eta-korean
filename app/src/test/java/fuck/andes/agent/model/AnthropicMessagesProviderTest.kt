@@ -118,6 +118,7 @@ class AnthropicMessagesProviderTest {
                         model = "claude-sonnet-5",
                         systemPrompt = "system",
                         thinkingEnabled = true,
+                        reasoningEffort = fuck.andes.data.model.ReasoningEffort.MEDIUM,
                     ),
                     messages = JSONArray().put(JSONObject().put("role", "user").put("content", "hi")),
                     tools = JSONArray(),

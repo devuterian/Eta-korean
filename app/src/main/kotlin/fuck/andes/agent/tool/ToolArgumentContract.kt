@@ -1,6 +1,7 @@
 package fuck.andes.agent.tool
 
 import java.util.Locale
+import fuck.andes.data.repository.AgentMemoryStore
 import org.json.JSONObject
 
 /**
@@ -158,6 +159,23 @@ internal object ToolArgumentContract {
             Field("query", Kind.STRING, maximumLength = 200),
             Field("max_lines", Kind.INTEGER, minimum = 20, maximum = 500),
         ),
+        "search_media" to personalSearchFields(),
+        "search_audio" to personalSearchFields(),
+        "search_recordings" to personalSearchFields(),
+        "search_files" to personalSearchFields(),
+        "search_calendar_events" to personalSearchFields(),
+        "search_contacts" to personalSearchFields(),
+        "search_call_history" to personalSearchFields(),
+        "search_messages" to personalSearchFields(),
+        "search_downloads" to personalSearchFields(),
+        "search_coloros_notes" to personalSearchFields(),
+        "search_coloros_recordings" to personalSearchFields(),
+        "search_recording_summaries" to personalSearchFields(),
+        "search_qq_chat_images" to personalSearchFields(),
+        "search_wechat_chat_images" to personalSearchFields(),
+        "read_image" to listOf(
+            Field("path", Kind.STRING, required = true, nonBlank = true, maximumLength = 1_024),
+        ),
         "set_device_state" to listOf(
             Field(
                 "target",
@@ -182,26 +200,36 @@ internal object ToolArgumentContract {
                 values = setOf("force_stop", "freeze", "unfreeze"),
             ),
         ),
-        "send_message" to listOf(
+        "memory_get" to listOf(
+            Field("query", Kind.STRING, maximumLength = 500),
+            Field("start_line", Kind.INTEGER, minimum = 1),
             Field(
-                "contact",
+                "max_chars",
+                Kind.INTEGER,
+                minimum = AgentMemoryStore.MIN_READ_CHARS,
+                maximum = AgentMemoryStore.MAX_READ_CHARS,
+            ),
+        ),
+        "memory_write" to listOf(
+            Field(
+                "mode",
+                Kind.STRING,
+                required = true,
+                values = setOf("replace_range", "append", "clear"),
+            ),
+            Field(
+                "revision",
                 Kind.STRING,
                 required = true,
                 nonBlank = true,
                 maximumLength = 64,
             ),
+            Field("start_line", Kind.INTEGER, minimum = 1),
+            Field("end_line", Kind.INTEGER, minimum = 1),
             Field(
-                "message",
+                "content",
                 Kind.STRING,
-                required = true,
-                nonBlank = true,
-                maximumLength = 2_000,
-            ),
-            Field(
-                "mode",
-                Kind.STRING,
-                required = true,
-                values = setOf("draft", "send"),
+                maximumLength = AgentMemoryStore.MAX_WRITE_CONTENT_CHARS,
             ),
         ),
         "skills_inspect_github" to listOf(
@@ -267,43 +295,43 @@ internal object ToolArgumentContract {
         for (field in fields) {
             if (!args.has(field.name) || args.isNull(field.name)) {
                 if (field.required) {
-                    return Issue(field.name, "필수 파라미터 ${field.name}가 누락되었습니다.")
+                    return Issue(field.name, "缺少必填参数 ${field.name}")
                 }
                 continue
             }
             val value = args.opt(field.name)
             if (!matchesKind(value, field.kind)) {
-                return Issue(field.name, "파라미터 ${field.name}는 ${field.kind.label}이어야 합니다.")
+                return Issue(field.name, "参数 ${field.name} 必须是 ${field.kind.label}")
             }
             if (field.kind == Kind.INTEGER) {
                 val number = (value as Number).toLong()
                 if (field.minimum != null && number < field.minimum) {
-                    return Issue(field.name, "파라미터 ${field.name}는 ${field.minimum}보다 작을 수 없습니다.")
+                    return Issue(field.name, "参数 ${field.name} 不能小于 ${field.minimum}")
                 }
                 if (field.maximum != null && number > field.maximum) {
-                    return Issue(field.name, "파라미터 ${field.name}는 ${field.maximum}보다 클 수 없습니다.")
+                    return Issue(field.name, "参数 ${field.name} 不能大于 ${field.maximum}")
                 }
             }
             if (field.kind == Kind.STRING && field.nonBlank && (value as String).isBlank()) {
-                return Issue(field.name, "파라미터 ${field.name}는 비어 있을 수 없습니다.")
+                return Issue(field.name, "参数 ${field.name} 不能为空")
             }
             if (
                 field.kind == Kind.STRING &&
                 field.maximumLength != null &&
                 (value as String).length > field.maximumLength
             ) {
-                return Issue(field.name, "파라미터 ${field.name}는 ${field.maximumLength}자 이상 입력할 수 없습니다.")
+                return Issue(field.name, "参数 ${field.name} 不能超过 ${field.maximumLength} 个字符")
             }
             if (field.kind == Kind.STRING_ARRAY) {
                 val array = value as org.json.JSONArray
                 if (field.minimumItems != null && array.length() < field.minimumItems) {
-                    return Issue(field.name, "파라미터 ${field.name}는 최소 ${field.minimumItems}개가 필요합니다.")
+                    return Issue(field.name, "参数 ${field.name} 至少需要 ${field.minimumItems} 项")
                 }
                 if (field.maximumItems != null && array.length() > field.maximumItems) {
-                    return Issue(field.name, "파라미터 ${field.name}는 최대 ${field.maximumItems}개까지 지원합니다.")
+                    return Issue(field.name, "参数 ${field.name} 最多支持 ${field.maximumItems} 项")
                 }
                 if (field.nonBlank && (0 until array.length()).any { array.getString(it).isBlank() }) {
-                    return Issue(field.name, "파라미터 ${field.name}에 빈 문자열을 포함할 수 없습니다.")
+                    return Issue(field.name, "参数 ${field.name} 不能包含空字符串")
                 }
                 val items = (0 until array.length()).map(array::getString)
                 if (
@@ -312,7 +340,7 @@ internal object ToolArgumentContract {
                 ) {
                     return Issue(
                         field.name,
-                        "파라미터 ${field.name}의 각 항목은 ${field.maximumItemLength}자 이상 입력할 수 없습니다.",
+                        "参数 ${field.name} 的单项不能超过 ${field.maximumItemLength} 个字符",
                     )
                 }
                 if (
@@ -321,11 +349,11 @@ internal object ToolArgumentContract {
                 ) {
                     return Issue(
                         field.name,
-                        "파라미터 ${field.name}의 전체 길이는 ${field.maximumTotalCharacters}자를 초과할 수 없습니다.",
+                        "参数 ${field.name} 的总长度不能超过 ${field.maximumTotalCharacters} 个字符",
                     )
                 }
                 if (field.uniqueItems && items.distinct().size != items.size) {
-                    return Issue(field.name, "파라미터 ${field.name}에 중복 항목을 포함할 수 없습니다.")
+                    return Issue(field.name, "参数 ${field.name} 不能包含重复项")
                 }
             }
             if (
@@ -334,14 +362,14 @@ internal object ToolArgumentContract {
             ) {
                 return Issue(
                     field.name,
-                    "파라미터 ${field.name}는 ${field.values.joinToString("/")}만 지원합니다.",
+                    "参数 ${field.name} 仅支持 ${field.values.joinToString("/")}",
                 )
             }
         }
 
         if (toolName in EDITABLE_TOOLS && args.has("index") && !args.isNull("index")) {
             if (!args.has("observation_id") || args.isNull("observation_id")) {
-                return Issue("observation_id", "index를 지정할 때는 observation_id를 반드시 입력해야 합니다.")
+                return Issue("observation_id", "指定 index 时必须提供 observation_id")
             }
         }
         if (
@@ -350,10 +378,10 @@ internal object ToolArgumentContract {
             !args.isNull("index") &&
             !args.optString("mode", "append").equals("replace", ignoreCase = true)
         ) {
-            return Issue("index", "input_text는 mode=replace일 때만 index를 지원합니다.")
+            return Issue("index", "input_text 仅在 mode=replace 时支持 index")
         }
         if (toolName == "paste_text" && args.optString("text").isEmpty()) {
-            return Issue("text", "paste_text의 text는 비어 있을 수 없습니다.")
+            return Issue("text", "paste_text 的 text 不能为空")
         }
         if (toolName == "set_alarm") {
             val days = args.optJSONArray("repeat_days")
@@ -363,7 +391,7 @@ internal object ToolArgumentContract {
                     days.getString(it).lowercase(Locale.ROOT) !in REPEAT_DAYS
                 }
             ) {
-                return Issue("repeat_days", "repeat_days는 mon/tue/wed/thu/fri/sat/sun만 지원합니다.")
+                return Issue("repeat_days", "repeat_days 只支持 mon/tue/wed/thu/fri/sat/sun")
             }
         }
         if (
@@ -373,8 +401,40 @@ internal object ToolArgumentContract {
         ) {
             return Issue(
                 "expectedReplacementId",
-                "replaceExisting=true일 때 이전 충돌의 expectedReplacementId를 반드시 입력해야 합니다.",
+                "replaceExisting=true 时必须提供上一轮冲突的 expectedReplacementId",
             )
+        }
+        if (toolName == "memory_write") {
+            val revision = args.optString("revision")
+            if (!REVISION.matches(revision)) {
+                return Issue("revision", "revision 必须是 64 位 SHA-256")
+            }
+            when (args.optString("mode").lowercase(Locale.ROOT)) {
+                "replace_range" -> {
+                    if (!args.has("start_line") || args.isNull("start_line")) {
+                        return Issue("start_line", "replace_range 必须提供 start_line")
+                    }
+                    if (!args.has("end_line") || args.isNull("end_line")) {
+                        return Issue("end_line", "replace_range 必须提供 end_line")
+                    }
+                    if (!args.has("content") || args.isNull("content")) {
+                        return Issue("content", "replace_range 必须提供 content，删除时传空字符串")
+                    }
+                    if (args.optInt("end_line") < args.optInt("start_line")) {
+                        return Issue("end_line", "end_line 不能小于 start_line")
+                    }
+                }
+                "append" -> {
+                    if (!args.has("content") || args.isNull("content") || args.optString("content").isBlank()) {
+                        return Issue("content", "append 必须提供非空 content")
+                    }
+                }
+                "clear" -> {
+                    if (args.has("content") || args.has("start_line") || args.has("end_line")) {
+                        return Issue("mode", "clear 不能携带 content 或行范围")
+                    }
+                }
+            }
         }
         return null
     }
@@ -431,6 +491,12 @@ internal object ToolArgumentContract {
         }
     }
 
+    private fun personalSearchFields(): List<Field> = listOf(
+        Field("query", Kind.STRING, maximumLength = 200),
+        Field("limit", Kind.INTEGER, minimum = 1, maximum = 30),
+    )
+
     private val EDITABLE_TOOLS = setOf("input_text", "replace_text", "clear_text")
     private val REPEAT_DAYS = setOf("mon", "tue", "wed", "thu", "fri", "sat", "sun")
+    private val REVISION = Regex("^[0-9a-f]{64}$")
 }

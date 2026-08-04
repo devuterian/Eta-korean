@@ -46,6 +46,7 @@ import fuck.andes.ui.pages.providers.ModelProviderListScreen
 import fuck.andes.ui.model.AgentChatAction
 import fuck.andes.ui.model.AgentHomeAction
 import fuck.andes.ui.model.AgentSkillsAction
+import fuck.andes.ui.model.AgentMemoryAction
 import fuck.andes.ui.model.AgentSystemEnhanceAction
 import fuck.andes.ui.model.AgentToolsAction
 import fuck.andes.ui.model.PermissionHealthAction
@@ -55,6 +56,7 @@ import fuck.andes.ui.screens.chat.AgentChatScreen
 import fuck.andes.ui.screens.browser.AgentBrowserScreen
 import fuck.andes.ui.screens.enhance.SystemEnhanceScreen
 import fuck.andes.ui.screens.home.AgentHomeScreen
+import fuck.andes.ui.screens.memory.AgentMemoryScreen
 import fuck.andes.ui.screens.permissions.PermissionHealthScreen
 import fuck.andes.ui.screens.skills.AgentSkillsScreen
 import fuck.andes.ui.screens.terminal.LinuxEnvironmentScreen
@@ -175,7 +177,8 @@ fun AgentAppRoot() {
                         onAction = { action ->
                             when (action) {
                                 is AgentHomeAction.InputChanged -> agentState.updateInput(action.text)
-                                is AgentHomeAction.ThinkingToggled -> agentState.updateThinkingEnabled(action.enabled)
+                                is AgentHomeAction.ReasoningEffortChanged ->
+                                    agentState.updateReasoningEffort(action.effort)
                                 AgentHomeAction.SendMessage -> agentState.sendCurrentMessage()
                                 AgentHomeAction.StopRun -> agentState.stopCurrentRun()
                                 is AgentHomeAction.ImageAttached -> agentState.attachImage(action.uri)
@@ -202,7 +205,8 @@ fun AgentAppRoot() {
                             when (action) {
                                 AgentChatAction.NavigateBack -> popRoute()
                                 is AgentChatAction.InputChanged -> agentState.updateInput(action.text)
-                                is AgentChatAction.ThinkingToggled -> agentState.updateThinkingEnabled(action.enabled)
+                                is AgentChatAction.ReasoningEffortChanged ->
+                                    agentState.updateReasoningEffort(action.effort)
                                 AgentChatAction.SendMessage -> agentState.sendCurrentMessage()
                                 AgentChatAction.StopRun -> agentState.stopCurrentRun()
                                 AgentChatAction.OpenBrowser -> pushRoute(AppRoute.Browser)
@@ -355,6 +359,24 @@ fun AgentAppRoot() {
                     context = context,
                     onNavigate = { route -> pushRoute(route) },
                     onBack = ::popRoute
+                )
+            }
+            entry<AppRoute.Memory> {
+                LaunchedEffect(Unit) {
+                    agentState.refreshMemory()
+                }
+                AgentMemoryScreen(
+                    state = agentState.memoryState,
+                    onAction = { action ->
+                        when (action) {
+                            AgentMemoryAction.NavigateBack -> popRoute()
+                            is AgentMemoryAction.ToggleEnabled -> agentState.setMemoryEnabled(action.enabled)
+                            is AgentMemoryAction.DraftChanged -> agentState.updateMemoryDraft(action.content)
+                            AgentMemoryAction.Save -> agentState.saveMemory()
+                            AgentMemoryAction.Clear -> agentState.clearMemory()
+                            AgentMemoryAction.DismissNotice -> agentState.dismissMemoryNotice()
+                        }
+                    },
                 )
             }
             entry<AppRoute.LinuxEnvironment> {

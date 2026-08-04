@@ -10,15 +10,17 @@ internal class AgentTraceFormatter {
             BROWSER_TOOL_NAME -> summarizeBrowserArguments(toolCall.argumentsJson)
             "open_uri" -> summarizeOpenUriArguments(toolCall.argumentsJson)
             "terminal" -> summarizeTerminalArguments(toolCall.argumentsJson)
-            "run_command" -> summarizeTextLength("명령 실행", toolCall.argumentsJson, "command")
-            "write_file" -> summarizeTextLength("파일에 쓰기", toolCall.argumentsJson, "content")
-            "read_file" -> "파일 읽기"
-            "list_directory" -> "디렉터리 목록 보기"
+            "run_command" -> summarizeTextLength("执行命令", toolCall.argumentsJson, "command")
+            "write_file" -> summarizeTextLength("写入文件", toolCall.argumentsJson, "content")
+            "read_file" -> "读取文件"
+            "list_directory" -> "列出目录"
             "input_text", "replace_text", "paste_text", "set_clipboard" ->
-                summarizeTextLength("텍스트 입력", toolCall.argumentsJson, "text")
-            "search_apps" -> summarizeTextLength("앱 검색", toolCall.argumentsJson, "query")
+                summarizeTextLength("输入文本", toolCall.argumentsJson, "text")
+            "search_apps" -> summarizeTextLength("搜索应用", toolCall.argumentsJson, "query")
             "observe_screen" -> summarizeObservationArguments(toolCall.argumentsJson)
-            else -> "매개변수 수신됨"
+            "memory_get" -> summarizeMemoryGetArguments(toolCall.argumentsJson)
+            "memory_write" -> summarizeMemoryWriteArguments(toolCall.argumentsJson)
+            else -> "参数已接收"
         }
 
     /** 外部 URI 摘要不记录 path、query、fragment 或用户信息。 */
@@ -28,8 +30,8 @@ internal class AgentTraceFormatter {
             val uri = URI(raw)
             val scheme = uri.scheme?.lowercase()?.take(24)
             val host = uri.host?.lowercase()?.take(160)
-            listOfNotNull("외부 앱에 전달", scheme, host).joinToString(" · ")
-        }.getOrDefault("외부 앱에 전달")
+            listOfNotNull("交给外部应用", scheme, host).joinToString(" · ")
+        }.getOrDefault("交给外部应用")
 
     /** browser_use 摘要只暴露动作和安全提取的 host。 */
     fun summarizeBrowserArguments(argumentsJson: String): String =
@@ -38,7 +40,7 @@ internal class AgentTraceFormatter {
             val action = arguments.optString("action").browserActionLabel()
             val host = safeHttpHost(arguments.optString("url"))
             listOfNotNull(action, host).joinToString(" · ")
-        }.getOrElse { "브라우저 작업" }
+        }.getOrElse { "浏览器操作" }
 
     private fun summarizeTerminalArguments(argumentsJson: String): String =
         runCatching {
@@ -47,12 +49,12 @@ internal class AgentTraceFormatter {
             val identity = arguments.optString("identity").takeIf { it == "root" || it == "user" }
             val commandChars = arguments.optString("command").length.takeIf { it > 0 }
             buildList {
-                add("터미널")
+                add("终端")
                 action?.let(::add)
                 identity?.let(::add)
                 commandChars?.let { add("command_chars=$it") }
             }.joinToString(" · ")
-        }.getOrDefault("터미널")
+        }.getOrDefault("终端")
 
     private fun summarizeTextLength(
         label: String,
@@ -67,19 +69,49 @@ internal class AgentTraceFormatter {
     private fun summarizeObservationArguments(argumentsJson: String): String =
         runCatching {
             val arguments = JSONObject(argumentsJson)
-            "화면 관찰 · screenshot=${arguments.optBoolean("include_screenshot", true)} · " +
+            "观察屏幕 · screenshot=${arguments.optBoolean("include_screenshot", true)} · " +
                 "ui_tree=${arguments.optBoolean("include_ui_tree", true)}"
-        }.getOrDefault("화면 관찰")
+        }.getOrDefault("观察屏幕")
+
+    private fun summarizeMemoryGetArguments(argumentsJson: String): String =
+        runCatching {
+            val arguments = JSONObject(argumentsJson)
+            if (arguments.optString("query").isNotBlank()) "检索记忆" else "读取记忆"
+        }.getOrDefault("读取记忆")
+
+    private fun summarizeMemoryWriteArguments(argumentsJson: String): String =
+        runCatching {
+            val arguments = JSONObject(argumentsJson)
+            val mode = arguments.optString("mode").takeIf {
+                it in setOf("replace_range", "append", "clear")
+            } ?: "unknown"
+            val content = arguments.optString("content")
+            val lines = if (content.isEmpty()) 0 else content.count { it == '\n' } + 1
+            "更新记忆 · mode=$mode · lines=$lines · bytes=${content.toByteArray(Charsets.UTF_8).size}"
+        }.getOrDefault("更新记忆")
 
     fun summarizeResult(
         toolName: String,
         result: AgentModelClient.ToolResult,
     ): String =
-        if (toolName == BROWSER_TOOL_NAME) {
-            summarizeBrowserResult(result)
-        } else {
-            summarizeGenericResult(result)
+        when (toolName) {
+            BROWSER_TOOL_NAME -> summarizeBrowserResult(result)
+            "memory_get", "memory_write" -> summarizeMemoryResult(result)
+            else -> summarizeGenericResult(result)
         }
+
+    private fun summarizeMemoryResult(result: AgentModelClient.ToolResult): String =
+        runCatching {
+            val json = JSONObject(result.content)
+            buildString {
+                append("ok=").append(json.optBoolean("ok", false))
+                json.optString("code").takeIf(String::isNotBlank)?.let {
+                    append(", code=").append(it)
+                }
+                if (json.has("line_count")) append(", lines=").append(json.optInt("line_count"))
+                if (json.has("bytes")) append(", bytes=").append(json.optInt("bytes"))
+            }
+        }.getOrDefault("ok=false")
 
     private fun summarizeGenericResult(result: AgentModelClient.ToolResult): String =
         runCatching {
@@ -180,20 +212,20 @@ internal class AgentTraceFormatter {
             }
 
     private fun String.browserActionLabel(): String = when (this) {
-        "navigate" -> "웹페이지 열기"
-        "get_readable" -> "본문 추출"
-        "get_text" -> "텍스트 읽기"
-        "find_elements" -> "요소 찾기"
-        "click" -> "웹페이지 클릭"
-        "type" -> "내용 입력"
-        "scroll" -> "웹페이지 스크롤"
-        "screenshot" -> "웹페이지 캡처"
-        "get_page_info" -> "웹페이지 정보 보기"
-        "go_back" -> "웹페이지 뒤로 가기"
-        "go_forward" -> "웹페이지 앞으로 가기"
-        "reload" -> "웹페이지 새로고침"
-        "wait_for_selector" -> "웹페이지 요소 대기"
-        else -> "브라우저 작업"
+        "navigate" -> "打开网页"
+        "get_readable" -> "提取正文"
+        "get_text" -> "读取文本"
+        "find_elements" -> "查找元素"
+        "click" -> "点击网页"
+        "type" -> "输入内容"
+        "scroll" -> "滚动网页"
+        "screenshot" -> "网页截图"
+        "get_page_info" -> "查看网页信息"
+        "go_back" -> "网页后退"
+        "go_forward" -> "网页前进"
+        "reload" -> "刷新网页"
+        "wait_for_selector" -> "等待网页元素"
+        else -> "浏览器操作"
     }
 
     private companion object {

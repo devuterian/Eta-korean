@@ -6,6 +6,7 @@ import fuck.andes.data.db.ConversationEntity
 import fuck.andes.data.db.ConversationMessageEntity
 import fuck.andes.data.db.ConversationStateEntity
 import fuck.andes.data.db.FuckAndesDatabase
+import fuck.andes.data.model.ReasoningEffort
 import fuck.andes.ui.model.AgentChatHomeUiState
 import fuck.andes.ui.model.AgentChatMessageUi
 import fuck.andes.ui.model.AgentMessageUi
@@ -66,7 +67,8 @@ internal object AgentConversationStore {
                     ConversationEntity(
                         id = id,
                         title = titles[id] ?: "새 대화",
-                        thinkingEnabled = state.thinkingEnabled,
+                        thinkingEnabled = state.reasoningEffort.enablesReasoning,
+                        reasoningEffort = state.reasoningEffort.wireValue,
                         historyJson = json.encodeToString(state.history),
                         appliedRuntimeRunIdsJson = json.encodeToString(state.appliedRuntimeRunIds),
                         createdAt = updatedAt[id] ?: now,
@@ -123,7 +125,8 @@ internal object AgentConversationStore {
                 appliedRuntimeRunIds = conversation.appliedRuntimeRunIdsJson.toStringList(),
                 input = "",
                 isStreaming = false,
-                thinkingEnabled = conversation.thinkingEnabled,
+                thinkingEnabled = conversation.reasoningEffortValue.enablesReasoning,
+                reasoningEffort = conversation.reasoningEffortValue,
             )
             titles[conversation.id] = conversation.title.ifBlank { "새 대화" }
             updatedAt[conversation.id] = conversation.updatedAt
@@ -140,6 +143,9 @@ internal object AgentConversationStore {
             updatedAt = updatedAt,
         )
     }
+
+    private val ConversationEntity.reasoningEffortValue: ReasoningEffort
+        get() = ReasoningEffort.fromWireValue(reasoningEffort) ?: ReasoningEffort.DEFAULT
 
     private fun AgentChatMessageUi.toEntityOrNull(
         conversationId: String,

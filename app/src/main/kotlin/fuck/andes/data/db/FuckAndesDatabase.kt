@@ -19,7 +19,7 @@ import androidx.room.migration.Migration
         RuntimeArchiveEventEntity::class,
         SkillRegistryEntity::class,
     ],
-    version = 9,
+    version = 10,
     exportSchema = false,
 )
 internal abstract class FuckAndesDatabase : RoomDatabase() {
@@ -39,7 +39,7 @@ internal abstract class FuckAndesDatabase : RoomDatabase() {
                     FuckAndesDatabase::class.java,
                     "fuck_andes.db",
                 )
-                    .addMigrations(MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9)
+                    .addMigrations(MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10)
                     .fallbackToDestructiveMigration(dropAllTables = true)
                     .build()
                     .also { instance = it }
@@ -91,6 +91,21 @@ internal abstract class FuckAndesDatabase : RoomDatabase() {
             database.execSQL(
                 "DELETE FROM conversation_state WHERE selected_conversation_id NOT IN " +
                     "(SELECT id FROM conversations)"
+            )
+        }
+
+        internal val MIGRATION_9_10 = Migration(9, 10) { database ->
+            database.execSQL(
+                "ALTER TABLE conversations ADD COLUMN " +
+                    "reasoning_effort TEXT NOT NULL DEFAULT 'default'"
+            )
+            database.execSQL(
+                "UPDATE conversations SET reasoning_effort = " +
+                    "CASE WHEN thinking_enabled = 1 THEN 'default' ELSE 'off' END"
+            )
+            database.execSQL(
+                "ALTER TABLE provider_models ADD COLUMN " +
+                    "reasoning_capabilities_json TEXT NOT NULL DEFAULT 'null'"
             )
         }
     }

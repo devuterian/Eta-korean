@@ -8,6 +8,7 @@ import fuck.andes.data.model.CustomHeader
 import fuck.andes.data.model.OpenAiCompatibleProviderSetting
 import fuck.andes.data.model.ModelSource
 import fuck.andes.data.model.ProviderSetting
+import fuck.andes.data.model.ReasoningEffort
 import fuck.andes.data.provider.BuiltinProviders
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -50,6 +51,22 @@ class ProviderRepositoryTest {
         assertEquals(
             List(4) { ModelSource.CATALOG },
             providers.getValue(BuiltinProviders.OPENAI_ID).models.map { it.source },
+        )
+        assertEquals(
+            listOf(
+                ReasoningEffort.OFF,
+                ReasoningEffort.DEFAULT,
+                ReasoningEffort.LOW,
+                ReasoningEffort.MEDIUM,
+                ReasoningEffort.HIGH,
+                ReasoningEffort.XHIGH,
+                ReasoningEffort.MAX,
+            ),
+            providers.getValue(BuiltinProviders.OPENAI_ID)
+                .models
+                .first()
+                .reasoningCapabilities
+                ?.selectableEfforts,
         )
         assertEquals(
             listOf("claude-fable-5", "claude-opus-4-8", "claude-sonnet-5"),

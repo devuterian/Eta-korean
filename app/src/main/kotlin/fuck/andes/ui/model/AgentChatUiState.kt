@@ -2,6 +2,7 @@ package fuck.andes.ui.model
 
 import androidx.compose.runtime.Immutable
 import fuck.andes.agent.model.AgentModelClient
+import fuck.andes.data.model.ReasoningEffort
 
 @Immutable
 internal data class AgentChatUiState(
@@ -10,6 +11,8 @@ internal data class AgentChatUiState(
     val input: String,
     val isStreaming: Boolean,
     val thinkingEnabled: Boolean,
+    val reasoningEffort: ReasoningEffort = ReasoningEffort.fromLegacy(thinkingEnabled),
+    val availableReasoningEfforts: List<ReasoningEffort> = emptyList(),
     val pendingImages: List<PendingImageUi> = emptyList(),
     val appliedRuntimeRunIds: List<String> = emptyList(),
 )

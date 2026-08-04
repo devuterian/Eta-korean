@@ -52,6 +52,25 @@ class AgentLocalToolsPermissionTest {
     }
 
     @Test
+    fun memoryPermissionIsRecheckedImmediatelyBeforeExecution() {
+        val enabled = AtomicBoolean(true)
+        val tools = tools(memoryEnabled = enabled::get)
+        enabled.set(false)
+
+        val result = tools.execute(
+            AgentModelClient.ToolCall(
+                id = "call-memory",
+                name = "memory_get",
+                argumentsJson = "{}",
+            ),
+        )
+
+        assertEquals("MEMORY_DISABLED", JSONObject(result.content).getString("code"))
+        assertEquals(true, result.sensitive)
+        tools.close()
+    }
+
+    @Test
     fun foregroundToolIsRejectedWhenEntrySurfaceIsNotReady() {
         val tools = tools(
             beforeToolExecution = {
@@ -134,6 +153,7 @@ class AgentLocalToolsPermissionTest {
     private fun tools(
         terminalEnabled: () -> Boolean = { false },
         browserEnabled: () -> Boolean = { false },
+        memoryEnabled: () -> Boolean = { false },
         beforeToolExecution: (String) -> ToolExecutionDecision = {
             ToolExecutionDecision.Allow
         },
@@ -144,6 +164,7 @@ class AgentLocalToolsPermissionTest {
             browserRunId = "test-run",
             terminalToolsEnabled = terminalEnabled,
             browserToolsEnabled = browserEnabled,
+            memoryToolsEnabled = memoryEnabled,
             beforeToolExecution = beforeToolExecution,
         )
 

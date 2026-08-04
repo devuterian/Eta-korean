@@ -1,5 +1,6 @@
 package fuck.andes.agent.runtime
 
+import fuck.andes.data.model.ReasoningEffort
 import org.json.JSONObject
 
 /**
@@ -14,6 +15,7 @@ internal data class AgentExternalArchivePayload(
     val conversationKey: String,
     val title: String,
     val thinkingEnabled: Boolean? = null,
+    val reasoningEffort: ReasoningEffort? = null,
     val adapterPayload: JSONObject = JSONObject(),
 ) {
     fun toJson(): String =
@@ -24,7 +26,9 @@ internal data class AgentExternalArchivePayload(
             .put("conversationKey", conversationKey)
             .put("title", title)
             .also { json ->
-                thinkingEnabled?.let { json.put("thinkingEnabled", it) }
+                (thinkingEnabled ?: reasoningEffort?.enablesReasoning)
+                    ?.let { json.put("thinkingEnabled", it) }
+                reasoningEffort?.let { json.put("reasoningEffort", it.wireValue) }
                 if (adapterPayload.length() > 0) {
                     json.put("adapterPayload", adapterPayload)
                 }
@@ -45,6 +49,12 @@ internal data class AgentExternalArchivePayload(
                     title = json.optString("title"),
                     thinkingEnabled = if (json.has("thinkingEnabled") && !json.isNull("thinkingEnabled")) {
                         json.optBoolean("thinkingEnabled")
+                    } else {
+                        null
+                    },
+                    reasoningEffort = if (json.has("reasoningEffort") && !json.isNull("reasoningEffort")) {
+                        ReasoningEffort.fromWireValue(json.optString("reasoningEffort"))
+                            ?: ReasoningEffort.DEFAULT
                     } else {
                         null
                     },

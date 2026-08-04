@@ -1662,7 +1662,7 @@ private fun ThinkingRow(
                 text = if (message.isStreaming) {
                     "생각 중…"
                 } else {
-                    "생각 완료${message.elapsedSeconds?.let { " · 소요 시간 ${it}초" }.orEmpty()}"
+                    "생각 완료${message.elapsedSeconds?.let { " · 用时 ${it} 秒" }.orEmpty()}"
                 },
                 style = MiuixTheme.textStyles.body2,
                 color = if (message.isStreaming) {
@@ -2050,6 +2050,7 @@ private fun String.toToolIcon(): Int = when (this) {
     "launch_app" -> LucideR.drawable.lucide_ic_rocket
     "open_uri" -> LucideR.drawable.lucide_ic_external_link
     "browser_use" -> LucideR.drawable.lucide_ic_globe
+    "memory_get", "memory_write" -> LucideR.drawable.lucide_ic_brain
     "press_key" -> LucideR.drawable.lucide_ic_command
     "open_system_panel" -> LucideR.drawable.lucide_ic_panel_top_open
     "set_alarm", "set_timer" -> LucideR.drawable.lucide_ic_clock
@@ -2057,7 +2058,6 @@ private fun String.toToolIcon(): Int = when (this) {
     "media_control" -> LucideR.drawable.lucide_ic_play
     "set_volume" -> LucideR.drawable.lucide_ic_settings
     "top_memory_apps", "top_storage_apps" -> LucideR.drawable.lucide_ic_layers
-    "send_message" -> LucideR.drawable.lucide_ic_message_square
     "read_sms_code" -> LucideR.drawable.lucide_ic_key
     "recent_notifications" -> LucideR.drawable.lucide_ic_bell
     "wifi_credentials" -> LucideR.drawable.lucide_ic_lock
@@ -2088,6 +2088,8 @@ private fun String.toToolLabel(): String = when (this) {
     "launch_app" -> "앱 열기"
     "open_uri" -> "링크 열기"
     "browser_use" -> "웹 탐색"
+    "memory_get" -> "메모리 읽기"
+    "memory_write" -> "기억을 정리하다"
     "press_key" -> "버튼"
     "open_system_panel" -> "시스템 패널"
     "set_alarm" -> "알람 설정"
@@ -2098,7 +2100,6 @@ private fun String.toToolLabel(): String = when (this) {
     "set_volume" -> "음량 설정"
     "top_memory_apps" -> "메모리 사용 순위"
     "top_storage_apps" -> "저장공간 사용 순위"
-    "send_message" -> "WeChat 메시지 보내기"
     "read_sms_code" -> "인증번호 읽기"
     "recent_notifications" -> "알림 읽기"
     "wifi_credentials" -> "Wi‑Fi 비밀번호 읽기"

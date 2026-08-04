@@ -8,7 +8,7 @@ import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
 
 /**
- * 二级页面统一返回按钮。参考 InstallerX-Revived 的 MiuixBackButton。
+ * 二级页面统一返回按钮，保持图标、语义与点击区域一致。
  * 图标用 lucide chevron-left（项目未依赖 miuix-icons-extended）。
  */
 @Composable

@@ -156,6 +156,31 @@ class AgentToolCatalogTest {
         assertTrue(terminal.getString("description").contains("environment=linux"))
     }
 
+    @Test
+    fun memoryToolsAreExposedOnlyWhenEnabledAndDeclareBoundedOperations() {
+        val disabled = AgentToolCatalog.build(
+            terminalTools = false,
+            browserTools = false,
+            memoryTools = false,
+        ).toolNames()
+        assertFalse("memory_get" in disabled)
+        assertFalse("memory_write" in disabled)
+
+        val enabled = AgentToolCatalog.build(
+            terminalTools = false,
+            browserTools = false,
+            memoryTools = true,
+        )
+        assertTrue("memory_get" in enabled.toolNames())
+        val write = enabled.function("memory_write")
+        val properties = write.getJSONObject("parameters").getJSONObject("properties")
+        assertEquals(3_500, properties.getJSONObject("content").getInt("maxLength"))
+        assertEquals(
+            listOf("replace_range", "append", "clear"),
+            properties.getJSONObject("mode").getJSONArray("enum").stringValues(),
+        )
+    }
+
     private fun JSONArray.toolNames(): List<String> =
         (0 until length()).map { index ->
             getJSONObject(index).getJSONObject("function").getString("name")

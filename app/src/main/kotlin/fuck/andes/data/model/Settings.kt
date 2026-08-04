@@ -6,4 +6,5 @@ import kotlinx.serialization.Serializable
 data class Settings(
     val selectedProviderId: String? = null,
     val selectedModelId: String? = null,
+    val memoryEnabled: Boolean = true,
 )

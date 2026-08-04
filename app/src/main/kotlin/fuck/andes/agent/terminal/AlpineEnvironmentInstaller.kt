@@ -31,11 +31,11 @@ internal data class AlpineEnvironmentStatus(
 )
 
 internal enum class AlpineInstallStage(val displayName: String) {
-    CHECKING("Root 및 BusyBox를 확인 중입니다."),
-    DOWNLOADING("Alpine 기본 환경을 다운로드 중입니다."),
-    EXTRACTING("기본 환경을 압축 해제 중입니다."),
-    INSTALLING_TOOLS("필수 도구를 설치 중입니다."),
-    COMPLETE("환경이 준비되었습니다."),
+    CHECKING("检查 Root 与 BusyBox"),
+    DOWNLOADING("下载 Alpine 基础环境"),
+    EXTRACTING("解压基础环境"),
+    INSTALLING_TOOLS("安装常用工具"),
+    COMPLETE("环境已就绪"),
 }
 
 internal data class AlpineInstallProgress(

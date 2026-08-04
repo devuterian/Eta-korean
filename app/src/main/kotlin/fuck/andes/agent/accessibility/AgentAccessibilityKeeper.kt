@@ -51,21 +51,21 @@ object AgentAccessibilityKeeper {
         if (!protectionEnabled()) {
             return AccessibilityEnableResult.failure(
                 code = "ACCESSIBILITY_UNAVAILABLE",
-                message = "Eta 접근성 서비스가 연결되지 않았습니다. 설정에서 서비스를 켜거나 ‘접근성 강제 유지’를 활성화해 주세요.",
+                message = "Eta 无障碍服务未连接；请在设置中开启服务或启用“强制保持无障碍”",
                 recoveryRequested = false,
             )
         }
         if (!requestRecovery()) {
             return AccessibilityEnableResult.failure(
                 code = "ACCESSIBILITY_PROTECTION_UNAVAILABLE",
-                message = "접근성 보호 백엔드를 사용할 수 없어 이번 GUI 작업을 실행하지 않았습니다.",
+                message = "无障碍保护后端不可用；本次 GUI 操作未执行",
                 recoveryRequested = true,
             )
         }
         if (!awaitServiceBinding()) {
             return AccessibilityEnableResult.failure(
                 code = "ACCESSIBILITY_REPAIR_TIMEOUT",
-                message = "복구 제한 시간 안에 Eta 접근성 서비스가 연결되지 않아 이번 GUI 작업을 실행하지 않았습니다.",
+                message = "Eta 无障碍服务未在恢复时限内连接；本次 GUI 操作未执行",
                 recoveryRequested = true,
             )
         }

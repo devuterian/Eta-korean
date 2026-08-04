@@ -1,10 +1,41 @@
 package fuck.andes.agent.model
 
+import org.json.JSONArray
+import org.json.JSONObject
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class AgentConversationCodecTest {
+    @Test
+    fun toolRoundTripPreservesReasoningContentForCompatibleProviders() {
+        val assistant = JSONObject()
+            .put("role", "assistant")
+            .put("content", JSONObject.NULL)
+            .put("reasoning_content", "先分析工具参数")
+            .put(
+                "tool_calls",
+                JSONArray().put(
+                    JSONObject()
+                        .put("id", "call-1")
+                        .put("type", "function")
+                        .put(
+                            "function",
+                            JSONObject()
+                                .put("name", "device_info")
+                                .put("arguments", "{}")
+                        )
+                )
+            )
+
+        val durable = AgentConversationCodec.durableMessage(assistant)
+        val replayed = AgentConversationCodec.toJsonObject(durable)
+
+        assertEquals("先分析工具参数", replayed.getString("reasoning_content"))
+        assertEquals("call-1", replayed.getJSONArray("tool_calls").getJSONObject(0).getString("id"))
+    }
+
     @Test
     fun durableImageObservationNeverPersistsBase64Payload() {
         val message = AgentConversationCodec.durableMessage(

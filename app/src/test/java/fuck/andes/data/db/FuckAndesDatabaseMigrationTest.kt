@@ -20,7 +20,7 @@ import org.robolectric.annotation.Config
 @Config(sdk = [36])
 class FuckAndesDatabaseMigrationTest {
     @Test
-    fun migration6To9PreservesDataAndCleansOnlyKnownEmptyPlaceholders() {
+    fun migration6To10PreservesDataAndMigratesReasoningEffort() {
         val context = RuntimeEnvironment.getApplication() as Context
         val databaseName = "migration-${UUID.randomUUID()}.db"
         createVersion6Database(context, databaseName)
@@ -30,6 +30,7 @@ class FuckAndesDatabaseMigrationTest {
                 FuckAndesDatabase.MIGRATION_6_7,
                 FuckAndesDatabase.MIGRATION_7_8,
                 FuckAndesDatabase.MIGRATION_8_9,
+                FuckAndesDatabase.MIGRATION_9_10,
             )
             .build()
         try {
@@ -50,8 +51,13 @@ class FuckAndesDatabaseMigrationTest {
             assertEquals("[]", result.transcriptJson)
             assertEquals("保留的归档", archive.content)
             assertEquals("[]", archive.transcriptJson)
-            assertEquals(setOf("conv-1", "conv-custom-empty"), conversations.mapTo(mutableSetOf()) { it.id })
+            assertEquals(
+                setOf("conv-1", "conv-enabled", "conv-custom-empty"),
+                conversations.mapTo(mutableSetOf()) { it.id },
+            )
             assertEquals("[]", conversations.first { it.id == "conv-1" }.appliedRuntimeRunIdsJson)
+            assertEquals("off", conversations.first { it.id == "conv-1" }.reasoningEffort)
+            assertEquals("default", conversations.first { it.id == "conv-enabled" }.reasoningEffort)
             assertEquals(null, runBlocking(Dispatchers.IO) { database.conversationDao().state() })
             assertEquals(listOf("built-in", "manual"), provider.models.map { it.modelId })
             assertEquals(
@@ -74,6 +80,11 @@ class FuckAndesDatabaseMigrationTest {
                 object : SupportSQLiteOpenHelper.Callback(6) {
                     override fun onCreate(db: SupportSQLiteDatabase) {
                         VERSION_6_SCHEMA.forEach(db::execSQL)
+                        db.execSQL(
+                            "INSERT INTO conversations " +
+                                "(id, title, thinking_enabled, history_json, created_at, updated_at) " +
+                                "VALUES ('conv-enabled', '启用推理', 1, '[]', 4, 4)"
+                        )
                         db.execSQL(
                             "INSERT INTO conversations " +
                                 "(id, title, thinking_enabled, history_json, created_at, updated_at) " +

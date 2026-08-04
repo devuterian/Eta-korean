@@ -22,8 +22,8 @@ class ConversationTimeLabelsTest {
     fun labelUsesRelativeDayForRecentHistory() {
         val now = millis(2026, Calendar.JULY, 4, 19, 32)
 
-        assertEquals("어제", label(millis(2026, Calendar.JULY, 3, 23, 59), now))
-        assertEquals("월요일", label(millis(2026, Calendar.JUNE, 29, 8, 0), now))
+        assertEquals("昨天", label(millis(2026, Calendar.JULY, 3, 23, 59), now))
+        assertEquals("周一", label(millis(2026, Calendar.JUNE, 29, 8, 0), now))
     }
 
     @Test
@@ -36,7 +36,7 @@ class ConversationTimeLabelsTest {
 
     @Test
     fun labelFallsBackForInvalidTimestamp() {
-        assertEquals("최근", label(0L, millis(2026, Calendar.JULY, 4, 19, 32)))
+        assertEquals("最近", label(0L, millis(2026, Calendar.JULY, 4, 19, 32)))
     }
 
     private fun label(timestamp: Long, now: Long): String =

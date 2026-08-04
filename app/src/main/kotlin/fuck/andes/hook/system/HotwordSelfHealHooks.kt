@@ -45,12 +45,12 @@ internal object HotwordSelfHealHooks {
                 hooks.skipped(
                     id = "system.hotword-screen-off",
                     description = "PhoneWindowManager.screenTurnedOff",
-                    detail = "PhoneWindowManager를 찾을 수 없어 screenTurnedOff Hook을 건너뜁니다"
+                    detail = "未找到 PhoneWindowManager，跳过 screenTurnedOff Hook"
                 )
                 hooks.skipped(
                     id = "system.hotword-screen-on",
                     description = "PhoneWindowManager.screenTurnedOn",
-                    detail = "PhoneWindowManager를 찾을 수 없어 screenTurnedOn Hook을 건너뜁니다"
+                    detail = "未找到 PhoneWindowManager，跳过 screenTurnedOn Hook"
                 )
                 return@install
             }
@@ -79,7 +79,7 @@ internal object HotwordSelfHealHooks {
                 hooks.missing(
                     id = "system.hotword-screen-off",
                     description = "PhoneWindowManager.screenTurnedOff",
-                    detail = "PhoneWindowManager.screenTurnedOff(int, boolean)를 찾을 수 없습니다"
+                    detail = "未找到 PhoneWindowManager.screenTurnedOff(int, boolean)"
                 )
             }
 
@@ -105,7 +105,7 @@ internal object HotwordSelfHealHooks {
                 hooks.missing(
                     id = "system.hotword-screen-on",
                     description = "PhoneWindowManager.screenTurnedOn",
-                    detail = "PhoneWindowManager.screenTurnedOn(int)를 찾을 수 없습니다"
+                    detail = "未找到 PhoneWindowManager.screenTurnedOn(int)"
                 )
             }
         }
@@ -150,7 +150,7 @@ internal object HotwordSelfHealHooks {
             )
             if (resumed) {
                 cancelPendingResume(resetCooldown = false)
-                logger.debug { "ScreenOffHotwordSelfHeal: Google 소프트웨어 핫워드 감지가 복구되었습니다" }
+                logger.debug { "ScreenOffHotwordSelfHeal: 已恢复 Google 软件热词检测" }
                 return@Runnable
             }
 

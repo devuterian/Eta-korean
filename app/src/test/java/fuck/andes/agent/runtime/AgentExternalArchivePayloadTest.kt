@@ -1,5 +1,6 @@
 package fuck.andes.agent.runtime
 
+import fuck.andes.data.model.ReasoningEffort
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -13,6 +14,7 @@ class AgentExternalArchivePayloadTest {
             conversationKey = "session-1",
             title = "外部入口",
             thinkingEnabled = true,
+            reasoningEffort = ReasoningEffort.XHIGH,
             adapterPayload = JSONObject()
                 .put("recordId", "record-1")
                 .put("roomId", "room-1"),
@@ -25,6 +27,7 @@ class AgentExternalArchivePayloadTest {
         assertEquals(payload.conversationKey, restored.conversationKey)
         assertEquals(payload.title, restored.title)
         assertEquals(payload.thinkingEnabled, restored.thinkingEnabled)
+        assertEquals(payload.reasoningEffort, restored.reasoningEffort)
         assertEquals("record-1", restored.adapterPayload.optString("recordId"))
         assertEquals("room-1", restored.adapterPayload.optString("roomId"))
     }

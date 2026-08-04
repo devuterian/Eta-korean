@@ -15,6 +15,7 @@ import fuck.andes.FuckAndesApp
 import fuck.andes.agent.accessibility.AgentAccessibilityService
 import fuck.andes.agent.device.DeviceLocationProvider
 import fuck.andes.agent.media.AgentImageCodec
+import fuck.andes.agent.memory.AgentMemoryContextBuilder
 import fuck.andes.agent.model.AgentModelClient
 import fuck.andes.agent.runtime.AgentEvent
 import fuck.andes.agent.runtime.AgentExternalArchivePayload
@@ -27,10 +28,15 @@ import fuck.andes.agent.skill.SkillRuntime
 import fuck.andes.config.Prefs
 import fuck.andes.core.AndroidAgentLogger
 import fuck.andes.core.safeLogType
+import fuck.andes.data.model.ModelReasoningCapabilities
+import fuck.andes.data.model.ReasoningEffort
+import fuck.andes.data.repository.AgentMemoryRepository
+import fuck.andes.data.repository.ProviderRepository
 import fuck.andes.data.repository.RuntimeConfigRepository
 import fuck.andes.ui.model.AgentChatHomeUiState
 import fuck.andes.ui.model.AgentChatMessageUi
 import fuck.andes.ui.model.AgentMessageUi
+import fuck.andes.ui.model.AgentMemoryUiState
 import fuck.andes.ui.model.AgentSkillsUiState
 import fuck.andes.ui.model.AgentSystemEnhanceUiState
 import fuck.andes.ui.model.AgentToolsUiState
@@ -61,6 +67,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -85,6 +94,7 @@ internal class AgentAppState(
     private var skillNoticeSequence = 0L
     private var pendingSkillZipUri: Uri? = null
     private var pendingSkillZipSha256: String? = null
+    private var currentReasoningCapabilities: ModelReasoningCapabilities? = null
 
     private var selectedConversationId: String? = initialConversations.selectedConversationId
     private var conversationsById: Map<String, AgentChatHomeUiState> = initialConversations.conversationsById
@@ -117,8 +127,12 @@ internal class AgentAppState(
     var systemEnhanceState by mutableStateOf(buildSystemEnhanceState())
         private set
 
+    var memoryState by mutableStateOf(AgentMemoryUiState())
+        private set
+
     init {
         refreshConversationSummaries()
+        observeReasoningCapabilities()
         runtimeRecoveryInProgress.set(true)
         scope.launch(Dispatchers.IO) {
             try {
@@ -130,6 +144,44 @@ internal class AgentAppState(
         }
     }
 
+    private fun observeReasoningCapabilities() {
+        scope.launch(Dispatchers.IO) {
+            combine(
+                RuntimeConfigRepository.selectedProviderIdFlow(),
+                RuntimeConfigRepository.selectedModelIdFlow(),
+                ProviderRepository.providersFlow(),
+            ) { providerId, modelId, providers ->
+                Triple(providerId, modelId, providers.hashCode())
+            }
+                .distinctUntilChanged()
+                .collectLatest {
+                    val capabilities = RuntimeConfigRepository.currentRuntimeConfig()
+                        ?.reasoningCapabilities
+                    withContext(Dispatchers.Main) {
+                        applyReasoningCapabilities(capabilities)
+                    }
+                }
+        }
+    }
+
+    private fun applyReasoningCapabilities(capabilities: ModelReasoningCapabilities?) {
+        currentReasoningCapabilities = capabilities
+        val next = homeState.withCurrentReasoningCapabilities()
+        val changed = next.reasoningEffort != homeState.reasoningEffort ||
+            next.availableReasoningEfforts != homeState.availableReasoningEfforts
+        updateCurrentConversation(next)
+        if (changed && selectedConversationId != null) persistConversations()
+    }
+
+    private fun AgentChatHomeUiState.withCurrentReasoningCapabilities(): AgentChatHomeUiState {
+        val normalized = currentReasoningCapabilities?.normalize(reasoningEffort) ?: ReasoningEffort.OFF
+        return copy(
+            thinkingEnabled = normalized.enablesReasoning,
+            reasoningEffort = normalized,
+            availableReasoningEfforts = currentReasoningCapabilities?.selectableEfforts.orEmpty(),
+        )
+    }
+
     fun refreshRuntimeResults() {
         if (!runtimeRecoveryInProgress.compareAndSet(false, true)) return
         scope.launch(Dispatchers.IO) {
@@ -139,6 +191,144 @@ internal class AgentAppState(
                 runtimeRecoveryInProgress.set(false)
             }
         }
+    }
+
+    fun refreshMemory() {
+        memoryState = memoryState.copy(isLoading = true, notice = null)
+        scope.launch(Dispatchers.IO) {
+            runCatching {
+                val snapshot = AgentMemoryRepository.snapshot()
+                val enabled = AgentMemoryRepository.isEnabled()
+                val contextWindow = RuntimeConfigRepository.currentRuntimeConfig()?.contextWindow
+                Triple(snapshot, enabled, AgentMemoryContextBuilder.coreBudgetChars(contextWindow))
+            }.fold(
+                onSuccess = { (snapshot, enabled, coreBudget) ->
+                    withContext(Dispatchers.Main) {
+                        memoryState = AgentMemoryUiState(
+                            enabled = enabled,
+                            isLoading = false,
+                            draft = snapshot.content,
+                            savedContent = snapshot.content,
+                            draftBytes = snapshot.byteSize,
+                            coreBudgetChars = coreBudget,
+                        )
+                    }
+                },
+                onFailure = { throwable ->
+                    AndroidAgentLogger.warnThrottled("agent_memory_ui_load_failed") {
+                        "Agent memory UI load failed: type=${throwable.safeLogType()}"
+                    }
+                    withContext(Dispatchers.Main) {
+                        memoryState = memoryState.copy(
+                            isLoading = false,
+                            notice = "메모리를 읽지 못했습니다. 나중에 다시 시도해 주세요.",
+                        )
+                    }
+                },
+            )
+        }
+    }
+
+    fun updateMemoryDraft(content: String) {
+        memoryState = memoryState.copy(
+            draft = content,
+            draftBytes = content.toByteArray(Charsets.UTF_8).size,
+            notice = null,
+        )
+    }
+
+    fun setMemoryEnabled(enabled: Boolean) {
+        scope.launch(Dispatchers.IO) {
+            runCatching { AgentMemoryRepository.setEnabled(enabled) }
+                .fold(
+                    onSuccess = {
+                        withContext(Dispatchers.Main) {
+                            memoryState = memoryState.copy(enabled = enabled, notice = null)
+                        }
+                    },
+                    onFailure = { throwable ->
+                        AndroidAgentLogger.warnThrottled("agent_memory_toggle_failed") {
+                            "Agent memory setting update failed: type=${throwable.safeLogType()}"
+                        }
+                        withContext(Dispatchers.Main) {
+                            memoryState = memoryState.copy(notice = "메모리 스위치를 저장하지 못했습니다.")
+                        }
+                    },
+                )
+        }
+    }
+
+    fun saveMemory() {
+        if (!memoryState.canSave) return
+        val target = memoryState.draft
+        memoryState = memoryState.copy(isSaving = true, notice = null)
+        scope.launch(Dispatchers.IO) {
+            runCatching { AgentMemoryRepository.replaceAll(target) }
+                .fold(
+                    onSuccess = { snapshot ->
+                        withContext(Dispatchers.Main) {
+                            memoryState = memoryState.copy(
+                                isSaving = false,
+                                savedContent = snapshot.content,
+                                draft = if (memoryState.draft == target) {
+                                    snapshot.content
+                                } else {
+                                    memoryState.draft
+                                },
+                                draftBytes = memoryState.draft.toByteArray(Charsets.UTF_8).size,
+                                notice = "메모리가 절약되었습니다",
+                            )
+                        }
+                    },
+                    onFailure = { throwable ->
+                        AndroidAgentLogger.warnThrottled("agent_memory_ui_save_failed") {
+                            "Agent memory UI save failed: type=${throwable.safeLogType()}"
+                        }
+                        withContext(Dispatchers.Main) {
+                            memoryState = memoryState.copy(
+                                isSaving = false,
+                                notice = throwable.message ?: "메모리 저장 실패",
+                            )
+                        }
+                    },
+                )
+        }
+    }
+
+    fun clearMemory() {
+        if (memoryState.isSaving) return
+        memoryState = memoryState.copy(isSaving = true, notice = null)
+        scope.launch(Dispatchers.IO) {
+            runCatching { AgentMemoryRepository.replaceAll("") }
+                .fold(
+                    onSuccess = {
+                        withContext(Dispatchers.Main) {
+                            memoryState = memoryState.copy(
+                                isSaving = false,
+                                draft = "",
+                                savedContent = "",
+                                draftBytes = 0,
+                                notice = "메모리가 지워졌습니다.",
+                            )
+                        }
+                    },
+                    onFailure = { throwable ->
+                        AndroidAgentLogger.warnThrottled("agent_memory_ui_clear_failed") {
+                            "Agent memory UI clear failed: type=${throwable.safeLogType()}"
+                        }
+                        withContext(Dispatchers.Main) {
+                            memoryState = memoryState.copy(
+                                isSaving = false,
+                                notice = throwable.message ?: "메모리 삭제 실패",
+                            )
+                        }
+                    },
+                )
+        }
+    }
+
+    fun dismissMemoryNotice() {
+        memoryState = memoryState.copy(notice = null)
     }
 
     /**
@@ -213,9 +403,12 @@ internal class AgentAppState(
             source = archivedRun.handoff.source,
             conversationKey = payload.conversationKey,
         )
+        val archivedEffort = payload.reasoningEffort
+            ?: payload.thinkingEnabled?.let(ReasoningEffort::fromLegacy)
+            ?: ReasoningEffort.fromLegacy(defaultThinkingEnabled)
         val existingState = conversationsById[conversationId] ?: emptyChatState(
-            payload.thinkingEnabled ?: defaultThinkingEnabled
-        )
+            archivedEffort.enablesReasoning
+        ).copy(reasoningEffort = archivedEffort)
         val alreadyImported = AgentRuntimeHistoryReducer.wasApplied(existingState, runId) ||
             existingState.messages.any {
                 it is AgentMessageUi &&
@@ -233,7 +426,8 @@ internal class AgentAppState(
             existingState.copy(
                 input = "",
                 isStreaming = true,
-                thinkingEnabled = payload.thinkingEnabled ?: existingState.thinkingEnabled,
+                thinkingEnabled = archivedEffort.enablesReasoning,
+                reasoningEffort = archivedEffort,
                 pendingImages = emptyList(),
                 messages = existingState.messages +
                     UserMessageUi(id = "user-$runId", content = payload.userText) +
@@ -256,7 +450,17 @@ internal class AgentAppState(
     }
 
     fun updateThinkingEnabled(enabled: Boolean) {
-        updateCurrentConversation(homeState.copy(thinkingEnabled = enabled))
+        updateReasoningEffort(ReasoningEffort.fromLegacy(enabled))
+    }
+
+    fun updateReasoningEffort(effort: ReasoningEffort) {
+        val normalized = currentReasoningCapabilities?.normalize(effort) ?: ReasoningEffort.OFF
+        updateCurrentConversation(
+            homeState.copy(
+                thinkingEnabled = normalized.enablesReasoning,
+                reasoningEffort = normalized,
+            )
+        )
         if (selectedConversationId != null) persistConversations()
     }
 
@@ -267,14 +471,22 @@ internal class AgentAppState(
     fun selectConversation(conversationId: String) {
         val state = conversationsById[conversationId] ?: return
         selectedConversationId = conversationId
-        homeState = state
+        val normalized = currentReasoningCapabilities?.normalize(state.reasoningEffort)
+            ?: ReasoningEffort.OFF
+        val resolvedState = state.copy(
+            thinkingEnabled = normalized.enablesReasoning,
+            reasoningEffort = normalized,
+            availableReasoningEfforts = currentReasoningCapabilities?.selectableEfforts.orEmpty(),
+        )
+        conversationsById = conversationsById + (conversationId to resolvedState)
+        homeState = resolvedState
         conversationPaneState = conversationPaneState.copy(selectedConversationId = conversationId)
         persistConversations()
     }
 
     fun createConversation() {
         selectedConversationId = null
-        homeState = emptyChatState(defaultThinkingEnabled)
+        homeState = emptyChatState(defaultThinkingEnabled).withCurrentReasoningCapabilities()
         conversationPaneState = conversationPaneState.copy(
             selectedConversationId = null,
             searchQuery = "",
@@ -291,10 +503,11 @@ internal class AgentAppState(
             val nextId = conversationsById.keys.firstOrNull()
             if (nextId != null) {
                 selectedConversationId = nextId
-                homeState = conversationsById.getValue(nextId)
+                homeState = conversationsById.getValue(nextId).withCurrentReasoningCapabilities()
+                conversationsById = conversationsById + (nextId to homeState)
             } else {
                 selectedConversationId = null
-                homeState = emptyChatState(defaultThinkingEnabled)
+                homeState = emptyChatState(defaultThinkingEnabled).withCurrentReasoningCapabilities()
             }
         }
         conversationPaneState = conversationPaneState.copy(selectedConversationId = selectedConversationId)
@@ -324,7 +537,7 @@ internal class AgentAppState(
             selectedConversationId = it
         }
         val history = homeState.history
-        val thinkingEnabled = homeState.thinkingEnabled
+        val reasoningEffort = homeState.reasoningEffort
         val runId = "run-${UUID.randomUUID()}"
         val imageDataUrls = pendingImages.map { it.dataUrl }
         val userMessage = UserMessageUi(id = "user-$runId", content = prompt, images = imageDataUrls)
@@ -363,6 +576,13 @@ internal class AgentAppState(
         persistConversations()
 
         currentRunJob = scope.launch(Dispatchers.IO) {
+            val permittedReasoningEffort = if (
+                remoteBooleanForUi(Prefs.Keys.AGENT_THINKING_ENABLED)
+            ) {
+                reasoningEffort
+            } else {
+                ReasoningEffort.OFF
+            }
             val config = RuntimeConfigRepository.currentRuntimeConfig()?.copy(
                 terminalTools = remoteBooleanForUi(Prefs.Keys.AGENT_TERMINAL_TOOLS),
                 browserTools = remoteBooleanForUi(Prefs.Keys.AGENT_BROWSER_TOOLS),
@@ -371,7 +591,8 @@ internal class AgentAppState(
                     remoteBooleanForUi(Prefs.Keys.AGENT_DEVICE_SENSITIVE_READ_TOOLS),
                 deviceSensitiveActionTools =
                     remoteBooleanForUi(Prefs.Keys.AGENT_DEVICE_SENSITIVE_ACTION_TOOLS),
-                thinkingEnabled = thinkingEnabled,
+                thinkingEnabled = permittedReasoningEffort.enablesReasoning,
+                reasoningEffort = permittedReasoningEffort,
             )
             if (config == null) {
                 withContext(Dispatchers.Main) {
@@ -1149,7 +1370,9 @@ internal class AgentAppState(
         selectedConversationId = null
         homeState = emptyChatState(defaultThinkingEnabled).copy(
             input = draft.input,
-            thinkingEnabled = draft.thinkingEnabled,
+            thinkingEnabled = draft.reasoningEffort.enablesReasoning,
+            reasoningEffort = draft.reasoningEffort,
+            availableReasoningEfforts = currentReasoningCapabilities?.selectableEfforts.orEmpty(),
             pendingImages = draft.pendingImages,
         )
         conversationPaneState = conversationPaneState.copy(selectedConversationId = null)
@@ -1352,7 +1575,6 @@ private fun buildToolsState(): AgentToolsUiState =
                 id = "device_sensitive",
                 title = "민감한 기기 기능",
                 tools = listOf(
-                    ToolItemUi("send_message", "WeChat 메시지 보내기", "연락처를 정확히 일치시킨 뒤 한 번만 전송하고 결과를 확인합니다."),
                     ToolItemUi("read_sms_code", "인증번호 읽기", "최근 SMS에서 인증번호만 추출합니다."),
                     ToolItemUi("recent_notifications", "알림 읽기", "현재 알림의 제목과 본문을 읽습니다."),
                     ToolItemUi("wifi_credentials", "Wi‑Fi 비밀번호", "휴대폰에 저장된 네트워크 인증 정보를 읽습니다."),
@@ -1361,6 +1583,41 @@ private fun buildToolsState(): AgentToolsUiState =
                     ToolItemUi("set_device_state", "네트워크 스위치", "Wi‑Fi 또는 블루투스를 직접 제어합니다."),
                     ToolItemUi("app_state_control", "앱 상태", "앱을 중지, 정지 또는 정지 해제합니다."),
                     ToolItemUi("get_logcat", "시스템 로그", "제한된 범위에서 최근 로그를 읽고 필터링합니다."),
+                ),
+            ),
+            ToolGroupUi(
+                id = "personal_data",
+                title = "개인 데이터에 직접 접근",
+                tools = listOf(
+                    ToolItemUi("search_media", "앨범 사진", "파일 이름이나 앨범 경로로 사진 검색"),
+                    ToolItemUi("search_audio", "오디오 파일", "제목, 파일 이름 또는 작성자로 오디오 검색"),
+                    ToolItemUi("search_recordings", "시스템 녹화", "시스템 미디어 라이브러리에서 녹화 파일 검색"),
+                    ToolItemUi("search_files", "파일 공유", "공유 저장소에서 문서 및 파일 검색"),
+                    ToolItemUi("search_calendar_events", "캘린더 이벤트", "제목, 위치 또는 설명으로 이벤트 검색"),
+                    ToolItemUi("search_contacts", "주소록", "연락처 이름 및 공개 주소 검색"),
+                    ToolItemUi("search_call_history", "통화 기록", "번호 또는 연락처 이름으로 통화 검색"),
+                    ToolItemUi("search_messages", "짧은 메시지", "보낸 사람 또는 텍스트 키워드로 문자 메시지를 검색하세요."),
+                    ToolItemUi("search_downloads", "다운로드 기록", "시스템 다운로드 작업 및 파일 검색"),
+                    ToolItemUi("search_coloros_notes", "ColorOS 노트", "메모, 할 일, 텍스트 콘텐츠 검색"),
+                    ToolItemUi("search_coloros_recordings", "ColorOS 녹음", "일반 녹음 및 통화 녹음 검색"),
+                    ToolItemUi("search_recording_summaries", "녹화 요약", "녹음과 관련된 기록된 요약 및 메모 검색"),
+                    ToolItemUi("search_qq_chat_images", "QQ 채팅 사진", "QQ 채팅 사진 캐시에서 최근 사진을 검색하세요"),
+                    ToolItemUi("search_wechat_chat_images", "위챗 채팅 사진", "WeChat 채팅 사진 캐시에서 최근 사진 검색"),
+                ),
+            ),
+            ToolGroupUi(
+                id = "file_vision",
+                title = "문서 비전",
+                tools = listOf(
+                    ToolItemUi("read_image", "사진 읽기", "알려진 경로의 그림을 읽고 해석을 위해 시각적 모델에 전달합니다."),
+                ),
+            ),
+            ToolGroupUi(
+                id = "memory",
+                title = "메모리",
+                tools = listOf(
+                    ToolItemUi("memory_get", "메모리 읽기", "MEMORY.md에서 장기 메모리를 읽거나 검색하도록 페이징되었습니다."),
+                    ToolItemUi("memory_write", "기억을 정리하다", "장기 기억을 부분적으로 업데이트, 추가 또는 삭제합니다."),
                 ),
             ),
             ToolGroupUi(
@@ -1478,6 +1735,12 @@ private fun buildSystemEnhanceState(): AgentSystemEnhanceUiState =
                         status = SystemEnhanceStatusUi.Active,
                     ),
                     SystemEnhanceItemUi(
+                        id = "memory",
+                        title = "메모리 시스템",
+                        summary = "코어 메모리는 자동으로 주입되며, 요청 시 모델에서 세부 콘텐츠를 검색합니다.",
+                        status = SystemEnhanceStatusUi.Active,
+                    ),
+                    SystemEnhanceItemUi(
                         id = "overlay",
                         title = "실행 오버레이",
                         summary = "런타임 서비스가 실행되는 동안 상태 오버레이를 표시합니다.",
@@ -1489,12 +1752,6 @@ private fun buildSystemEnhanceState(): AgentSystemEnhanceUiState =
                 id = "future",
                 title = "향후 기능",
                 items = listOf(
-                    SystemEnhanceItemUi(
-                        id = "memory",
-                        title = "메모리 시스템",
-                        summary = "장기 메모리와 예약 트리거는 추후 지원할 예정입니다.",
-                        status = SystemEnhanceStatusUi.Inactive,
-                    ),
                     SystemEnhanceItemUi(
                         id = "hook",
                         title = "Hook 보조 기능",

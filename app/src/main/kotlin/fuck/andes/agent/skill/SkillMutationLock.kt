@@ -37,11 +37,11 @@ internal object SkillMutationLock {
                 (Files.isSymbolicLink(lockPath.toPath()) ||
                     !Files.isRegularFile(lockPath.toPath(), LinkOption.NOFOLLOW_LINKS))
             ) {
-                throw IOException("스킬 설치 잠금 파일이 안전하지 않습니다.")
+                throw IOException("Skill 安装锁文件不安全")
             }
             RandomAccessFile(lockPath, "rw").use { lockFile ->
                 if (Files.isSymbolicLink(lockPath.toPath())) {
-                    throw IOException("스킬 설치 잠금 파일이 안전하지 않습니다.")
+                    throw IOException("Skill 安装锁文件不安全")
                 }
                 lockFile.channel.use { channel ->
                     channel.lock().use {
@@ -51,7 +51,7 @@ internal object SkillMutationLock {
                             if (recovered.isNotEmpty()) {
                                 val handler = recoveryHandler
                                     ?: throw SkillRecoveryRequiredException(
-                                        "스킬 파일이 복구되었습니다. registry 복구를 기다립니다."
+                                        "Skill 文件已恢复，等待 registry 恢复"
                                     )
                                 try {
                                     handler(recovered)
@@ -60,7 +60,7 @@ internal object SkillMutationLock {
                                     throw error
                                 } catch (error: Exception) {
                                     throw SkillRecoveryRequiredException(
-                                        "스킬 registry 자동 복구에 실패했습니다.",
+                                        "Skill registry 自动恢复失败",
                                         error,
                                     )
                                 }
@@ -80,9 +80,9 @@ internal object SkillMutationLock {
 /** 创建或验证只位于 Skills 同级私有目录中的安装工作区，拒绝 symlink 与特殊文件。 */
 internal fun prepareSkillInstallerWorkRoot(skillsRoot: File): File {
     val canonicalRoot = skillsRoot.canonicalFile
-    val parent = requireNotNull(canonicalRoot.parentFile) { "Skills 디렉터리에는 상위 디렉터리가 필요합니다." }
+    val parent = requireNotNull(canonicalRoot.parentFile) { "Skills 目录必须有父目录" }
     if (!Files.isDirectory(parent.toPath(), LinkOption.NOFOLLOW_LINKS)) {
-        throw IOException("Skills 상위 디렉터리를 사용할 수 없습니다.")
+        throw IOException("Skills 父目录不可用")
     }
     val workRoot = File(parent, ".eta-skill-installer")
     val path = workRoot.toPath()
@@ -99,7 +99,7 @@ internal fun prepareSkillInstallerWorkRoot(skillsRoot: File): File {
         workRoot.canonicalFile.parentFile != parent.canonicalFile ||
         workRoot.canonicalFile != workRoot.absoluteFile
     ) {
-        throw IOException("스킬 설치 작업 디렉터리가 안전하지 않습니다.")
+        throw IOException("Skill 安装工作目录不安全")
     }
     return workRoot
 }
@@ -126,7 +126,7 @@ private fun isRegularDirectoryTreeWithoutLinks(path: Path): Boolean {
 
 internal fun moveSkillDirectoryAtomically(source: File, target: File) {
     target.parentFile?.let { parent ->
-        if (!parent.mkdirs() && !parent.isDirectory) throw IOException("대상 상위 디렉터리를 생성할 수 없습니다.")
+        if (!parent.mkdirs() && !parent.isDirectory) throw IOException("无法创建目标父目录")
     }
     try {
         Files.move(source.toPath(), target.toPath(), StandardCopyOption.ATOMIC_MOVE)

@@ -63,7 +63,7 @@ internal class PendingSkillRecoveryJournal private constructor(
                 record
             }
         }
-        check(found) { "복구 로그에 스킬이 없습니다: $skillId" }
+        check(found) { "恢复日志中不存在 Skill：$skillId" }
         writeJournalAtomically(operationDirectory, records)
     }
 
@@ -74,7 +74,7 @@ internal class PendingSkillRecoveryJournal private constructor(
             records: List<SkillRecoveryRecord>,
         ): PendingSkillRecoveryJournal {
             validateOperationDirectory(skillsRoot, operationDirectory)
-            require(records.isNotEmpty()) { "복구 로그에는 최소 한 개의 스킬이 필요합니다." }
+            require(records.isNotEmpty()) { "恢复日志至少需要一个 Skill" }
             validateRecords(records)
             writeJournalAtomically(operationDirectory, records)
             return PendingSkillRecoveryJournal(operationDirectory, records)
@@ -95,12 +95,12 @@ internal fun recoverPendingSkillOperations(
     val workRoot = skillInstallerWorkRoot(skillsRoot)
     if (!Files.exists(workRoot.toPath(), LinkOption.NOFOLLOW_LINKS)) return emptyList()
     if (!workRoot.isDirectory || Files.isSymbolicLink(workRoot.toPath())) {
-        throw SkillRecoveryRequiredException("스킬 복구 디렉터리가 안전하지 않습니다.")
+        throw SkillRecoveryRequiredException("Skill 恢复目录不安全")
     }
     val operations = workRoot.listFiles()
         ?.filter { it.name.startsWith(OPERATION_PREFIX) }
         ?.sortedBy { it.name }
-        ?: throw SkillRecoveryRequiredException("스킬 복구 디렉터리를 읽을 수 없습니다.")
+        ?: throw SkillRecoveryRequiredException("无法读取 Skill 恢复目录")
     val recovered = operations.mapNotNull { operation ->
         val journalFile = File(operation, JOURNAL_FILE_NAME)
         if (!Files.exists(journalFile.toPath(), LinkOption.NOFOLLOW_LINKS)) return@mapNotNull null
@@ -112,7 +112,7 @@ internal fun recoverPendingSkillOperations(
         .filterValues { it.size > 1 }
         .keys
     if (duplicateIds.isNotEmpty()) {
-        recoveryFailure("여러 복구 작업에 동일한 스킬이 포함되어 있습니다.")
+        recoveryFailure("多个待恢复事务包含相同 Skill")
     }
     return recovered
 }
@@ -126,10 +126,10 @@ private fun recoverOperation(
     try {
         validateOperationDirectory(skillsRoot, operation)
         if (Files.isSymbolicLink(journalFile.toPath()) || !journalFile.isFile) {
-            recoveryFailure("스킬 복구 로그가 일반 파일이 아닙니다.")
+            recoveryFailure("Skill 恢复日志不是普通文件")
         }
         if (journalFile.length() !in 1..MAX_JOURNAL_BYTES) {
-            recoveryFailure("스킬 복구 로그 크기가 올바르지 않습니다.")
+            recoveryFailure("Skill 恢复日志大小无效")
         }
         val records = parseJournal(journalFile)
         val backupRoot = File(operation, BACKUP_DIRECTORY_NAME)
@@ -146,14 +146,14 @@ private fun recoverOperation(
                         record.id,
                         directoryMover,
                     )
-                    record.backupCompleted -> recoveryFailure("이전 스킬 백업이 없습니다: ${record.id}")
+                    record.backupCompleted -> recoveryFailure("旧 Skill 备份缺失：${record.id}")
                     !isSafeExistingTarget(skillsRoot, target) ->
-                        recoveryFailure("이전 스킬 대상과 복구 로그가 일치하지 않습니다: ${record.id}")
+                        recoveryFailure("旧 Skill 目标与恢复日志不一致：${record.id}")
                 }
             } else {
-                if (backupExists) recoveryFailure("새 스킬에 이전 백업이 존재하면 안 됩니다: ${record.id}")
+                if (backupExists) recoveryFailure("全新 Skill 不应存在旧备份：${record.id}")
                 if (!deleteSkillPathWithoutFollowingLinks(skillsRoot, target)) {
-                    recoveryFailure("설치가 완료되지 않은 스킬을 제거할 수 없습니다: ${record.id}")
+                    recoveryFailure("无法移除未完成安装的 Skill：${record.id}")
                 }
             }
         }
@@ -161,7 +161,7 @@ private fun recoverOperation(
     } catch (error: SkillRecoveryRequiredException) {
         throw error
     } catch (error: Exception) {
-        throw SkillRecoveryRequiredException("스킬 자동 복구에 실패했습니다.", error)
+        throw SkillRecoveryRequiredException("Skill 自动恢复失败", error)
     }
 }
 
@@ -186,7 +186,7 @@ internal fun createSkillRecoveryOperationDirectory(skillsRoot: File): File {
         val operation = File(workRoot, "$OPERATION_PREFIX${UUID.randomUUID()}")
         if (operation.mkdir()) return operation
     }
-    throw IOException("스킬 설치 트랜잭션을 생성할 수 없습니다.")
+    throw IOException("无法创建 Skill 安装事务")
 }
 
 private fun restoreBackup(
@@ -200,75 +200,75 @@ private fun restoreBackup(
         Files.isSymbolicLink(backupRoot.toPath()) || !backupRoot.isDirectory ||
         !isStrictChild(operation, backupRoot)
     ) {
-        recoveryFailure("스킬 백업 루트 디렉터리가 안전하지 않습니다.")
+        recoveryFailure("Skill 备份根目录不安全")
     }
     val backup = File(backupRoot, skillId)
     if (
         Files.isSymbolicLink(backup.toPath()) || !backup.isDirectory ||
         !isStrictChild(backupRoot, backup)
     ) {
-        recoveryFailure("이전 스킬 백업이 안전하지 않습니다: $skillId")
+        recoveryFailure("旧 Skill 备份不安全：$skillId")
     }
     val recoveryRoot = File(operation, RECOVERY_DIRECTORY_NAME)
     if (!recoveryRoot.mkdirs() && !recoveryRoot.isDirectory) {
-        recoveryFailure("스킬 복구 임시 디렉터리를 생성할 수 없습니다.")
+        recoveryFailure("无法创建 Skill 恢复暂存目录")
     }
     if (Files.isSymbolicLink(recoveryRoot.toPath()) || !isStrictChild(operation, recoveryRoot)) {
-        recoveryFailure("스킬 복구 임시 디렉터리가 안전하지 않습니다.")
+        recoveryFailure("Skill 恢复暂存目录不安全")
     }
     val staging = File(recoveryRoot, skillId)
     if (!deleteSkillPathWithoutFollowingLinks(operation, staging)) {
-        recoveryFailure("스킬 복구 임시 디렉터리를 정리할 수 없습니다.")
+        recoveryFailure("无法清理 Skill 恢复暂存目录")
     }
     copyDirectoryWithoutFollowingLinks(backup, staging)
 
     val target = File(skillsRoot, skillId)
     if (!deleteSkillPathWithoutFollowingLinks(skillsRoot, target)) {
-        recoveryFailure("제출이 완료되지 않은 스킬을 정리할 수 없습니다: $skillId")
+        recoveryFailure("无法清理未完成提交的 Skill：$skillId")
     }
     directoryMover.move(staging, target)
 }
 
 private fun copyDirectoryWithoutFollowingLinks(source: File, target: File) {
     if (Files.isSymbolicLink(source.toPath()) || !source.isDirectory) {
-        recoveryFailure("스킬 백업 디렉터리가 안전하지 않습니다.")
+        recoveryFailure("Skill 备份目录不安全")
     }
-    if (!target.mkdir()) recoveryFailure("스킬 복구 복사본을 생성할 수 없습니다.")
-    val children = source.listFiles() ?: recoveryFailure("스킬 백업 디렉터리를 읽을 수 없습니다.")
+    if (!target.mkdir()) recoveryFailure("无法创建 Skill 恢复副本")
+    val children = source.listFiles() ?: recoveryFailure("无法读取 Skill 备份目录")
     children.forEach { child ->
         if (Files.isSymbolicLink(child.toPath())) {
-            recoveryFailure("스킬 백업에 심볼릭 링크가 포함되어 있습니다.")
+            recoveryFailure("Skill 备份包含符号链接")
         }
         val destination = File(target, child.name)
         when {
             child.isDirectory -> copyDirectoryWithoutFollowingLinks(child, destination)
             child.isFile -> Files.copy(child.toPath(), destination.toPath())
-            else -> recoveryFailure("스킬 백업에 지원하지 않는 파일 유형이 포함되어 있습니다.")
+            else -> recoveryFailure("Skill 备份包含不支持的文件类型")
         }
     }
 }
 
 private fun parseJournal(journalFile: File): List<SkillRecoveryRecord> {
     val json = runCatching { JSONObject(journalFile.readText(Charsets.UTF_8)) }
-        .getOrElse { recoveryFailure("스킬 복구 로그 형식이 올바르지 않습니다.") }
+        .getOrElse { recoveryFailure("Skill 恢复日志格式无效") }
     if (json.optInt("version", -1) != JOURNAL_VERSION) {
-        recoveryFailure("스킬 복구 로그 버전이 지원되지 않습니다.")
+        recoveryFailure("Skill 恢复日志版本不受支持")
     }
-    val entries = json.optJSONArray("skills") ?: recoveryFailure("스킬 복구 로그에 skills 항목이 없습니다.")
+    val entries = json.optJSONArray("skills") ?: recoveryFailure("Skill 恢复日志缺少 skills")
     if (entries.length() !in 1..MAX_JOURNAL_SKILLS) {
-        recoveryFailure("스킬 복구 로그 항목 수가 올바르지 않습니다.")
+        recoveryFailure("Skill 恢复日志条目数无效")
     }
     val records = (0 until entries.length()).map { index ->
-        val entry = entries.optJSONObject(index) ?: recoveryFailure("스킬 복구 로그 항목이 올바르지 않습니다.")
+        val entry = entries.optJSONObject(index) ?: recoveryFailure("Skill 恢复日志条目无效")
         val id = entry.optString("id")
         if (!entry.has("originalTargetExisted") || entry.opt("originalTargetExisted") !is Boolean) {
-            recoveryFailure("스킬 복구 로그에 원래 대상 상태가 없습니다.")
+            recoveryFailure("Skill 恢复日志缺少原目标状态")
         }
         if (!entry.has("backupCompleted") || entry.opt("backupCompleted") !is Boolean) {
-            recoveryFailure("스킬 복구 로그에 백업 상태가 없습니다.")
+            recoveryFailure("Skill 恢复日志缺少备份状态")
         }
         if (!entry.has("newTargetCommitted") || entry.opt("newTargetCommitted") !is Boolean) {
-            recoveryFailure("스킬 복구 로그에 제출 상태가 없습니다.")
+            recoveryFailure("Skill 恢复日志缺少提交状态")
         }
         SkillRecoveryRecord(
             id = id,
@@ -343,26 +343,26 @@ private fun validateOperationDirectory(skillsRoot: File, operationDirectory: Fil
         operationDirectory.parentFile?.canonicalFile != workRoot.canonicalFile ||
         !OPERATION_NAME_REGEX.matches(operationDirectory.name)
     ) {
-        recoveryFailure("스킬 작업 디렉터리가 안전하지 않습니다.")
+        recoveryFailure("Skill 操作目录不安全")
     }
 }
 
 private fun validateRecords(records: List<SkillRecoveryRecord>) {
     if (records.map { it.id }.distinct().size != records.size) {
-        recoveryFailure("스킬 복구 로그에 중복된 ID가 포함되어 있습니다.")
+        recoveryFailure("Skill 恢复日志包含重复 id")
     }
     records.forEach { record ->
         if (record.id.length !in 1..64 || !SKILL_ID_REGEX.matches(record.id)) {
-            recoveryFailure("스킬 복구 로그에 잘못된 ID가 포함되어 있습니다.")
+            recoveryFailure("Skill 恢复日志包含非法 id")
         }
         if (!record.originalTargetExisted && record.backupCompleted) {
-            recoveryFailure("새 스킬의 복구 로그에 잘못된 백업 상태가 포함되어 있습니다.")
+            recoveryFailure("全新 Skill 的恢复日志包含非法备份状态")
         }
         if (record.originalTargetExisted && record.newTargetCommitted && !record.backupCompleted) {
-            recoveryFailure("스킬 교체 복구 로그 상태가 일치하지 않습니다.")
+            recoveryFailure("替换 Skill 的恢复日志状态不一致")
         }
         val registry = record.registrySnapshot
-        if (registry.skillId != record.id) recoveryFailure("스킬 복구 로그의 registry ID가 일치하지 않습니다.")
+        if (registry.skillId != record.id) recoveryFailure("Skill 恢复日志 registry id 不一致")
         if (registry.entryExisted) {
             if (
                 registry.source !in VALID_REGISTRY_SOURCES ||
@@ -370,12 +370,12 @@ private fun validateRecords(records: List<SkillRecoveryRecord>) {
                 (registry.source == USER_SKILL_SOURCE &&
                     registry.installState != INSTALL_STATE_INSTALLED_VALUE)
             ) {
-                recoveryFailure("스킬 복구 로그에 잘못된 registry 상태가 포함되어 있습니다.")
+                recoveryFailure("Skill 恢复日志包含非法 registry 状态")
             }
         } else if (
             registry.enabled || registry.source.isNotEmpty() || registry.installState.isNotEmpty()
         ) {
-            recoveryFailure("존재하지 않는 registry 스냅샷에 추가 상태가 포함되어 있습니다.")
+            recoveryFailure("不存在的 registry 快照包含额外状态")
         }
     }
 }
@@ -385,16 +385,16 @@ private fun parseRegistrySnapshot(
     skillId: String,
 ): SkillRegistryRecoverySnapshot {
     val registry = entry.optJSONObject("registry")
-        ?: recoveryFailure("스킬 복구 로그에 registry 스냅샷이 없습니다.")
+        ?: recoveryFailure("Skill 恢复日志缺少 registry 快照")
     val booleanKeys = listOf("entryExisted", "enabled")
     if (booleanKeys.any { key -> !registry.has(key) || registry.opt(key) !is Boolean }) {
-        recoveryFailure("스킬 복구 로그의 registry 스냅샷이 유효하지 않습니다.")
+        recoveryFailure("Skill 恢复日志 registry 快照无效")
     }
     if (!registry.has("source") || registry.opt("source") !is String) {
-        recoveryFailure("스킬 복구 로그의 registry 소스가 유효하지 않습니다.")
+        recoveryFailure("Skill 恢复日志 registry source 无效")
     }
     if (!registry.has("installState") || registry.opt("installState") !is String) {
-        recoveryFailure("스킬 복구 로그의 registry 설치 상태가 유효하지 않습니다.")
+        recoveryFailure("Skill 恢复日志 registry installState 无效")
     }
     return SkillRegistryRecoverySnapshot(
         skillId = skillId,
@@ -415,7 +415,7 @@ private fun isStrictChild(root: File, target: File): Boolean {
 }
 
 internal fun skillInstallerWorkRoot(skillsRoot: File): File = File(
-    requireNotNull(skillsRoot.canonicalFile.parentFile) { "Skills 디렉터리에는 상위 디렉터리가 필요합니다." },
+    requireNotNull(skillsRoot.canonicalFile.parentFile) { "Skills 目录必须有父目录" },
     ".eta-skill-installer",
 )
 

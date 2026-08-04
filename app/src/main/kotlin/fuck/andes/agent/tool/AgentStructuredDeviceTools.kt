@@ -31,8 +31,10 @@ internal class AgentStructuredDeviceTools(
     private val logger: AgentLogger,
     private val root: BoundedRootCommandExecutor,
 ) {
+    private val personalDataTools = AgentPersonalDataTools(root)
+
     fun execute(name: String, args: JSONObject): AgentModelClient.ToolResult? =
-        when (name) {
+        personalDataTools.execute(name, args) ?: when (name) {
             "set_alarm" -> text(setAlarm(args))
             "set_timer" -> text(setTimer(args))
             "device_status" -> text(deviceStatus())
@@ -123,11 +125,11 @@ internal class AgentStructuredDeviceTools(
             return JSONObject()
                 .put("ok", false)
                 .put("code", "DIRECT_CLOCK_ACTION_FAILED")
-                .put("message", "시스템이 직접 생성을 확인하지 않았습니다. 시계 페이지가 열렸으니 사용자가 확인을 완료하세요.")
+                .put("message", "系统未确认直接创建，已打开时钟页面，请让用户完成确认")
                 .put("tool", tool)
                 .put("mode", "ui_fallback")
         }
-        return JSONObject(error("CLOCK_UNAVAILABLE", "이 요청을 처리할 수 있는 시계 앱이 없습니다."))
+        return JSONObject(error("CLOCK_UNAVAILABLE", "没有可处理该请求的时钟应用"))
     }
 
     private fun deviceStatus(): String {
@@ -199,7 +201,7 @@ internal class AgentStructuredDeviceTools(
             "next" -> KeyEvent.KEYCODE_MEDIA_NEXT
             "previous" -> KeyEvent.KEYCODE_MEDIA_PREVIOUS
             "stop" -> KeyEvent.KEYCODE_MEDIA_STOP
-            else -> return error("INVALID_ARGUMENT", "지원하지 않는 미디어 동작입니다.")
+            else -> return error("INVALID_ARGUMENT", "不支持的媒体动作")
         }
         val audio = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
         audio.dispatchMediaKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, keyCode))
@@ -214,7 +216,7 @@ internal class AgentStructuredDeviceTools(
             "alarm" -> AudioManager.STREAM_ALARM
             "ring" -> AudioManager.STREAM_RING
             "notification" -> AudioManager.STREAM_NOTIFICATION
-            else -> return error("INVALID_ARGUMENT", "지원하지 않는 볼륨 채널입니다.")
+            else -> return error("INVALID_ARGUMENT", "不支持的音量通道")
         }
         val audio = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
         val max = audio.getStreamMaxVolume(stream).coerceAtLeast(1)
@@ -228,7 +230,7 @@ internal class AgentStructuredDeviceTools(
                 .put("level", audio.getStreamVolume(stream))
                 .put("max_level", max)
                 .toString()
-        }.getOrElse { error("VOLUME_CHANGE_FAILED", "시스템이 해당 볼륨 채널 변경을 거부했습니다.") }
+        }.getOrElse { error("VOLUME_CHANGE_FAILED", "系统拒绝修改该音量通道") }
     }
 
     private fun getSetting(args: JSONObject): String {
@@ -259,7 +261,7 @@ internal class AgentStructuredDeviceTools(
         val namespace = args.getString("namespace").lowercase(Locale.ROOT)
         val key = args.getString("key")
         if (key.lowercase(Locale.ROOT) in PROTECTED_SETTING_KEYS) {
-            return error("PROTECTED_SETTING", "이 중요한 보안 설정은 에이전트가 변경할 수 없습니다.")
+            return error("PROTECTED_SETTING", "该安全关键设置不能由 Agent 修改")
         }
         val result = root.execute(
             "settings --user current put ${shellQuote(namespace)} ${shellQuote(key)} " +
@@ -273,38 +275,38 @@ internal class AgentStructuredDeviceTools(
         val command = when (args.getString("target").lowercase(Locale.ROOT)) {
             "wifi" -> "cmd wifi set-wifi-enabled ${if (enabled) "enabled" else "disabled"}"
             "bluetooth" -> "cmd bluetooth_manager ${if (enabled) "enable" else "disable"}"
-            else -> return error("INVALID_ARGUMENT", "지원하지 않는 기기 상태입니다.")
+            else -> return error("INVALID_ARGUMENT", "不支持的设备状态")
         }
         return rootMutationResult("set_device_state", root.execute(command))
     }
 
     private fun appStateControl(args: JSONObject): String {
         val packageName = args.getString("package_name")
-        if (!PACKAGE_NAME.matches(packageName)) return error("INVALID_PACKAGE", "패키지명 형식이 올바르지 않습니다.")
+        if (!PACKAGE_NAME.matches(packageName)) return error("INVALID_PACKAGE", "包名格式无效")
         if (
             packageName in PROTECTED_PACKAGES ||
             packageName.startsWith("com.android.providers.")
         ) {
-            return error("PROTECTED_PACKAGE", "이 핵심 패키지는 에이전트가 중지하거나 동결할 수 없습니다.")
+            return error("PROTECTED_PACKAGE", "该核心包不能由 Agent 停止或冻结")
         }
         val appInfo = runCatching {
             context.packageManager.getApplicationInfo(
                 packageName,
                 android.content.pm.PackageManager.ApplicationInfoFlags.of(0L),
             )
-        }.getOrNull() ?: return error("APP_NOT_FOUND", "지정한 앱을 찾을 수 없습니다.")
+        }.getOrNull() ?: return error("APP_NOT_FOUND", "未找到指定应用")
         val action = args.getString("action").lowercase(Locale.ROOT)
         if (
             action == "freeze" &&
             appInfo.flags and (ApplicationInfo.FLAG_SYSTEM or ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) != 0
         ) {
-            return error("SYSTEM_APP_PROTECTED", "시스템 앱은 동결할 수 없습니다.")
+            return error("SYSTEM_APP_PROTECTED", "不能冻结系统应用")
         }
         val command = when (action) {
             "force_stop" -> "am force-stop --user current ${shellQuote(packageName)}"
             "freeze" -> "pm disable-user --user current ${shellQuote(packageName)}"
             "unfreeze" -> "pm enable --user current ${shellQuote(packageName)}"
-            else -> return error("INVALID_ARGUMENT", "지원하지 않는 앱 상태 작업입니다.")
+            else -> return error("INVALID_ARGUMENT", "不支持的应用状态动作")
         }
         return rootMutationResult("app_state_control", root.execute(command))
     }
@@ -352,7 +354,7 @@ internal class AgentStructuredDeviceTools(
         val dataSizes = parseLongArrayLine(result.stdout, "App Data Sizes:")
         val cacheSizes = parseLongArrayLine(result.stdout, "Cache Sizes:")
         if (packages == null || appSizes == null || dataSizes == null || cacheSizes == null) {
-            return error("STORAGE_STATS_UNAVAILABLE", "시스템에서 분석 가능한 앱 저장소 통계를 반환하지 않았습니다.")
+            return error("STORAGE_STATS_UNAVAILABLE", "系统未返回可解析的应用存储统计")
         }
         val items = (0 until packages.length())
             .mapNotNull { index ->
@@ -506,7 +508,7 @@ internal class AgentStructuredDeviceTools(
             result.timedOut -> "ROOT_COMMAND_TIMEOUT"
             else -> "ROOT_COMMAND_FAILED"
         }
-        return error(code, "Root 시스템 인터페이스 실행 실패 (exit=${result.exitCode})")
+        return error(code, "Root 系统接口执行失败（exit=${result.exitCode}）")
     }
 
     private fun parseJsonArrayLine(source: String, prefix: String): JSONArray? =
@@ -531,7 +533,7 @@ internal class AgentStructuredDeviceTools(
         "thu" -> Calendar.THURSDAY
         "fri" -> Calendar.FRIDAY
         "sat" -> Calendar.SATURDAY
-        else -> throw IllegalArgumentException("지원하지 않는 반복 날짜입니다.")
+        else -> throw IllegalArgumentException("不支持的重复日期")
     }
 
     private fun String.decodeXml(): String =

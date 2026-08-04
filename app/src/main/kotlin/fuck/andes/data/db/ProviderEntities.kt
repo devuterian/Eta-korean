@@ -12,6 +12,7 @@ import fuck.andes.data.model.CustomBody
 import fuck.andes.data.model.CustomHeader
 import fuck.andes.data.model.CustomProviderSetting
 import fuck.andes.data.model.Model
+import fuck.andes.data.model.ModelReasoningCapabilities
 import fuck.andes.data.model.ModelSource
 import fuck.andes.data.model.OpenAiCompatibleProviderSetting
 import fuck.andes.data.model.OpenAiEndpointMode
@@ -70,6 +71,8 @@ internal data class ProviderModelEntity(
     @ColumnInfo(name = "attachment") val attachment: Boolean?,
     @ColumnInfo(name = "tool_call") val toolCall: Boolean?,
     @ColumnInfo(name = "reasoning") val reasoning: Boolean?,
+    @ColumnInfo(name = "reasoning_capabilities_json", defaultValue = "'null'")
+    val reasoningCapabilitiesJson: String = "null",
     @ColumnInfo(name = "structured_output") val structuredOutput: Boolean?,
     @ColumnInfo(name = "supports_temperature") val supportsTemperature: Boolean?,
     @ColumnInfo(name = "custom_headers_json") val customHeadersJson: String,
@@ -203,6 +206,7 @@ private fun Model.toEntity(providerId: String): ProviderModelEntity =
         attachment = attachment,
         toolCall = toolCall,
         reasoning = reasoning,
+        reasoningCapabilitiesJson = ProviderJson.encodeReasoningCapabilities(reasoningCapabilities),
         structuredOutput = structuredOutput,
         supportsTemperature = supportsTemperature,
         customHeadersJson = ProviderJson.encodeHeaders(customHeaders),
@@ -230,6 +234,7 @@ private fun ProviderModelEntity.toDomain(): Model =
         attachment = attachment,
         toolCall = toolCall,
         reasoning = reasoning,
+        reasoningCapabilities = ProviderJson.decodeReasoningCapabilities(reasoningCapabilitiesJson),
         structuredOutput = structuredOutput,
         supportsTemperature = supportsTemperature,
         customHeaders = ProviderJson.decodeHeaders(customHeadersJson),
@@ -266,4 +271,15 @@ private object ProviderJson {
 
     fun decodeStrings(raw: String): List<String> =
         runCatching { json.decodeFromString(stringsSerializer, raw) }.getOrDefault(emptyList())
+
+    fun encodeReasoningCapabilities(capabilities: ModelReasoningCapabilities?): String =
+        capabilities?.let { json.encodeToString(ModelReasoningCapabilities.serializer(), it) } ?: "null"
+
+    fun decodeReasoningCapabilities(raw: String): ModelReasoningCapabilities? =
+        raw.takeUnless { it.isBlank() || it == "null" }
+            ?.let { encoded ->
+                runCatching {
+                    json.decodeFromString(ModelReasoningCapabilities.serializer(), encoded)
+                }.getOrNull()
+            }
 }

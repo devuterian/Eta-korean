@@ -10,7 +10,7 @@ internal object AgentToolSchema {
             .put("enum", JSONArray().put("screenshot").put("screen"))
             .put(
                 "description",
-                "screenshot은 최근 observe_screen 첨부 이미지의 픽셀 좌표를 의미합니다. screen은 실제 기기 화면 좌표입니다. 기본값은 screenshot입니다.",
+                "screenshot 表示最近一次 observe_screen 附图的像素坐标；screen 表示真实设备屏幕坐标。默认 screenshot。",
             )
 
     fun function(

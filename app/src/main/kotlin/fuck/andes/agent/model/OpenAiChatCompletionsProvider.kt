@@ -37,7 +37,7 @@ internal object OpenAiChatCompletionsProvider : AgentProviderClient {
     ): ProviderResponse {
         val config = request.config
         require(config.openAiEndpointMode == OpenAiEndpointMode.CHAT_COMPLETIONS) {
-            "Responses API에 설정 슬롯이 예약되어 있지만, 현재 런타임에서는 Chat Completions만 지원합니다"
+            "Responses API 已预留配置位，但当前运行时仅支持 Chat Completions"
         }
         val url = ProviderUrls.openAiChatCompletionsUrl(config.baseUrl)
         val headers = okhttp3.Headers.Builder()
@@ -75,7 +75,7 @@ internal object OpenAiChatCompletionsProvider : AgentProviderClient {
 
                 if (!response.isSuccessful) {
                     val errorBody = response.body.string()
-                    error("모델 인터페이스에서 HTTP $code 반환: ${errorBody.compactError()}")
+                    error("模型接口返回 HTTP $code：${errorBody.compactError()}")
                 }
 
                 val assistantMessage = readStreamingAssistantMessage(response.body.byteStream(), runController, onEvent)
@@ -112,9 +112,9 @@ internal object OpenAiChatCompletionsProvider : AgentProviderClient {
                 if (sourceType != ProviderSourceTypes.OPENROUTER) {
                     request.put("stream_options", JSONObject().put("include_usage", true))
                 }
-                ProviderReasoning.applyOpenAiCompatibleRequest(request, config)
                 mergeExtraBody(request, config.extraBodyJson)
                 RequestBodyMerge.mergeCustomBody(request, config.customBody)
+                ProviderReasoning.applyOpenAiCompatibleRequest(request, config)
             }
     }
 
@@ -123,7 +123,7 @@ internal object OpenAiChatCompletionsProvider : AgentProviderClient {
         runController: AgentRunController,
         onEvent: (ProviderEvent) -> Unit
     ): JSONObject {
-        if (stream == null) error("모델 인터페이스에서 응답 스트림이 반환되지 않았습니다")
+        if (stream == null) error("模型接口未返回响应流")
         val content = StringBuilder()
         val reasoningContent = StringBuilder()
         val toolCalls = linkedMapOf<Int, StreamingToolCall>()
@@ -161,7 +161,7 @@ internal object OpenAiChatCompletionsProvider : AgentProviderClient {
                     finishReason = reason
                 }
                 if (reason == "error") {
-                    error("모델 API의 SSE가 오류로 종료되었습니다")
+                    error("模型接口 SSE 以 error 结束")
                 }
                 val delta = choice.optJSONObject("delta") ?: continue
                 if (delta.has("reasoning_content") && !delta.isNull("reasoning_content")) {
@@ -237,8 +237,8 @@ internal object OpenAiChatCompletionsProvider : AgentProviderClient {
             }
         }
 
-        if (!sawStreamData) error("모델 인터페이스에서 SSE 데이터 청크가 반환되지 않았습니다")
-        if (!sawDone && finishReason == null) error("모델 인터페이스 SSE 스트림이 정상적으로 종료되지 않았습니다")
+        if (!sawStreamData) error("模型接口未返回 SSE data chunk")
+        if (!sawDone && finishReason == null) error("模型接口 SSE 流未正常结束")
 
         thinkingContentIndex?.let { index ->
             onEvent(
@@ -335,9 +335,9 @@ internal object OpenAiChatCompletionsProvider : AgentProviderClient {
             errorType?.let { "type=$it" },
         ).joinToString(", ")
         val message = streamError.optString("message")
-            .ifBlank { "오류 정보가 제공되지 않았습니다" }
+            .ifBlank { "未提供错误信息" }
             .compactError()
-        error("모델 API의 SSE가 오류를 반환했습니다${context.takeIf { it.isNotBlank() }?.let { " ($it)" }.orEmpty()}：$message")
+        error("模型接口 SSE 返回错误${context.takeIf { it.isNotBlank() }?.let { " ($it)" }.orEmpty()}：$message")
     }
 
     private fun parseUsage(chunk: JSONObject): AgentTokenUsage? {

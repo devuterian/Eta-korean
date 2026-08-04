@@ -29,7 +29,7 @@ internal data class HookInstallReport(
     val skippedCount: Int = entries.count { it.status == HookInstallStatus.SKIPPED }
 
     fun summary(): String =
-        "Hook 설치 완료: 설치됨=$installedCount, 누락됨=$missingCount, " +
+        "Hook 安装完成: installed=$installedCount, missing=$missingCount, " +
             "failed=$failedCount, skipped=$skippedCount"
 
     companion object {
@@ -68,7 +68,7 @@ internal class HookInstallJournal(private val group: String) {
         } catch (exception: Exception) {
             failed(
                 id = "install.failed",
-                description = "$group Hook 그룹 설치",
+                description = "$group Hook 组安装",
                 detail = exception.javaClass.simpleName
             )
             onFailure(exception)
@@ -123,7 +123,7 @@ internal class HookRegistrar(
     fun install(block: HookRegistrar.() -> Unit): HookInstallation {
         journal.capture(block = { block() }) { exception ->
             // XposedFrameworkError 属于 Error，不会被功能组隔离层吞掉。
-            logger.error("Hook 그룹 설치에 실패했습니다.", exception)
+            logger.error("Hook 组安装失败", exception)
         }
         return finish()
     }
@@ -135,11 +135,11 @@ internal class HookRegistrar(
         priority: Int = XposedInterface.PRIORITY_DEFAULT,
         hooker: (XposedInterface.Chain) -> Any?
     ): XposedInterface.HookHandle? {
-        require(STABLE_ID.matches(id)) { "Hook id 형식이 올바르지 않습니다: $id" }
+        require(STABLE_ID.matches(id)) { "Hook id 格式无效: $id" }
         val fullId = "eta.$id"
         val registrationKey = RegistrationKey(executable, fullId)
         if (!registrationKeys.add(registrationKey)) {
-            val detail = "Hook가 중복 등록되었습니다: $description ($fullId)"
+            val detail = "重复 Hook 注册: $description ($fullId)"
             journal.failed(id, description, detail)
             logger.error(detail)
             return null
@@ -152,25 +152,25 @@ internal class HookRegistrar(
                 .intercept { chain -> hooker(chain) }
             handles += handle
             journal.installed(id, description)
-            logger.debug { "Hook가 설치되었습니다: $description" }
+            logger.debug { "已安装 Hook: $description" }
             handle
         } catch (exception: Exception) {
             // HookFailedError 属于 Error，不会进入这里，必须继续交给框架处理。
             registrationKeys.remove(registrationKey)
             journal.failed(id, description, exception.javaClass.simpleName)
-            logger.error("Hook 설치 실패: $description", exception)
+            logger.error("安装 Hook 失败: $description", exception)
             null
         }
     }
 
     fun missing(id: String, description: String, detail: String) {
-        require(STABLE_ID.matches(id)) { "Hook id 형식이 올바르지 않습니다: $id" }
+        require(STABLE_ID.matches(id)) { "Hook id 格式无效: $id" }
         journal.missing(id, description, detail)
         logger.warn(detail)
     }
 
     fun skipped(id: String, description: String, detail: String) {
-        require(STABLE_ID.matches(id)) { "Hook id 형식이 올바르지 않습니다: $id" }
+        require(STABLE_ID.matches(id)) { "Hook id 格式无效: $id" }
         journal.skipped(id, description, detail)
         logger.debug { detail }
     }

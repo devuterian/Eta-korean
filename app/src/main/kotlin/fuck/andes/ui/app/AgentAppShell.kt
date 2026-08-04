@@ -150,8 +150,9 @@ private fun titleForRoute(route: AppRoute?): String = when (route) {
     is AppRoute.Permissions -> "권한 상태"
     is AppRoute.SystemEnhance -> "시스템 강화"
     is AppRoute.Settings -> "설정"
+    is AppRoute.Memory -> "메모리"
     is AppRoute.LinuxEnvironment -> "Linux 도구 환경"
-    is AppRoute.ModelProviders -> "모델 제공자"
+    is AppRoute.ModelProviders -> "모델 제공업체"
     is AppRoute.ModelProviderDetail -> route.providerId.let { "제공자 상세" }
     is AppRoute.ModelProviderNew -> "새 제공자"
     null -> "Eta"

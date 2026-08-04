@@ -120,11 +120,11 @@ internal class AgentLoop(
                                 round = round,
                                 toolCall = call,
                                 code = "TOOL_CALL_LIMIT_EXCEEDED",
-                                message = "에이전트 도구 호출 횟수가 안전 한도 ${limits.maxToolCalls}를 초과했습니다. 이번 호출은 실행되지 않았습니다.",
+                                message = "Agent 工具调用次数超过安全上限 ${limits.maxToolCalls}；本批调用未执行。",
                             )
                         },
                     )
-                    error("에이전트 도구 호출 횟수가 안전 한도 ${limits.maxToolCalls}를 초과했습니다.")
+                    error("Agent 工具调用次数超过安全上限 ${limits.maxToolCalls}")
                 }
                 if (round >= limits.maxRounds) {
                     appendToolOutcomes(
@@ -134,11 +134,11 @@ internal class AgentLoop(
                                 round = round,
                                 toolCall = call,
                                 code = "ROUND_LIMIT_EXCEEDED",
-                                message = "에이전트가 최대 라운드 ${limits.maxRounds}에 도달했습니다. 이번 호출은 실행되지 않았습니다.",
+                                message = "Agent 已到达轮次上限 ${limits.maxRounds}；本批调用未执行。",
                             )
                         },
                     )
-                    error("에이전트가 최대 라운드 ${limits.maxRounds}에 도달하여 도구 결과를 처리할 수 없으므로 이번 도구 호출은 실행되지 않았습니다.")
+                    error("Agent 已到达轮次上限 ${limits.maxRounds}，为避免无法消费工具结果，本批工具未执行")
                 }
                 val outcomes = when (providerResponse.stopReason) {
                     AssistantStopReason.TOOL_USE ->
@@ -149,7 +149,7 @@ internal class AgentLoop(
                                 round = round,
                                 toolCall = call,
                                 code = "TRUNCATED_TOOL_CALL",
-                                message = "모델 출력이 길이 제한에 도달하여 도구 파라미터가 불완전할 수 있습니다. 이번 호출은 실행되지 않았으니, 전체 파라미터를 다시 제출하세요.",
+                                message = "模型输出达到长度上限，工具参数可能不完整；本次调用未执行，请重新提交完整参数。",
                             )
                         }
                     else ->
@@ -158,8 +158,8 @@ internal class AgentLoop(
                                 round = round,
                                 toolCall = call,
                                 code = "UNEXPECTED_TOOL_CALL",
-                                message = "모델이 ${providerResponse.stopReason.name} 종료 상태에서 도구 호출을 반환했습니다." +
-                                    "이번 호출은 실행되지 않았습니다. 다시 계획하세요.",
+                                message = "模型在 ${providerResponse.stopReason.name} 终止状态下返回了工具调用；" +
+                                    "本批调用未执行，请重新规划。",
                             )
                         }
                 }
@@ -178,7 +178,7 @@ internal class AgentLoop(
             val content = assistantMessage.optString("content").trim()
             if (content.isBlank() || content == "null") {
                 val finishReason = assistantMessage.optString("finish_reason")
-                error("모델 인터페이스 ${round}번째 라운드 결과가 비어 있습니다${finishReason.takeIf { it.isNotBlank() }?.let { ": $it" }.orEmpty()}.")
+                error("模型接口第 $round 轮返回为空${finishReason.takeIf { it.isNotBlank() }?.let { "：$it" }.orEmpty()}")
             }
 
             onEvent(AgentEvent.RunFinished(round = round, contentChars = content.length))
@@ -192,7 +192,7 @@ internal class AgentLoop(
 
     private fun checkRoundLimit(round: Int) {
         if (round > limits.maxRounds) {
-            error("에이전트 라운드가 안전 한도 ${limits.maxRounds}를 초과했습니다.")
+            error("Agent 轮次超过安全上限 ${limits.maxRounds}")
         }
     }
 
@@ -209,7 +209,7 @@ internal class AgentLoop(
     }
 
     private fun steeringPrompt(supplement: String): String =
-        "사용자 추가 지시: $supplement\n\n현재 작업 컨텍스트를 기반으로 계속 진행하세요. 이미 완료하거나 검증된 작업을 처음부터 반복하지 마세요."
+        "用户补充指令：$supplement\n\n请基于当前任务上下文继续执行，不要从头重复已经完成或已经验证过的操作。"
 
     private fun executeTool(
         round: Int,

@@ -7,6 +7,35 @@ import org.junit.Test
 
 class ToolArgumentContractTest {
     @Test
+    fun `personal search bounds query and limit`() {
+        assertEquals(
+            "query",
+            ToolArgumentContract.validate(
+                "search_messages",
+                JSONObject().put("query", "x".repeat(201)),
+            )?.field,
+        )
+        assertEquals(
+            "limit",
+            ToolArgumentContract.validate(
+                "search_media",
+                JSONObject().put("limit", 31),
+            )?.field,
+        )
+        assertEquals(
+            "path",
+            ToolArgumentContract.validate("read_image", JSONObject())?.field,
+        )
+        assertEquals(
+            "limit",
+            ToolArgumentContract.validate(
+                "search_wechat_chat_images",
+                JSONObject().put("limit", 31),
+            )?.field,
+        )
+    }
+
+    @Test
     fun `missing coordinates cannot become a zero coordinate gesture`() {
         assertEquals("x", ToolArgumentContract.validate("tap", JSONObject())?.field)
         assertEquals(
@@ -117,21 +146,36 @@ class ToolArgumentContractTest {
                 JSONObject("""{"hour":24,"minute":0}"""),
             )?.field,
         )
+    }
+
+    @Test
+    fun `memory writes require revision and mode specific arguments`() {
+        val revision = "a".repeat(64)
         assertEquals(
-            "mode",
+            "revision",
             ToolArgumentContract.validate(
-                "send_message",
-                JSONObject("""{"contact":"张三","message":"你好"}"""),
+                "memory_write",
+                JSONObject("""{"mode":"clear","revision":"bad"}"""),
             )?.field,
         )
         assertEquals(
-            "message",
+            "content",
             ToolArgumentContract.validate(
-                "send_message",
-                JSONObject()
-                    .put("contact", "张三")
-                    .put("message", "x".repeat(2_001))
-                    .put("mode", "send"),
+                "memory_write",
+                JSONObject("""{"mode":"append","revision":"$revision","content":""}"""),
+            )?.field,
+        )
+        assertNull(
+            ToolArgumentContract.validate(
+                "memory_write",
+                JSONObject("""{"mode":"replace_range","revision":"$revision","start_line":2,"end_line":3,"content":""}"""),
+            ),
+        )
+        assertEquals(
+            "max_chars",
+            ToolArgumentContract.validate(
+                "memory_get",
+                JSONObject("""{"max_chars":32001}"""),
             )?.field,
         )
     }

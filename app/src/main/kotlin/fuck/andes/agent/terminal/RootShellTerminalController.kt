@@ -113,7 +113,7 @@ internal class RootShellTerminalController(
             "close" -> closeTerminal(sessionId = sessionId, jobId = jobId)
             else -> errorJson(
                 "UNSUPPORTED_TERMINAL_ACTION",
-                "터미널 작업은 open/exec/open_and_exec/read_async_result/close만 지원합니다."
+                "terminal action 仅支持 open/exec/open_and_exec/read_async_result/close"
             )
         }
     }
@@ -127,7 +127,7 @@ internal class RootShellTerminalController(
         val process = startSessionProcess(normalizedIdentity, normalizedEnvironment)
             ?: return errorJson(
                 "PROCESS_START_FAILED",
-                "${normalizedEnvironment.wireName}/$normalizedIdentity 터미널 세션을 시작할 수 없습니다.",
+                "无法启动 ${normalizedEnvironment.wireName}/$normalizedIdentity terminal session",
             )
         val stdout = ByteArrayOutputCollector()
         val stderr = ByteArrayOutputCollector()
@@ -156,7 +156,7 @@ internal class RootShellTerminalController(
             }
         ) {
             processSupervisor.terminateProcessTree(process)
-            return errorJson("TERMINAL_CLOSED", "터미널 컨트롤러가 종료되었습니다.")
+            return errorJson("TERMINAL_CLOSED", "terminal controller 已关闭")
         }
 
         val mkdirDefault = if (safeCwd == DEFAULT_CWD) "mkdir -p ${shellQuote(DEFAULT_CWD)} && " else ""
@@ -192,7 +192,7 @@ internal class RootShellTerminalController(
     ): String {
         val session = sessionId?.takeIf { it.isNotBlank() }?.let { id ->
             synchronized(sessions) { sessions[id] }
-                ?: return errorJson("SESSION_NOT_FOUND", "터미널 세션을 찾을 수 없습니다: $id")
+                ?: return errorJson("SESSION_NOT_FOUND", "未找到 terminal session：$id")
         }
         val effectiveIdentity = session?.identity ?: normalizeIdentity(identity.ifBlank { "root" })
         val effectiveEnvironment = session?.environment ?: normalizeEnvironment(environment)
@@ -202,7 +202,7 @@ internal class RootShellTerminalController(
             if (session != null) {
                 return errorJson(
                     "ASYNC_SESSION_UNSUPPORTED",
-                    "비동기 터미널 작업은 영구 세션을 재사용하지 않습니다. session_id를 생략하고 cwd/identity로 백그라운드 명령을 실행하세요."
+                    "async terminal job 不复用持久 session；请省略 session_id，并用 cwd/identity 启动后台命令"
                 )
             }
             return startAsyncCommand(
@@ -246,8 +246,8 @@ internal class RootShellTerminalController(
         sessionId: String?
     ): String {
         val trimmed = command.trim()
-        if (trimmed.isBlank()) return errorJson("INVALID_ARGUMENT", "명령어는 비워둘 수 없습니다.")
-        require(trimmed.length <= MAX_COMMAND_CHARS) { "명령어가 너무 깁니다: ${trimmed.length}" }
+        if (trimmed.isBlank()) return errorJson("INVALID_ARGUMENT", "command 不能为空")
+        require(trimmed.length <= MAX_COMMAND_CHARS) { "command 过长：${trimmed.length}" }
         val normalizedIdentity = normalizeIdentity(identity)
         environmentPreflight(normalizedIdentity, environment)?.let { return it }
         val safeCwd = normalizeCwd(cwd)
@@ -261,7 +261,7 @@ internal class RootShellTerminalController(
             linuxRootfsPath = linuxRootfsPath,
         ) ?: return errorJson(
             if (processSupervisor.isClosing) "TERMINAL_CLOSED" else "PROCESS_START_FAILED",
-            if (processSupervisor.isClosing) "터미널 컨트롤러가 종료되었습니다." else "터미널 프로세스를 시작할 수 없습니다.",
+            if (processSupervisor.isClosing) "terminal controller 已关闭" else "无法启动 terminal process",
         )
         val id = "job_" + UUID.randomUUID().toString().take(8)
         val stdout = ByteArrayOutputCollector()
@@ -304,7 +304,7 @@ internal class RootShellTerminalController(
             }
         ) {
             processSupervisor.terminateProcessTree(process)
-            return errorJson("TERMINAL_CLOSED", "터미널 컨트롤러가 종료되었습니다.")
+            return errorJson("TERMINAL_CLOSED", "terminal controller 已关闭")
         }
         logger.info(
             "Agent terminal action=open_and_exec outcome=started async=true " +
@@ -332,7 +332,7 @@ internal class RootShellTerminalController(
         closeIfDone: Boolean
     ): String {
         val job = synchronized(asyncJobs) { asyncJobs[jobId] }
-            ?: return errorJson("JOB_NOT_FOUND", "비동기 터미널 작업을 찾을 수 없습니다: $jobId")
+            ?: return errorJson("JOB_NOT_FOUND", "未找到 async terminal job：$jobId")
         val stdoutRaw = job.stdout.text()
         val stderrRaw = job.stderr.text()
         val merged = stdoutRaw
@@ -461,8 +461,8 @@ internal class RootShellTerminalController(
         mergeStderr: Boolean
     ): String {
         val trimmed = command.trim()
-        if (trimmed.isBlank()) return errorJson("INVALID_ARGUMENT", "명령어는 비워둘 수 없습니다.")
-        require(trimmed.length <= MAX_COMMAND_CHARS) { "명령어가 너무 깁니다: ${trimmed.length}" }
+        if (trimmed.isBlank()) return errorJson("INVALID_ARGUMENT", "command 不能为空")
+        require(trimmed.length <= MAX_COMMAND_CHARS) { "command 过长：${trimmed.length}" }
         val timeout = timeoutMs.coerceIn(1_000, MAX_TIMEOUT_SECONDS * 1000)
         val result = runSessionCommand(session, trimmed, timeout)
         val outcome = when {
@@ -519,7 +519,7 @@ internal class RootShellTerminalController(
                 return SessionCommandResult(
                     exitCode = -1,
                     stdout = "",
-                    stderr = "터미널 세션이 종료되었습니다.",
+                    stderr = "terminal session 已关闭",
                     cwd = session.cwd,
                     timedOut = false
                 )
@@ -554,7 +554,7 @@ internal class RootShellTerminalController(
                     return SessionCommandResult(
                         exitCode = -1,
                         stdout = stdoutDelta.trimEnd(),
-                        stderr = session.stderr.text().drop(stderrStart).ifBlank { "터미널 세션이 종료되었습니다." }.trimEnd(),
+                        stderr = session.stderr.text().drop(stderrStart).ifBlank { "terminal session 已关闭" }.trimEnd(),
                         cwd = session.cwd,
                         timedOut = false
                     )
@@ -589,7 +589,7 @@ internal class RootShellTerminalController(
             return SessionCommandResult(
                 exitCode = -2,
                 stdout = session.stdout.text().drop(stdoutStart).trimEnd(),
-                stderr = session.stderr.text().drop(stderrStart).ifBlank { "명령 실행이 시간 초과되었습니다." }.trimEnd(),
+                stderr = session.stderr.text().drop(stderrStart).ifBlank { "命令执行超时" }.trimEnd(),
                 cwd = session.cwd,
                 timedOut = true
             )
@@ -606,8 +606,8 @@ internal class RootShellTerminalController(
         toolName: String
     ): String {
         val trimmed = command.trim()
-        if (trimmed.isBlank()) return errorJson("INVALID_ARGUMENT", "명령어는 비워둘 수 없습니다.")
-        require(trimmed.length <= MAX_COMMAND_CHARS) { "명령어가 너무 깁니다: ${trimmed.length}" }
+        if (trimmed.isBlank()) return errorJson("INVALID_ARGUMENT", "command 不能为空")
+        require(trimmed.length <= MAX_COMMAND_CHARS) { "command 过长：${trimmed.length}" }
         val normalizedIdentity = normalizeIdentity(identity)
         environmentPreflight(normalizedIdentity, environment)?.let { return it }
         val safeCwd = normalizeCwd(cwd)
@@ -691,7 +691,7 @@ internal class RootShellTerminalController(
     fun writeFile(path: String, content: String, append: Boolean): String {
         val safePath = normalizePath(path)
         val bytes = content.toByteArray(Charsets.UTF_8)
-        require(bytes.size <= MAX_WRITE_BYTES) { "입력 내용이 너무 큽니다: ${bytes.size} 바이트" }
+        require(bytes.size <= MAX_WRITE_BYTES) { "写入内容过大：${bytes.size} bytes" }
         val mode = if (append) ">>" else ">"
         val command = "mkdir -p ${shellQuote(File(safePath).parent ?: "/")} && cat $mode ${shellQuote(safePath)}"
         val result = runSuTextWithStdin(command, bytes, timeoutSeconds = 20)
@@ -746,7 +746,7 @@ internal class RootShellTerminalController(
     private fun normalizeIdentity(identity: String): String {
         val normalized = identity.ifBlank { "root" }.lowercase()
         require(normalized == "root" || normalized == "user") {
-            "identity는 root 또는 user만 지원합니다."
+            "identity 仅支持 root/user"
         }
         return normalized
     }
@@ -755,7 +755,7 @@ internal class RootShellTerminalController(
         when (environment.ifBlank { TerminalEnvironment.ANDROID.wireName }.lowercase()) {
             TerminalEnvironment.ANDROID.wireName -> TerminalEnvironment.ANDROID
             TerminalEnvironment.LINUX.wireName -> TerminalEnvironment.LINUX
-            else -> throw IllegalArgumentException("environment는 android 또는 linux만 지원합니다.")
+            else -> throw IllegalArgumentException("environment 仅支持 android/linux")
         }
 
     private fun environmentPreflight(
@@ -763,11 +763,11 @@ internal class RootShellTerminalController(
         environment: TerminalEnvironment,
     ): String? = when {
         environment == TerminalEnvironment.LINUX && identity != "root" ->
-            errorJson("LINUX_ENVIRONMENT_REQUIRES_ROOT", "Linux 도구 환경은 root identity만 지원합니다.")
+            errorJson("LINUX_ENVIRONMENT_REQUIRES_ROOT", "Linux 工具环境仅支持 root identity")
         environment == TerminalEnvironment.LINUX && !AlpineEnvironmentPaths.rootfsReady(linuxRootfsPath) ->
             errorJson(
                 "LINUX_ENVIRONMENT_NOT_READY",
-                "Linux 도구 환경이 설치되지 않았습니다. 설정에서 환경을 먼저 구성하세요.",
+                "Linux 工具环境尚未安装，请先在设置中完成环境配置",
             )
         else -> null
     }
@@ -777,7 +777,7 @@ internal class RootShellTerminalController(
 
     private fun normalizePath(path: String): String {
         val raw = path.trim()
-        require(raw.isNotBlank()) { "path는 비워둘 수 없습니다." }
+        require(raw.isNotBlank()) { "path 不能为空" }
         val effective = when {
             raw == "~" -> USER_STORAGE
             raw.startsWith("~/") -> USER_STORAGE + "/" + raw.removePrefix("~/")
@@ -785,7 +785,7 @@ internal class RootShellTerminalController(
             else -> "$DEFAULT_CWD/$raw"
         }
         val normalized = File(effective).canonicalPath
-        require(normalized != "/") { "루트 디렉터리 직접 조작은 허용되지 않습니다." }
+        require(normalized != "/") { "拒绝直接操作根目录" }
         return normalized
     }
 
@@ -878,7 +878,7 @@ internal class RootShellTerminalController(
         ) ?: return ProcessBytesResult(
             if (processSupervisor.isClosing) -3 else -1,
             ByteArray(0),
-            if (processSupervisor.isClosing) "작업이 취소되었습니다.".toByteArray() else "프로세스를 시작할 수 없습니다.".toByteArray(),
+            if (processSupervisor.isClosing) "操作已取消".toByteArray() else "无法启动进程".toByteArray(),
         )
 
         try {
@@ -903,7 +903,7 @@ internal class RootShellTerminalController(
                 stderrThread.join(500)
                 stdinThread.join(500)
                 processSupervisor.reapProcess(process)
-                return ProcessBytesResult(-2, output.bytes(), "명령 실행이 시간 초과되었습니다.".toByteArray())
+                return ProcessBytesResult(-2, output.bytes(), "命令执行超时".toByteArray())
             }
 
             outputThread.join(500)

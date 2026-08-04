@@ -157,7 +157,7 @@ internal object BreenoRequestImages {
                     inputs = emptyList(),
                     failure = Resolution.Failure(
                         code = FailureCode.IMAGE_REFERENCE_CACHE_LIMIT_EXCEEDED,
-                        message = "이미지 참조 데이터가 너무 커서 안전하게 임시 저장할 수 없습니다. 이미지를 다시 선택하거나 원격 이미지 링크를 사용하세요.",
+                        message = "图片引用数据过大，无法安全暂存，请重新选择图片或使用远程图片链接",
                         imageCount = snapshot.inputCount.coerceAtLeast(1),
                         estimatedBytes = estimatedBytesForChars(snapshot.estimatedChars),
                         maxBytes = estimatedBytesForChars(maxEstimatedChars),
@@ -355,7 +355,7 @@ internal object BreenoRequestImages {
         if (candidates.size > MAX_IMAGES) {
             return Resolution.Failure(
                 code = FailureCode.IMAGE_COUNT_LIMIT_EXCEEDED,
-                message = "최대 ${MAX_IMAGES}개 이미지 지원, 이미지 수를 줄이고 다시 시도하세요.",
+                message = "一次最多支持 $MAX_IMAGES 张图片，请减少图片数量后再试",
                 imageCount = candidates.size,
                 estimatedBytes = 0,
                 maxBytes = 0,
@@ -385,7 +385,7 @@ internal object BreenoRequestImages {
     private fun unreadableReferenceFailure(imageCount: Int): Resolution.Failure =
         Resolution.Failure(
             code = FailureCode.IMAGE_REFERENCE_UNREADABLE,
-            message = "요청 내 모든 이미지를 읽을 수 없습니다. 이미지를 다시 선택하고 시도하세요.",
+            message = "无法读取请求中的全部图片，请重新选择图片后再试",
             imageCount = imageCount,
             estimatedBytes = 0,
             maxBytes = 0,
@@ -394,7 +394,7 @@ internal object BreenoRequestImages {
     private fun inputLimitFailure(inputCount: Int): Resolution.Failure =
         Resolution.Failure(
             code = FailureCode.IMAGE_INPUT_LIMIT_EXCEEDED,
-            message = "이미지 입력 구조가 안전 한도 초과, 이미지 수를 줄이거나 데이터 간소화 후 시도하세요.",
+            message = "图片输入结构超过安全上限，请减少图片数量或简化图片数据后再试",
             imageCount = inputCount.coerceAtLeast(1),
             estimatedBytes = 0,
             maxBytes = 0,
@@ -503,7 +503,7 @@ internal object BreenoRequestImages {
     private fun oversizedReferenceFailure(valueChars: Int, source: String): Resolution.Failure =
         Resolution.Failure(
             code = FailureCode.IMAGE_DATA_LIMIT_EXCEEDED,
-            message = "이미지 입력 데이터가 안전 한도 초과, 이미지를 축소 후 다시 시도하세요.",
+            message = "图片输入数据超过安全上限，请缩小图片后重试",
             imageCount = 1,
             estimatedBytes = estimateStringBytes(valueChars.toLong() + source.length),
             maxBytes = estimateStringBytes(MAX_INPUT_CHARS.toLong()),

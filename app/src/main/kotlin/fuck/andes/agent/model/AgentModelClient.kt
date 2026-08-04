@@ -3,13 +3,16 @@ package fuck.andes.agent.model
 import fuck.andes.agent.runtime.AgentEvent
 import fuck.andes.agent.runtime.AgentRunCancelledException
 import fuck.andes.agent.runtime.AgentRunController
+import fuck.andes.agent.memory.AgentMemoryContext
 import fuck.andes.agent.skill.SkillContext
 import fuck.andes.config.Prefs
 import fuck.andes.data.model.AnthropicProviderSetting
 import fuck.andes.data.model.CustomBody
 import fuck.andes.data.model.CustomHeader
 import fuck.andes.data.model.OpenAiEndpointMode
+import fuck.andes.data.model.ModelReasoningCapabilities
 import fuck.andes.data.model.ProviderTypes
+import fuck.andes.data.model.ReasoningEffort
 import fuck.andes.data.provider.BuiltinProviders
 import fuck.andes.data.provider.ProviderSourceRegistry
 import kotlinx.serialization.Serializable
@@ -29,6 +32,12 @@ internal object AgentModelClient {
             runCatching {
                 json.decodeFromString<ModelConfig>(runtimeJson)
             }.getOrNull()?.let { runtime ->
+                val thinkingAllowed = Prefs.isEnabled(Prefs.Keys.AGENT_THINKING_ENABLED)
+                val effort = if (thinkingAllowed) {
+                    runtime.effectiveReasoningEffort
+                } else {
+                    ReasoningEffort.OFF
+                }
                 return runtime.copy(
                     terminalTools = Prefs.isEnabled(Prefs.Keys.AGENT_TERMINAL_TOOLS),
                     browserTools = Prefs.isEnabled(Prefs.Keys.AGENT_BROWSER_TOOLS),
@@ -37,7 +46,8 @@ internal object AgentModelClient {
                         Prefs.isEnabled(Prefs.Keys.AGENT_DEVICE_SENSITIVE_READ_TOOLS),
                     deviceSensitiveActionTools =
                         Prefs.isEnabled(Prefs.Keys.AGENT_DEVICE_SENSITIVE_ACTION_TOOLS),
-                    thinkingEnabled = Prefs.isEnabled(Prefs.Keys.AGENT_THINKING_ENABLED)
+                    thinkingEnabled = effort.enablesReasoning,
+                    reasoningEffort = effort,
                 )
             }
         }
@@ -62,7 +72,10 @@ internal object AgentModelClient {
                 Prefs.isEnabled(Prefs.Keys.AGENT_DEVICE_SENSITIVE_READ_TOOLS),
             deviceSensitiveActionTools =
                 Prefs.isEnabled(Prefs.Keys.AGENT_DEVICE_SENSITIVE_ACTION_TOOLS),
-            thinkingEnabled = Prefs.isEnabled(Prefs.Keys.AGENT_THINKING_ENABLED)
+            thinkingEnabled = Prefs.isEnabled(Prefs.Keys.AGENT_THINKING_ENABLED),
+            reasoningEffort = ReasoningEffort.fromLegacy(
+                Prefs.isEnabled(Prefs.Keys.AGENT_THINKING_ENABLED)
+            ),
         )
     }
 
@@ -75,10 +88,18 @@ internal object AgentModelClient {
         provider: AgentProviderClient = ProviderClientFactory.getClient(config),
         runController: AgentRunController = AgentRunController(),
         skillContext: SkillContext = SkillContext.EMPTY,
+        memoryContext: AgentMemoryContext = AgentMemoryContext.DISABLED,
         onEvent: (AgentEvent) -> Unit = {}
     ): ModelResponse.Text {
         config.validate()
-        val messages = AgentPromptBuilder.buildInitialMessages(config, prompt, images, history, skillContext)
+        val messages = AgentPromptBuilder.buildInitialMessages(
+            config,
+            prompt,
+            images,
+            history,
+            skillContext,
+            memoryContext,
+        )
         val transcriptStartIndex = messages.length()
         val tools = AgentToolCatalog.build(
             terminalTools = config.terminalTools,
@@ -88,6 +109,7 @@ internal object AgentModelClient {
             deviceSensitiveActionTools = config.deviceSensitiveActionTools,
             skillGitHubDiscovery = true,
             skillGitHubInstall = true,
+            memoryTools = memoryContext.enabled,
         )
         onEvent(
             AgentEvent.RunStarted(
@@ -134,13 +156,17 @@ internal object AgentModelClient {
     }
 
     private fun ModelConfig.validate() {
-        require(baseUrl.isNotBlank()) { "API 주소를 먼저 설정하세요." }
-        require(apiKey.isNotBlank()) { "API Key를 먼저 설정하세요." }
-        require(model.isNotBlank()) { "모델 이름을 먼저 설정하세요." }
+        require(baseUrl.isNotBlank()) { "请先配置 API 地址" }
+        require(apiKey.isNotBlank()) { "请先配置 API Key" }
+        require(model.isNotBlank()) { "请先配置模型名" }
+        require(
+            reasoningCapabilities?.mandatory != true ||
+                effectiveReasoningEffort != ReasoningEffort.OFF
+        ) { "当前模型强制启用推理，不能选择 Off 或禁用思考权限" }
         if (extraBodyJson.isNotBlank()) {
             runCatching { JSONObject(extraBodyJson) }
                 .getOrElse { throwable ->
-                    error("추가 요청 본문의 JSON이 유효하지 않습니다: ${throwable.message ?: throwable.javaClass.simpleName}")
+                    error("额外请求体 JSON 无效：${throwable.message ?: throwable.javaClass.simpleName}")
                 }
         }
     }
@@ -170,6 +196,7 @@ internal object AgentModelClient {
         val apiKey: String,
         val model: String,
         val modelDisplayName: String = "",
+        val contextWindow: Int? = null,
         val systemPrompt: String,
         val anthropicVersion: String = AnthropicProviderSetting.DEFAULT_ANTHROPIC_VERSION,
         val openAiEndpointMode: String = OpenAiEndpointMode.CHAT_COMPLETIONS,
@@ -179,10 +206,15 @@ internal object AgentModelClient {
         val deviceSensitiveReadTools: Boolean = false,
         val deviceSensitiveActionTools: Boolean = false,
         val thinkingEnabled: Boolean = false,
+        val reasoningEffort: ReasoningEffort? = null,
+        val reasoningCapabilities: ModelReasoningCapabilities? = null,
         val extraBodyJson: String = "",
         val customHeaders: List<CustomHeader> = emptyList(),
         val customBody: List<CustomBody> = emptyList()
-    )
+    ) {
+        val effectiveReasoningEffort: ReasoningEffort
+            get() = reasoningEffort ?: ReasoningEffort.fromLegacy(thinkingEnabled)
+    }
 
     @Serializable
     data class ConversationMessage(

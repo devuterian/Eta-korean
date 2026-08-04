@@ -40,7 +40,7 @@ internal object SystemUiHooks {
                 hooks.missing(
                     id = "systemui.ocr-long-press",
                     description = "OplusOcrScreenBusiness.onLongPressed",
-                    detail = "OplusOcrScreenBusiness.onLongPressed()를 찾을 수 없습니다"
+                    detail = "未找到 OplusOcrScreenBusiness.onLongPressed()"
                 )
                 return@install
             }
@@ -57,7 +57,7 @@ internal object SystemUiHooks {
                 val context = resolveContext(chain.getThisObject())
                 if (context == null) {
                     logger.warnThrottled("systemui_context") {
-                        "SystemUI에서 Context를 얻을 수 없어 기존 OCR 로직으로 복귀합니다"
+                        "SystemUI 无法取得 Context，回退原 OCR 逻辑"
                     }
                     return@intercept chain.proceed()
                 }
@@ -66,7 +66,7 @@ internal object SystemUiHooks {
                         context,
                         logger,
                         "SystemUI",
-                        "기존 OCR 로직으로 복귀합니다"
+                        "回退原 OCR 逻辑"
                     )
                 ) {
                     return@intercept chain.proceed()
@@ -91,14 +91,14 @@ internal object SystemUiHooks {
     private fun performOriginalLongPressHaptic(context: Context, logger: ModuleLogger) {
         val vibrationHelper = resolveVibrationHelper(context) ?: run {
             logger.warnThrottled("systemui_cts_vibration_helper_missing") {
-                "SystemUI: 원본 VibrationHelper를 가져올 수 없어 네비게이션 바 길게 누르기 진동을 건너뜁니다."
+                "SystemUI: 无法取得原生 VibrationHelper，跳过导航条长按震动"
             }
             return
         }
 
         if (!invokeVibrateCustomized(vibrationHelper, context)) {
             logger.warnThrottled("systemui_cts_linear_haptic_failed") {
-                "SystemUI: 원본 네비게이션 바 길게 누르기 진동 호출 실패"
+                "SystemUI: 调用原生导航条长按震动失败"
             }
         }
     }

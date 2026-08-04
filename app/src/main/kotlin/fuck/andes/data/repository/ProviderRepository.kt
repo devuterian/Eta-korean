@@ -66,12 +66,12 @@ internal object ProviderRepository {
     }
 
     suspend fun updateProvider(provider: ProviderSetting) {
-        require(dao().updateProvider(provider.toEntity()) == 1) { "제공자가 존재하지 않습니다." }
+        require(dao().updateProvider(provider.toEntity()) == 1) { "Provider 不存在" }
         repairSelection()
     }
 
     internal suspend fun replaceModels(providerId: String, models: List<Model>) {
-        val provider = requireNotNull(providerById(providerId)) { "제공자가 존재하지 않습니다." }
+        val provider = requireNotNull(providerById(providerId)) { "Provider 不存在" }
         dao().replaceModels(
             providerId = providerId,
             models = provider.withModels(models).toModelEntities(),
@@ -90,7 +90,7 @@ internal object ProviderRepository {
         val nextOrder = (allProviders().maxOfOrNull { it.sortOrder } ?: -1) + 1
         val copy = source.deepCopy(
             id = newId(),
-            name = "${source.name} 복제본",
+            name = "${source.name} 副本",
             sortOrder = nextOrder,
             builtIn = false,
         )

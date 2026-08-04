@@ -48,8 +48,18 @@ pending steering
 - 新 run 替换旧 run、用户取消和正常完成都通过 `AgentRuntimeSession` 的 `RUNNING → COMMITTING → TERMINAL` 状态机竞争唯一终态；提交胜者独占 outbox、归档和最终发布，客户端另有 30 分钟兜底超时。
 - 入口请求只能缩小工具能力，不能自行授权。Runtime 在开始 run 时裁剪配置，在每次浏览器、终端和设备工具执行前重新读取用户开关，并在 thinking 关闭时移除自定义请求体中的 reasoning/thinking 覆盖字段。
 - 设备工具分为直达工具、敏感读取工具和敏感操作工具，当前均默认开启。Runtime 在每次执行前重新读取用户开关；开关允许且参数通过 schema 与执行器校验后即可执行，不再用固定关键词二次匹配用户原话。
-- 微信发送只接受精确联系人匹配。同名、页面状态不明确或发送结果无法验证时停止；发送按钮最多点击一次，禁止自动重试或回退为通用点击序列。
-- 通知、短信验证码、Wi‑Fi 凭据、日志和消息正文属于瞬时敏感工具数据。当前模型回合可以使用原始值，但持久 transcript 会同时替换对应工具参数和结果，避免进入会话数据库或后续 IPC。
+- 微信发送不提供专用工具、参数协议或额外策略层，完全使用通用 GUI 工具观察和操作微信界面。
+- 通知、短信验证码、Wi‑Fi 凭据和日志属于瞬时敏感工具数据。当前模型回合可以使用原始值，但持久 transcript 会同时替换对应工具参数和结果，避免进入会话数据库或后续 IPC。
+
+## 长期记忆
+
+长期记忆保存在 App 私有目录的单一 `MEMORY.md` 中。文件使用 UTF-8，安全上限为 1 MiB；仓库在进程内锁中应用变更，并通过 `AtomicFile` 覆盖完整文件。模型写入携带当前内容的 SHA-256 revision，revision 不一致时返回 `MEMORY_CONFLICT`，不会覆盖并发更新。
+
+每次 run 只把 `# 核心记忆` 的预算内内容、一级/二级标题索引和 revision 放入系统背景。核心预算为 `min(32000, max(4000, contextWindow / 16))` 个字符；模型窗口未知时按 128K 计算。没有 `# 核心记忆` 标题时不自动注入正文。其余内容由 `memory_get` 按行分页或按文本检索，单次最多返回 32000 字符。
+
+`memory_write` 支持行区间替换、独立章节追加与清空；单次模型生成内容最多 3500 字符，设置页的用户手动编辑不受此单次工具限制。关闭记忆不会删除文件，后续 run 不再注入或暴露工具；已开始的 run 在每次执行记忆工具前也会重新检查开关。
+
+记忆内容只作为可编辑背景，不具有指令优先级。记忆工具原始参数与结果可供当前 Agent Loop 使用，但对应工具调用在持久 transcript 中整体脱敏；运行事件只保存操作类型、行数、字节数和错误码，不保存正文或查询词。
 
 ## 终端环境
 
@@ -104,6 +114,8 @@ Skill 安装工具始终向模型提供，不再根据顶层用户输入的固�
 - `AgentRuntimePolicyTest`
 - `AgentRuntimeSessionTest`
 - `AgentToolCatalogTest`
+- `AgentMemoryStoreTest`
+- `AgentMemoryContextBuilderTest`
 - `FuckAndesDatabaseMigrationTest`
 
 最终验证仍运行项目统一命令：

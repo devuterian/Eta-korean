@@ -14,45 +14,57 @@ class AgentTraceFormatterTest {
                 toolName = "terminal",
                 argumentsJson =
                     """{"action":"open_and_exec","identity":"root","command":"echo bearer-secret"}""",
-                expectedParts = listOf("터미널", "open_and_exec", "root", "command_chars="),
+                expectedParts = listOf("终端", "open_and_exec", "root", "command_chars="),
                 sensitiveParts = listOf("echo bearer-secret", "bearer-secret"),
             ),
             RedactionCase(
                 toolName = "run_command",
                 argumentsJson = """{"command":"cat /data/local/tmp/private-token"}""",
-                expectedParts = listOf("명령 실행", "chars="),
+                expectedParts = listOf("执行命令", "chars="),
                 sensitiveParts = listOf("cat ", "/data/local/tmp/private-token", "private-token"),
             ),
             RedactionCase(
                 toolName = "write_file",
                 argumentsJson =
                     """{"path":"/data/local/tmp/secret.txt","content":"api-key-value"}""",
-                expectedParts = listOf("파일 쓰기", "chars="),
+                expectedParts = listOf("写入文件", "chars="),
                 sensitiveParts = listOf("/data/local/tmp/secret.txt", "api-key-value"),
             ),
             RedactionCase(
                 toolName = "input_text",
                 argumentsJson = """{"text":"one-time-password-123456"}""",
-                expectedParts = listOf("텍스트 입력", "chars="),
+                expectedParts = listOf("输入文本", "chars="),
                 sensitiveParts = listOf("one-time-password-123456", "123456"),
             ),
             RedactionCase(
                 toolName = "read_file",
                 argumentsJson = """{"path":"/data/user/0/example/private.xml"}""",
-                expectedParts = listOf("파일 읽기"),
+                expectedParts = listOf("读取文件"),
                 sensitiveParts = listOf("/data/user/0/example/private.xml", "private.xml"),
             ),
             RedactionCase(
                 toolName = "list_directory",
                 argumentsJson = """{"path":"/storage/emulated/0/Private"}""",
-                expectedParts = listOf("디렉터리 목록 보기"),
+                expectedParts = listOf("列出目录"),
                 sensitiveParts = listOf("/storage/emulated/0/Private"),
             ),
             RedactionCase(
                 toolName = "search_apps",
                 argumentsJson = """{"query":"confidential-app-name"}""",
-                expectedParts = listOf("앱 검색", "chars="),
+                expectedParts = listOf("搜索应用", "chars="),
                 sensitiveParts = listOf("confidential-app-name"),
+            ),
+            RedactionCase(
+                toolName = "memory_get",
+                argumentsJson = """{"query":"private relationship"}""",
+                expectedParts = listOf("检索记忆"),
+                sensitiveParts = listOf("private relationship"),
+            ),
+            RedactionCase(
+                toolName = "memory_write",
+                argumentsJson = """{"mode":"append","revision":"secret-revision","content":"private memory"}""",
+                expectedParts = listOf("更新记忆", "mode=append", "lines=", "bytes="),
+                sensitiveParts = listOf("secret-revision", "private memory"),
             ),
         )
 
@@ -90,8 +102,24 @@ class AgentTraceFormatterTest {
             )
         )
 
-        assertTrue(summary.contains("터미널"))
+        assertTrue(summary.contains("终端"))
         assertFalse(summary.contains("secret-command"))
+    }
+
+    @Test
+    fun memoryResultSummaryContainsOnlyStatusLineAndByteMetadata() {
+        val summary = formatter.summarizeResult(
+            "memory_get",
+            AgentModelClient.ToolResult(
+                content = """{"ok":true,"bytes":321,"line_count":9,"content":"private memory"}""",
+                sensitive = true,
+            ),
+        )
+
+        assertTrue(summary.contains("ok=true"))
+        assertTrue(summary.contains("lines=9"))
+        assertTrue(summary.contains("bytes=321"))
+        assertFalse(summary.contains("private memory"))
     }
 
     private data class RedactionCase(

@@ -8,6 +8,7 @@ import fuck.andes.core.AndroidAgentLogger
 import fuck.andes.core.safeLogType
 import fuck.andes.data.datastore.SettingsDataStore
 import fuck.andes.data.repository.ProviderRepository
+import fuck.andes.data.repository.AgentMemoryRepository
 import io.github.libxposed.service.XposedService
 import io.github.libxposed.service.XposedServiceHelper
 import java.util.concurrent.CopyOnWriteArraySet
@@ -35,6 +36,7 @@ class FuckAndesApp : Application(), XposedServiceHelper.OnServiceListener {
     override fun onCreate() {
         super.onCreate()
         SettingsDataStore.init(this)
+        AgentMemoryRepository.init(this)
         ProviderRepository.init(this)
         XposedServiceHelper.registerListener(this)
         applicationScope.launch {

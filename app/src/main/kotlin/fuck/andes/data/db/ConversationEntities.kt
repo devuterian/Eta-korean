@@ -5,12 +5,15 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import fuck.andes.data.model.ReasoningEffort
 
 @Entity(tableName = "conversations")
 internal data class ConversationEntity(
     @PrimaryKey val id: String,
     val title: String,
     @ColumnInfo(name = "thinking_enabled") val thinkingEnabled: Boolean,
+    @ColumnInfo(name = "reasoning_effort", defaultValue = "'default'")
+    val reasoningEffort: String = ReasoningEffort.DEFAULT.wireValue,
     @ColumnInfo(name = "history_json") val historyJson: String = "[]",
     @ColumnInfo(name = "applied_runtime_run_ids_json") val appliedRuntimeRunIdsJson: String = "[]",
     @ColumnInfo(name = "created_at") val createdAt: Long,

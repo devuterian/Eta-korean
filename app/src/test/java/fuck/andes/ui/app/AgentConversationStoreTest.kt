@@ -2,6 +2,9 @@ package fuck.andes.ui.app
 
 import android.content.Context
 import fuck.andes.data.db.FuckAndesDatabase
+import fuck.andes.data.db.ConversationEntity
+import fuck.andes.data.db.ConversationStateEntity
+import fuck.andes.data.model.ReasoningEffort
 import fuck.andes.ui.model.AgentChatHomeUiState
 import fuck.andes.ui.model.AgentMessageUi
 import fuck.andes.ui.model.ThinkingMessageUi
@@ -97,6 +100,7 @@ class AgentConversationStoreTest {
             input = "不应该保存草稿",
             isStreaming = true,
             thinkingEnabled = true,
+            reasoningEffort = ReasoningEffort.HIGH,
         )
 
         runBlocking {
@@ -118,8 +122,36 @@ class AgentConversationStoreTest {
         assertEquals("", restored.input)
         assertFalse(restored.isStreaming)
         assertTrue(restored.thinkingEnabled)
+        assertEquals(ReasoningEffort.HIGH, restored.reasoningEffort)
         assertEquals(conversation.messages, restored.messages)
         assertEquals(conversation.history, restored.history)
+    }
+
+    @Test
+    fun unknownStoredEffortFallsBackToDefault() {
+        runBlocking {
+            FuckAndesDatabase.get(context).conversationDao().replaceAll(
+                conversations = listOf(
+                    ConversationEntity(
+                        id = "conv-unknown",
+                        title = "Unknown",
+                        thinkingEnabled = false,
+                        reasoningEffort = "future_effort",
+                        createdAt = 1L,
+                        updatedAt = 1L,
+                    )
+                ),
+                messages = emptyList(),
+                state = ConversationStateEntity(selectedConversationId = "conv-unknown"),
+            )
+        }
+
+        val restored = AgentConversationStore.load(context)
+            .conversationsById
+            .getValue("conv-unknown")
+
+        assertEquals(ReasoningEffort.DEFAULT, restored.reasoningEffort)
+        assertTrue(restored.thinkingEnabled)
     }
 
     @Test

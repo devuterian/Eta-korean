@@ -29,7 +29,7 @@ import top.yukonga.miuix.kmp.utils.scrollEndHaptic
  *
  * 适用于纯列表式页面（SmallTitle + Card）。调用方只需提供 [content] 的 item 内容。
  *
- * 参考 InstallerX-Revived 的二级页面事实标准骨架。
+ * 作为 Eta 二级列表页的统一布局与滚动行为入口。
  */
 @Composable
 fun MiuixScaffoldPage(

@@ -17,6 +17,7 @@ data class Model(
     val attachment: Boolean? = null,
     val toolCall: Boolean? = null,
     val reasoning: Boolean? = null,
+    val reasoningCapabilities: ModelReasoningCapabilities? = null,
     val structuredOutput: Boolean? = null,
     val supportsTemperature: Boolean? = null,
     val customHeaders: List<CustomHeader> = emptyList(),

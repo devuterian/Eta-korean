@@ -190,7 +190,7 @@ class AgentOverlayVisibilityPolicyTest {
             round = 1,
             toolCallId = "call_alarm",
             name = "set_alarm",
-            argsPreview = "매개변수 수신됨",
+            argsPreview = "参数已接收",
         )
 
         assertTrue(AgentOverlayVisibilityPolicy.shouldDismissEntrySurfaceFor(event))

@@ -5,6 +5,8 @@ import fuck.andes.agent.accessibility.AgentAccessibilityKeeper
 import fuck.andes.agent.model.AgentModelClient
 import fuck.andes.agent.model.AgentModelExecutionException
 import fuck.andes.agent.model.AgentHttpClient
+import fuck.andes.agent.memory.AgentMemoryContext
+import fuck.andes.agent.memory.AgentMemoryContextBuilder
 import fuck.andes.agent.overlay.AgentOverlayVisibilityPolicy
 import fuck.andes.agent.skill.SkillCompatibilityChecker
 import fuck.andes.agent.skill.SkillContext
@@ -15,6 +17,8 @@ import fuck.andes.agent.tool.PendingSkillConflictCapabilityParser
 import fuck.andes.agent.tool.ToolExecutionDecision
 import fuck.andes.core.AndroidAgentLogger
 import fuck.andes.core.safeLogType
+import fuck.andes.data.repository.AgentMemoryRepository
+import kotlinx.coroutines.runBlocking
 
 /**
  * 单次 Runtime run 的阻塞执行器。
@@ -70,6 +74,22 @@ internal class AgentRuntimeRunExecutor(
                 installedSkills = skillIndexService.listInstalledSkills()
                     .filter { SkillCompatibilityChecker.evaluate(it).available },
             )
+            val memoryEnabled = runBlocking { AgentMemoryRepository.isEnabled() }
+            val memoryContext = if (memoryEnabled) {
+                runCatching {
+                    AgentMemoryContextBuilder.build(
+                        snapshot = AgentMemoryRepository.snapshot(),
+                        contextWindow = request.config.contextWindow,
+                    )
+                }.getOrElse { throwable ->
+                    AndroidAgentLogger.warnThrottled("agent_memory_context_failed") {
+                        "Agent memory context unavailable: type=${throwable.safeLogType()}"
+                    }
+                    AgentMemoryContextBuilder.empty(request.config.contextWindow)
+                }
+            } else {
+                AgentMemoryContext.DISABLED
+            }
             val pendingSkillConflict = PendingSkillConflictCapabilityParser.parse(request.history)
             val executor = AgentLocalTools(
                 context = appContext,
@@ -91,6 +111,9 @@ internal class AgentRuntimeRunExecutor(
                 deviceSensitiveActionToolsEnabled = {
                     request.config.deviceSensitiveActionTools &&
                         currentPermissions().deviceSensitiveActionTools
+                },
+                memoryToolsEnabled = {
+                    runBlocking { AgentMemoryRepository.isEnabled() }
                 },
                 screenshotExcludedPackages = {
                     entrySurfaceGuard?.consumeScreenshotExcludedPackages().orEmpty()
@@ -118,7 +141,7 @@ internal class AgentRuntimeRunExecutor(
                             entrySurfaceGuard?.dismissOnce() == false ->
                                 ToolExecutionDecision.Reject(
                                     code = "ENTRY_SURFACE_NOT_READY",
-                                    message = "입구 창이 아직 닫히지 않았습니다. 이번 도구 실행이 취소되었습니다. 잠시 후 다시 시도하세요.",
+                                    message = "入口窗口尚未确认关闭；本次工具未执行，请稍后重试",
                                 )
                             else -> ToolExecutionDecision.Allow
                         }
@@ -143,6 +166,7 @@ internal class AgentRuntimeRunExecutor(
                 history = request.history,
                 runController = runController,
                 skillContext = skillContext,
+                memoryContext = memoryContext,
             ) { event ->
                 timing.accept(event)
                 acceptEvent(session, event, archivedEvents, entrySurfaceGuard)
@@ -159,7 +183,7 @@ internal class AgentRuntimeRunExecutor(
             cancelled = runController.isCancelled || throwable is AgentRunCancelledException
             val modelFailure = throwable as? AgentModelExecutionException
             val message = if (cancelled) {
-                "중지됨"
+                "已停止"
             } else {
                 throwable.message ?: throwable.javaClass.simpleName
             }
@@ -186,7 +210,7 @@ internal class AgentRuntimeRunExecutor(
         }
 
         if (cancelled) {
-            session.cancel("중지됨")
+            session.cancel("已停止")
             return Outcome(
                 result = result,
                 entrySurfaceGuard = entrySurfaceGuard,

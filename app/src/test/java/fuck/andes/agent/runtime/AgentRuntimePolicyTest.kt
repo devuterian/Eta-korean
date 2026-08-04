@@ -3,6 +3,7 @@ package fuck.andes.agent.runtime
 import android.content.SharedPreferences
 import fuck.andes.agent.model.AgentModelClient
 import fuck.andes.data.model.CustomBody
+import fuck.andes.data.model.ReasoningEffort
 import java.lang.reflect.Proxy
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -78,6 +79,7 @@ class AgentRuntimePolicyTest {
         assertFalse(constrained.terminalTools)
         assertFalse(constrained.browserTools)
         assertFalse(constrained.thinkingEnabled)
+        assertEquals(ReasoningEffort.OFF, constrained.reasoningEffort)
         assertFalse(constrained.deviceDirectTools)
         assertFalse(constrained.deviceSensitiveReadTools)
         assertFalse(constrained.deviceSensitiveActionTools)

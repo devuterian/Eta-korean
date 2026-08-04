@@ -57,7 +57,7 @@ internal object GoogleEligibilityHooks {
         } ?: hooks.missing(
             id = "google.system-properties.get",
             description = "SystemProperties.get(String)",
-            detail = "SystemProperties.get(String)를 찾을 수 없음"
+            detail = "未找到 SystemProperties.get(String)"
         )
 
         HookSupport.findMethod(
@@ -77,7 +77,7 @@ internal object GoogleEligibilityHooks {
         } ?: hooks.missing(
             id = "google.system-properties.get-default",
             description = "SystemProperties.get(String,String)",
-            detail = "SystemProperties.get(String,String)를 찾을 수 없음"
+            detail = "未找到 SystemProperties.get(String,String)"
         )
 
         HookSupport.findMethod(
@@ -97,7 +97,7 @@ internal object GoogleEligibilityHooks {
         } ?: hooks.missing(
             id = "google.system-properties.get-boolean",
             description = "SystemProperties.getBoolean(String,boolean)",
-            detail = "SystemProperties.getBoolean(String,boolean)를 찾을 수 없음"
+            detail = "未找到 SystemProperties.getBoolean(String,boolean)"
         )
     }
 
@@ -105,17 +105,17 @@ internal object GoogleEligibilityHooks {
         hooks.skipped(
             id = "google.system-properties.get",
             description = "SystemProperties.get(String)",
-            detail = "SystemProperties를 찾을 수 없어 get(String) Hook 건너뜀"
+            detail = "未找到 SystemProperties，跳过 get(String) Hook"
         )
         hooks.skipped(
             id = "google.system-properties.get-default",
             description = "SystemProperties.get(String,String)",
-            detail = "SystemProperties를 찾을 수 없어 get(String,String) Hook 건너뜀"
+            detail = "未找到 SystemProperties，跳过 get(String,String) Hook"
         )
         hooks.skipped(
             id = "google.system-properties.get-boolean",
             description = "SystemProperties.getBoolean(String,boolean)",
-            detail = "SystemProperties를 찾을 수 없어 getBoolean(String,boolean) Hook 건너뜀"
+            detail = "未找到 SystemProperties，跳过 getBoolean(String,boolean) Hook"
         )
     }
 
@@ -130,7 +130,7 @@ internal object GoogleEligibilityHooks {
             hooks.missing(
                 id = "google.package-manager-features",
                 description = "ApplicationPackageManager.hasSystemFeature",
-                detail = "ApplicationPackageManager를 찾을 수 없음"
+                detail = "未找到 ApplicationPackageManager"
             )
             return
         }
@@ -147,7 +147,7 @@ internal object GoogleEligibilityHooks {
             hooks.missing(
                 id = "google.package-manager-features",
                 description = "ApplicationPackageManager.hasSystemFeature",
-                detail = "ApplicationPackageManager.hasSystemFeature(String, ...)를 찾을 수 없음"
+                detail = "未找到 ApplicationPackageManager.hasSystemFeature(String, ...)"
             )
             return
         }
