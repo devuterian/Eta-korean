@@ -140,6 +140,7 @@ internal object AgentDeviceToolCatalog {
             .put(searchFunction("search_coloros_notes", "检索 ColorOS 便签和待办，可按标题或正文筛选。仅在安装并可访问 ColorOS 便签时可用。"))
             .put(searchFunction("search_coloros_recordings", "检索 ColorOS 录音应用中的普通录音和通话录音，返回名称、时长、类型和文件路径。"))
             .put(searchFunction("search_recording_summaries", "检索 ColorOS 录音关联的转写摘要和便签内容。仅在录音应用生成过摘要时可用。"))
+            .put(searchFunction("search_coloros_memories", "检索 ColorOS 系统记忆，可读取已收集的信息、账单、日程、取件码、快递、地点和附件等关联内容。"))
             .put(searchFunction("search_qq_chat_images", "检索 QQ 聊天图片缓存，返回最近文件的时间、大小、类型和私有路径。仅在安装 QQ 且缓存仍存在时可用。"))
             .put(searchFunction("search_wechat_chat_images", "检索微信聊天图片缓存，返回最近文件的时间、大小和私有路径。仅在安装微信且缓存仍存在时可用。"))
     }

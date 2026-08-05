@@ -219,7 +219,7 @@ private fun colorForTool(toolId: String): Color = when (toolId) {
     "search_calendar_events", "search_contacts", "search_call_history",
     "search_messages", "search_downloads", "search_coloros_notes",
     "search_coloros_recordings", "search_recording_summaries", "search_qq_chat_images",
-    "search_wechat_chat_images" -> Color(0xFFFF7700)
+    "search_coloros_memories", "search_wechat_chat_images" -> Color(0xFFFF7700)
 
     // 文件视觉
     "read_image" -> Color(0xFF0066FF)
@@ -281,7 +281,7 @@ private fun iconForTool(toolId: String): Int = when (toolId) {
     "search_contacts", "search_call_history" -> LucideR.drawable.lucide_ic_smartphone
     "search_messages" -> LucideR.drawable.lucide_ic_message_square
     "search_coloros_notes" -> LucideR.drawable.lucide_ic_file_pen
-    "search_recording_summaries" -> LucideR.drawable.lucide_ic_file_text
+    "search_recording_summaries", "search_coloros_memories" -> LucideR.drawable.lucide_ic_brain
     "search_qq_chat_images", "search_wechat_chat_images" -> LucideR.drawable.lucide_ic_scan_eye
     "read_image" -> LucideR.drawable.lucide_ic_scan_eye
     "terminal", "terminal_job", "run_command" -> LucideR.drawable.lucide_ic_square_terminal

@@ -32,9 +32,11 @@ internal class AgentStructuredDeviceTools(
     private val root: BoundedRootCommandExecutor,
 ) {
     private val personalDataTools = AgentPersonalDataTools(root)
+    private val colorOsMemoryTools = AgentColorOsMemoryTools(context, root)
 
     fun execute(name: String, args: JSONObject): AgentModelClient.ToolResult? =
         personalDataTools.execute(name, args) ?: when (name) {
+            "search_coloros_memories" -> colorOsMemoryTools.search(args)
             "set_alarm" -> text(setAlarm(args))
             "set_timer" -> text(setTimer(args))
             "device_status" -> text(deviceStatus())

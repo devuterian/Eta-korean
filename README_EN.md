@@ -52,7 +52,7 @@ This is a growing capability layer rather than a fixed command list. Each system
 - **Device state:** inspect battery, charging, memory, storage, OS, uptime, and network state; toggle Wi-Fi and Bluetooth.
 - **App insight:** identify the processes using the most memory and the apps consuming the most storage.
 - **Privileged inspection:** read notifications and SMS verification codes, query saved Wi-Fi credentials and Android Settings, and retrieve bounded system logs.
-- **Personal context:** search photos, audio, recordings, shared files, downloads, calendar events, contacts, call history, and SMS. On ColorOS, Eta can also search notes, to-dos, recordings, and recording summaries.
+- **Personal context:** search photos, audio, recordings, shared files, downloads, calendar events, contacts, call history, and SMS. On ColorOS, Eta can also search notes, to-dos, recording summaries, and system-memory records with related bills, schedules, pickup codes, shipments, places, and attachments.
 - **Chat image discovery:** find recent images in the verified QQ and WeChat cache locations, returning bounded file metadata and paths without reading message databases, chat text, or video.
 - **General image reading:** pass a gallery URI or any absolute on-device image path to `read_image` for visual analysis. This is a general file-and-vision capability rather than a personal-data search tool. Multiple images are read one at a time to avoid overloading model requests.
 - **Device administration:** update non-security-critical settings and stop, freeze, or unfreeze apps, while protecting core packages and security-sensitive settings.

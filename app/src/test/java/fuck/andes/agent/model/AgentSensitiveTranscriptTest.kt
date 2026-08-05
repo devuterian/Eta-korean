@@ -11,6 +11,7 @@ class AgentSensitiveTranscriptTest {
     fun memoryToolArgumentsAndResultsAreAlwaysSensitive() {
         assertTrue(AgentSensitiveToolPolicy.isSensitive("memory_get"))
         assertTrue(AgentSensitiveToolPolicy.isSensitive("memory_write"))
+        assertTrue(AgentSensitiveToolPolicy.isSensitive("search_coloros_memories"))
     }
 
     @Test

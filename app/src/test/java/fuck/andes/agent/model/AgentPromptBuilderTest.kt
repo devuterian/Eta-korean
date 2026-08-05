@@ -45,6 +45,7 @@ class AgentPromptBuilderTest {
         assertTrue(messages.systemContents().any { it.contains("主动调用当前已公开的只读工具获取证据") })
         assertTrue(messages.systemContents().any { it.contains("工具已向你公开表示对应能力已由用户开启") })
         assertTrue(messages.systemContents().any { it.contains("从多个相关来源按时间和代表性取样") })
+        assertTrue(messages.systemContents().any { it.contains("系统记忆") })
         assertTrue(messages.systemContents().any { it.contains("主动使用它们定位并只读检查") })
         assertTrue(messages.systemContents().any { it.contains("相关应用私有文件与数据库") })
         assertTrue(messages.systemContents().any { it.contains("执行有界查询，不修改源数据") })

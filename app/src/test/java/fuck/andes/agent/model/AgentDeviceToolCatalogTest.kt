@@ -20,6 +20,7 @@ class AgentDeviceToolCatalogTest {
         assertTrue("search_coloros_notes" in reads)
         assertTrue("search_coloros_recordings" in reads)
         assertTrue("search_recording_summaries" in reads)
+        assertTrue("search_coloros_memories" in reads)
         assertTrue("search_qq_chat_images" in reads)
         assertTrue("search_wechat_chat_images" in reads)
         assertFalse("read_image" in reads)

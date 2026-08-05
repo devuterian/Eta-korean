@@ -1317,6 +1317,7 @@ internal class AgentLocalTools(
             "search_coloros_notes",
             "search_coloros_recordings",
             "search_recording_summaries",
+            "search_coloros_memories",
             "search_qq_chat_images",
             "search_wechat_chat_images",
         )

@@ -33,6 +33,13 @@ class ToolArgumentContractTest {
                 JSONObject().put("limit", 31),
             )?.field,
         )
+        assertEquals(
+            "limit",
+            ToolArgumentContract.validate(
+                "search_coloros_memories",
+                JSONObject().put("limit", 31),
+            )?.field,
+        )
     }
 
     @Test

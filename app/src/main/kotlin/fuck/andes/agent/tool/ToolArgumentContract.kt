@@ -171,6 +171,7 @@ internal object ToolArgumentContract {
         "search_coloros_notes" to personalSearchFields(),
         "search_coloros_recordings" to personalSearchFields(),
         "search_recording_summaries" to personalSearchFields(),
+        "search_coloros_memories" to personalSearchFields(),
         "search_qq_chat_images" to personalSearchFields(),
         "search_wechat_chat_images" to personalSearchFields(),
         "read_image" to listOf(
