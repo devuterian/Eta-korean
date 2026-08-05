@@ -6,11 +6,13 @@
 
 **A third-party, system-level AI agent for Android**
 
-Eta helps models understand their users, invoke system APIs, read on-device data, control the device, operate apps through a cross-app GUI agent, and complete complex tasks in a Root shell or Linux environment.
+Eta helps models understand their users, use structured interfaces to read on-device data, call system APIs, and control the device. It can also use its GUI agent for tasks that must be completed through an app's interface, and enter full Root / Linux environments for broader, more complex work.
 
-The real test of an AI phone is not whether it can order coffee or takeout. It is whether it genuinely understands you. Your photos, notes, calendar, notifications, and files tell the story of your life; they should help AI understand what matters and act on your behalf. More than a tool for completing tasks, it can grow into a companion that knows you better over time.
+Eta can already watch the screen and order you a milk tea. But that also exposes the limits of GUI agents: interfaces are designed for people, so even a simple operation requires the model to repeatedly fetch screenshots and control information while navigating ads and pop-ups. Every step consumes context, reasoning, and model calls, making the same task far slower than invoking a structured interface directly. The GUI agent is an indispensable compatibility layer for today's closed app ecosystem, but it should not be the destination for AI phones.
 
-Eta puts that capability back in the user's hands. No OEM preinstallation required: it can find meaningful context in photos and calendars, ColorOS notes and recording summaries, and even cached chat images from QQ and WeChat. When an app exposes no suitable interface, the GUI agent takes over; when the task demands more, Eta can step into a Root shell or Linux environment.
+What Eta wants is to open the capabilities hidden behind phone interfaces to the model itself: use structured tools with explicit schemas and results whenever the system can be reached directly; use an app's API or CLI when one is available; and turn to the GUI agent for the long tail of tasks with no machine-facing interface. Web tasks run in a built-in browser that the user can take over, while scripts, diagnostics, and heavier computation enter the Android Root shell or Alpine Linux. One Agent Runtime orchestrates every path, so the model does more than tap a phone—it gains a computer it can truly use.
+
+And when photos, notifications, calendars, notes, recordings, location, and health summaries—even recent chat images from WeChat and QQ, food-delivery orders, and delivery updates—join long-term memory as context with your permission, Eta is no longer just carrying out commands. Over time, it can learn what matters to you, understand the story behind a request, help when needed, and remember who you are when you simply want to talk—both a capable assistant and a friend who understands you better. Closeness does not mean giving up boundaries: every capability has its own switch and execution scope, sensitive raw results are not written to persistent conversations, and you choose the model, what it may see and do, and when it must stop.
 
 > [!NOTE]
 > The Eta app is the product's core workspace and hosts the complete Agent Runtime. ColorOS and HyperOS are the current targets for system-assistant entry-point integration, covering the OPPO family (OPPO, OnePlus, and realme) and Xiaomi devices; they do not define the app runtime's entire device-support boundary. Full functionality requires Root and LSPosed.
@@ -51,8 +53,8 @@ This is a growing capability layer rather than a fixed command list. Each system
 - **Time and media:** create alarms and timers; control playback; adjust media, ring, notification, and alarm streams.
 - **Device state:** inspect battery, charging, memory, storage, OS, uptime, and network state; toggle Wi-Fi and Bluetooth.
 - **App insight:** identify the processes using the most memory and the apps consuming the most storage.
-- **Privileged inspection:** read notifications and SMS verification codes, query saved Wi-Fi credentials and Android Settings, and retrieve bounded system logs.
-- **Personal context:** search photos, audio, recordings, shared files, downloads, calendar events, contacts, call history, and SMS. On ColorOS, Eta can also search notes, to-dos, recording summaries, and system-memory records with related bills, schedules, pickup codes, shipments, places, and attachments.
+- **Privileged inspection:** read current notifications, a bounded notification history after explicit access is granted, app activity and usage, alarms, timers, location, DND, connected environment state, SMS verification codes, saved Wi-Fi credentials, Android Settings, and bounded system logs.
+- **Personal context:** search photos, audio, recordings, shared files, downloads, calendar events, contacts, call history, SMS, clipboard history, and aggregate health data. On ColorOS, Eta can also search notes, to-dos, recording summaries, and system-memory records with related bills, schedules, pickup codes, shipments, places, attachments, and personal orders.
 - **Chat image discovery:** find recent images in the verified QQ and WeChat cache locations, returning bounded file metadata and paths without reading message databases, chat text, or video.
 - **General image reading:** pass a gallery URI or any absolute on-device image path to `read_image` for visual analysis. This is a general file-and-vision capability rather than a personal-data search tool. Multiple images are read one at a time to avoid overloading model requests.
 - **Device administration:** update non-security-critical settings and stop, freeze, or unfreeze apps, while protecting core packages and security-sensitive settings.
@@ -69,7 +71,7 @@ Eta does not rely on a keyword list or a handful of magic phrases. Once a capabi
 
 - Native device access, sensitive reads, and sensitive device actions are separate switches. They are currently enabled by default and are re-read by the Runtime before every execution.
 - Arguments must pass the advertised tool schema and executor validation. Protected packages, security-critical settings, and out-of-range values remain blocked regardless of model output.
-- Verification codes, Wi-Fi passwords, notification bodies, logs, and personal-data search results are available only to the active run; raw values are not written to persistent conversation history.
+- Verification codes, Wi-Fi passwords, notification bodies, logs, and personal-data search results are available only to the active run; raw values are not written to persistent conversation history. After notification access is granted, Eta keeps at most 1,000 notification records on-device for seven days.
 - Memory reads and writes are likewise persisted only as redacted operation summaries, not as raw tool arguments or results.
 
 ### GUI / computer use

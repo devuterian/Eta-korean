@@ -152,6 +152,31 @@ internal object ToolArgumentContract {
             Field("package_name", Kind.STRING, maximumLength = 255),
             Field("limit", Kind.INTEGER, minimum = 1, maximum = 20),
         ),
+        "search_notification_history" to listOf(
+            Field("query", Kind.STRING, maximumLength = 200),
+            Field("package_name", Kind.STRING, maximumLength = 255),
+            Field("max_age_hours", Kind.INTEGER, minimum = 1, maximum = 168),
+            Field("limit", Kind.INTEGER, minimum = 1, maximum = 50),
+        ),
+        "recent_app_activity" to listOf(
+            Field("package_name", Kind.STRING, maximumLength = 255),
+            Field("max_age_hours", Kind.INTEGER, minimum = 1, maximum = 168),
+            Field("limit", Kind.INTEGER, minimum = 1, maximum = 50),
+        ),
+        "app_usage_summary" to listOf(
+            Field("max_age_hours", Kind.INTEGER, minimum = 1, maximum = 168),
+            Field("limit", Kind.INTEGER, minimum = 1, maximum = 50),
+        ),
+        "list_alarms" to listOf(
+            Field("enabled_only", Kind.BOOLEAN),
+            Field("limit", Kind.INTEGER, minimum = 1, maximum = 50),
+        ),
+        "list_active_timers" to listOf(
+            Field("limit", Kind.INTEGER, minimum = 1, maximum = 50),
+        ),
+        "get_health_summary" to listOf(
+            Field("days", Kind.INTEGER, minimum = 1, maximum = 30),
+        ),
         "read_sms_code" to listOf(
             Field("max_age_minutes", Kind.INTEGER, minimum = 1, maximum = 1_440),
         ),
@@ -172,6 +197,9 @@ internal object ToolArgumentContract {
         "search_coloros_recordings" to personalSearchFields(),
         "search_recording_summaries" to personalSearchFields(),
         "search_coloros_memories" to personalSearchFields(),
+        "search_saved_places" to personalSearchFields(),
+        "search_personal_orders" to personalSearchFields(),
+        "search_clipboard_history" to personalSearchFields(),
         "search_qq_chat_images" to personalSearchFields(),
         "search_wechat_chat_images" to personalSearchFields(),
         "read_image" to listOf(

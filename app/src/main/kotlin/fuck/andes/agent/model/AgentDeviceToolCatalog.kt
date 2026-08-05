@@ -111,6 +111,66 @@ internal object AgentDeviceToolCatalog {
             )
             .put(
                 function(
+                    "search_notification_history",
+                    "检索 Eta 在用户授予通知使用权后记录的最近 7 天通知。原始结果不写入持久会话。",
+                    properties(
+                        "query" to string("可选标题或正文关键词", 200),
+                        "package_name" to string("可选精确包名", 255),
+                        "max_age_hours" to integer("回溯小时数，默认 24", 1, 168),
+                        "limit" to integer("最多返回数量，默认 20", 1, 50),
+                    ),
+                ),
+            )
+            .put(
+                function(
+                    "recent_app_activity",
+                    "读取最近打开应用的时间顺序，需要系统使用情况访问权。",
+                    properties(
+                        "package_name" to string("可选精确包名", 255),
+                        "max_age_hours" to integer("回溯小时数，默认 24", 1, 168),
+                        "limit" to integer("最多返回数量，默认 20", 1, 50),
+                    ),
+                ),
+            )
+            .put(
+                function(
+                    "app_usage_summary",
+                    "按前台时长汇总最近应用使用情况，需要系统使用情况访问权。",
+                    properties(
+                        "max_age_hours" to integer("统计小时数，默认 24", 1, 168),
+                        "limit" to integer("最多返回数量，默认 20", 1, 50),
+                    ),
+                ),
+            )
+            .put(emptyFunction("get_current_location", "读取系统已有的最近位置，不持续监听或主动唤醒 GPS。"))
+            .put(emptyFunction("get_device_environment", "读取锁屏、勿扰、铃声、音频输出和外接显示器状态。"))
+            .put(
+                function(
+                    "list_alarms",
+                    "读取 ColorOS 时钟中的闹钟计划。",
+                    properties(
+                        "enabled_only" to boolean("是否只返回已启用闹钟，默认 true"),
+                        "limit" to integer("最多返回数量，默认 20", 1, 50),
+                    ),
+                ),
+            )
+            .put(
+                function(
+                    "list_active_timers",
+                    "读取 ColorOS 时钟中正在运行或暂停的计时器。",
+                    properties("limit" to integer("最多返回数量，默认 20", 1, 50)),
+                ),
+            )
+            .put(searchFunction("search_clipboard_history", "检索当前系统输入法保存的剪贴板历史。"))
+            .put(
+                function(
+                    "get_health_summary",
+                    "汇总系统健康数据中的步数、睡眠、运动、心率、体重和血氧；不返回原始测量序列。",
+                    properties("days" to integer("汇总最近天数，默认 7", 1, 30)),
+                ),
+            )
+            .put(
+                function(
                     "read_sms_code",
                     "从最近短信中只提取 4 到 8 位验证码、发送方和时间，不返回完整短信正文。",
                     properties(
@@ -141,6 +201,8 @@ internal object AgentDeviceToolCatalog {
             .put(searchFunction("search_coloros_recordings", "检索 ColorOS 录音应用中的普通录音和通话录音，返回名称、时长、类型和文件路径。"))
             .put(searchFunction("search_recording_summaries", "检索 ColorOS 录音关联的转写摘要和便签内容。仅在录音应用生成过摘要时可用。"))
             .put(searchFunction("search_coloros_memories", "检索 ColorOS 系统记忆，可读取已收集的信息、账单、日程、取件码、快递、地点和附件等关联内容。"))
+            .put(searchFunction("search_saved_places", "检索系统记忆中保存或识别的地点。"))
+            .put(searchFunction("search_personal_orders", "检索系统记忆中识别的外卖、购物、快递、票券和出行订单。"))
             .put(searchFunction("search_qq_chat_images", "检索 QQ 聊天图片缓存，返回最近文件的时间、大小、类型和私有路径。仅在安装 QQ 且缓存仍存在时可用。"))
             .put(searchFunction("search_wechat_chat_images", "检索微信聊天图片缓存，返回最近文件的时间、大小和私有路径。仅在安装微信且缓存仍存在时可用。"))
     }

@@ -20,6 +20,8 @@ import android.view.KeyEvent
 import fuck.andes.agent.device.BoundedRootCommandExecutor
 import fuck.andes.agent.model.AgentModelClient
 import fuck.andes.core.AgentLogger
+import fuck.andes.agent.device.AgentNotificationHistoryService
+import fuck.andes.data.repository.NotificationHistoryRepository
 import java.util.Calendar
 import java.util.Locale
 import org.json.JSONArray
@@ -33,10 +35,18 @@ internal class AgentStructuredDeviceTools(
 ) {
     private val personalDataTools = AgentPersonalDataTools(root)
     private val colorOsMemoryTools = AgentColorOsMemoryTools(context, root)
+    private val personalContextTools = AgentPersonalContextTools(context)
+    private val privateDatabaseTools = AgentPrivateDatabaseTools(context, root)
+    private val notificationHistory by lazy { NotificationHistoryRepository(context) }
 
     fun execute(name: String, args: JSONObject): AgentModelClient.ToolResult? =
-        personalDataTools.execute(name, args) ?: when (name) {
+        personalDataTools.execute(name, args)
+            ?: personalContextTools.execute(name, args)
+            ?: privateDatabaseTools.execute(name, args)
+            ?: when (name) {
             "search_coloros_memories" -> colorOsMemoryTools.search(args)
+            "search_saved_places" -> colorOsMemoryTools.searchSavedPlaces(args)
+            "search_personal_orders" -> searchPersonalOrders(args)
             "set_alarm" -> text(setAlarm(args))
             "set_timer" -> text(setTimer(args))
             "device_status" -> text(deviceStatus())
@@ -55,6 +65,57 @@ internal class AgentStructuredDeviceTools(
             "app_state_control" -> text(appStateControl(args))
             else -> null
         }
+
+    private fun searchPersonalOrders(args: JSONObject): AgentModelClient.ToolResult {
+        val limit = args.optInt("limit", 10).coerceIn(1, 30)
+        val query = args.optString("query").trim()
+        val memoryResult = runCatching {
+            JSONObject(colorOsMemoryTools.searchOrders(args).content)
+        }.getOrElse {
+            JSONObject().put("ok", false).put("code", "COLOROS_MEMORY_QUERY_FAILED")
+        }
+        val notificationResult = if (AgentNotificationHistoryService.isEnabled(context)) {
+            runCatching {
+                val raw = JSONObject(
+                    notificationHistory.search(
+                        query = query,
+                        packageName = "",
+                        maxAgeHours = 168,
+                        limit = 50,
+                    ),
+                )
+                if (query.isBlank()) {
+                    val filtered = JSONArray()
+                    val items = raw.optJSONArray("items") ?: JSONArray()
+                    for (index in 0 until items.length()) {
+                        val item = items.getJSONObject(index)
+                        val text = listOf("title", "text", "sub_text")
+                            .joinToString(" ") { item.optString(it) }
+                        if (ORDER_KEYWORDS.any(text::contains)) filtered.put(item)
+                        if (filtered.length() >= limit) break
+                    }
+                    raw.put("items", filtered).put("count", filtered.length())
+                }
+                raw
+            }.getOrElse {
+                JSONObject().put("ok", false).put("code", "NOTIFICATION_HISTORY_QUERY_FAILED")
+            }
+        } else {
+            JSONObject()
+                .put("ok", false)
+                .put("code", "NOTIFICATION_HISTORY_ACCESS_REQUIRED")
+                .put("message", "授予通知使用权后可从新通知中识别订单状态")
+        }
+        return AgentModelClient.ToolResult(
+            content = JSONObject()
+                .put("ok", memoryResult.optBoolean("ok") || notificationResult.optBoolean("ok"))
+                .put("tool", "search_personal_orders")
+                .put("system_memory", memoryResult)
+                .put("notification_history", notificationResult)
+                .toString(),
+            sensitive = true,
+        )
+    }
 
     private fun setAlarm(args: JSONObject): String {
         val hour = args.getInt("hour")
@@ -571,6 +632,10 @@ internal class AgentStructuredDeviceTools(
     }
 
     private companion object {
+        val ORDER_KEYWORDS = listOf(
+            "订单", "外卖", "取餐", "配送", "骑手", "送达", "商家", "快递", "车票", "机票",
+            "酒店", "电影票",
+        )
         const val COLOROS_CLOCK_PACKAGE = "com.coloros.alarmclock"
         val PACKAGE_NAME = Regex("[A-Za-z0-9_]+(?:\\.[A-Za-z0-9_]+)+")
         val PROTECTED_PACKAGES = setOf(

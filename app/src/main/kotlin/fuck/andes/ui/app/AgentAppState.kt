@@ -1575,14 +1575,23 @@ private fun buildToolsState(): AgentToolsUiState =
                 id = "device_sensitive",
                 title = "민감한 기기 기능",
                 tools = listOf(
-                    ToolItemUi("read_sms_code", "인증번호 읽기", "최근 SMS에서 인증번호만 추출합니다."),
-                    ToolItemUi("recent_notifications", "알림 읽기", "현재 알림의 제목과 본문을 읽습니다."),
-                    ToolItemUi("wifi_credentials", "Wi‑Fi 비밀번호", "휴대폰에 저장된 네트워크 인증 정보를 읽습니다."),
-                    ToolItemUi("get_setting", "시스템 설정 읽기", "지정한 Settings 키를 읽습니다."),
-                    ToolItemUi("set_setting", "시스템 설정 변경", "보안상 중요하지 않은 Settings 키를 변경합니다."),
-                    ToolItemUi("set_device_state", "네트워크 스위치", "Wi‑Fi 또는 블루투스를 직접 제어합니다."),
-                    ToolItemUi("app_state_control", "앱 상태", "앱을 중지, 정지 또는 정지 해제합니다."),
-                    ToolItemUi("get_logcat", "시스템 로그", "제한된 범위에서 최근 로그를 읽고 필터링합니다."),
+                    ToolItemUi("read_sms_code", "读取验证码", "只提取最近短信中的验证码"),
+                    ToolItemUi("recent_notifications", "读取通知", "读取当前通知标题与正文"),
+                    ToolItemUi("search_notification_history", "通知历史", "检索授权后本机保存的最近 7 天通知"),
+                    ToolItemUi("recent_app_activity", "最近应用", "查看最近打开过的应用和时间"),
+                    ToolItemUi("app_usage_summary", "应用使用统计", "按前台时长汇总近期应用使用"),
+                    ToolItemUi("get_current_location", "当前位置", "读取系统已有的最近位置"),
+                    ToolItemUi("get_device_environment", "设备环境", "读取锁屏、勿扰、音频输出和外接屏状态"),
+                    ToolItemUi("list_alarms", "闹钟计划", "读取时钟中已创建的闹钟"),
+                    ToolItemUi("list_active_timers", "活动计时器", "读取正在运行或暂停的计时器"),
+                    ToolItemUi("search_clipboard_history", "剪贴板历史", "检索系统输入法保存的剪贴板内容"),
+                    ToolItemUi("get_health_summary", "健康摘要", "汇总步数、睡眠、运动和身体指标"),
+                    ToolItemUi("wifi_credentials", "Wi‑Fi 密码", "读取手机保存的网络凭据"),
+                    ToolItemUi("get_setting", "读取系统设置", "读取指定 Settings 键"),
+                    ToolItemUi("set_setting", "修改系统设置", "修改非安全关键 Settings 键"),
+                    ToolItemUi("set_device_state", "网络开关", "直接控制 Wi‑Fi 或蓝牙"),
+                    ToolItemUi("app_state_control", "应用状态", "停止、冻结或解冻应用"),
+                    ToolItemUi("get_logcat", "系统日志", "有界读取并过滤最近日志"),
                 ),
             ),
             ToolGroupUi(
@@ -1602,6 +1611,8 @@ private fun buildToolsState(): AgentToolsUiState =
                     ToolItemUi("search_coloros_recordings", "ColorOS 录音", "检索普通录音与通话录音"),
                     ToolItemUi("search_recording_summaries", "录音摘要", "检索录音关联的转写摘要和便签"),
                     ToolItemUi("search_coloros_memories", "ColorOS 系统记忆", "检索已收集的信息及其结构化关联内容"),
+                    ToolItemUi("search_saved_places", "保存地点", "检索系统记忆中的地点信息"),
+                    ToolItemUi("search_personal_orders", "个人订单", "检索外卖、购物、快递、票券和出行订单"),
                     ToolItemUi("search_qq_chat_images", "QQ 聊天图片", "检索 QQ 聊天图片缓存中的最近图片"),
                     ToolItemUi("search_wechat_chat_images", "微信聊天图片", "检索微信聊天图片缓存中的最近图片"),
                 ),
@@ -1642,6 +1653,8 @@ private fun buildPermissionHealthState(context: Context): PermissionHealthUiStat
     val accessibilityEnabled = isAgentAccessibilityEnabled(context) || AgentAccessibilityService.isAvailable()
     val rootEnabled = isRootAvailable()
     val locationAccess = DeviceLocationProvider.accessState(context)
+    val notificationHistoryEnabled = fuck.andes.agent.device.AgentNotificationHistoryService.isEnabled(context)
+    val usageAccessEnabled = fuck.andes.agent.tool.AgentPersonalContextTools.hasUsageAccess(context)
 
     return PermissionHealthUiState(
         items = listOf(
@@ -1687,6 +1700,24 @@ private fun buildPermissionHealthState(context: Context): PermissionHealthUiStat
                     DeviceLocationProvider.AccessState.DISABLED -> "설정하기"
                     DeviceLocationProvider.AccessState.AVAILABLE -> null
                 },
+            ),
+            PermissionHealthItemUi(
+                id = "notification_history",
+                title = "通知使用权",
+                summary = if (notificationHistoryEnabled) {
+                    "本机有界保存最近 7 天通知，仅在工具调用时读取"
+                } else {
+                    "授权后开始记录可检索的通知历史"
+                },
+                status = if (notificationHistoryEnabled) PermissionStatusUi.Available else PermissionStatusUi.Missing,
+                primaryActionLabel = if (notificationHistoryEnabled) null else "去授权",
+            ),
+            PermissionHealthItemUi(
+                id = "usage_access",
+                title = "使用情况访问",
+                summary = "用于读取最近打开的应用和前台使用时长",
+                status = if (usageAccessEnabled) PermissionStatusUi.Available else PermissionStatusUi.Missing,
+                primaryActionLabel = if (usageAccessEnabled) null else "去授权",
             ),
             PermissionHealthItemUi(
                 id = "accessibility",

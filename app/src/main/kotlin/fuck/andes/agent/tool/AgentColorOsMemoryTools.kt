@@ -18,7 +18,19 @@ internal class AgentColorOsMemoryTools(
     private val context: Context,
     private val root: BoundedRootCommandExecutor,
 ) {
-    fun search(args: JSONObject): AgentModelClient.ToolResult = synchronized(snapshotLock) {
+    fun search(args: JSONObject): AgentModelClient.ToolResult = querySnapshot { database ->
+        searchDatabase(database, args)
+    }
+
+    fun searchOrders(args: JSONObject): AgentModelClient.ToolResult = querySnapshot { database ->
+        searchDatabase(database, args, ordersOnly = true, toolName = "search_personal_orders")
+    }
+
+    fun searchSavedPlaces(args: JSONObject): AgentModelClient.ToolResult = querySnapshot { database ->
+        searchPlaces(database, args)
+    }
+
+    private fun querySnapshot(block: (SQLiteDatabase) -> String): AgentModelClient.ToolResult = synchronized(snapshotLock) {
         val snapshot = createSnapshot()
             ?: return@synchronized sensitive(error("COLOROS_MEMORY_UNAVAILABLE", "ColorOS 系统记忆暂时不可访问"))
         try {
@@ -41,7 +53,7 @@ internal class AgentColorOsMemoryTools(
                 )
             }
             database.use { db ->
-                runCatching { sensitive(searchDatabase(db, args)) }
+                runCatching { sensitive(block(db)) }
                     .getOrElse {
                         sensitive(
                             error(
@@ -97,7 +109,12 @@ internal class AgentColorOsMemoryTools(
             "else rm -f ${shellQuote(wal.absolutePath)}; fi"
     }
 
-    private fun searchDatabase(database: SQLiteDatabase, args: JSONObject): String {
+    private fun searchDatabase(
+        database: SQLiteDatabase,
+        args: JSONObject,
+        ordersOnly: Boolean = false,
+        toolName: String = TOOL_NAME,
+    ): String {
         val memoryColumns = database.tableColumns(MEMORIES_TABLE)
         if (memoryColumns.isEmpty() || "memory_id" !in memoryColumns) {
             return error("COLOROS_MEMORY_SCHEMA_UNSUPPORTED", "当前系统记忆数据库结构暂不受支持")
@@ -109,6 +126,33 @@ internal class AgentColorOsMemoryTools(
         val selectionArgs = mutableListOf<String>()
         if ("deleted" in memoryColumns) selectionParts += "deleted=0"
         if ("recycle_time" in memoryColumns) selectionParts += "recycle_time=0"
+        if (ordersOnly) {
+            val orderPredicates = mutableListOf<String>()
+            if ("package_name" in memoryColumns) {
+                orderPredicates += "package_name IN (${ORDER_PACKAGES.joinToString { "?" }})"
+                selectionArgs += ORDER_PACKAGES
+            }
+            val orderColumns = ORDER_SEARCH_COLUMNS.filter(memoryColumns::contains)
+            if (orderColumns.isNotEmpty()) {
+                ORDER_KEYWORDS.forEach { keywordValue ->
+                    val pattern = "%${keywordValue.escapeLikePattern()}%"
+                    orderPredicates += orderColumns.joinToString(" OR ", prefix = "(", postfix = ")") { column ->
+                        "$column LIKE ? ESCAPE '\\' COLLATE NOCASE"
+                    }
+                    repeat(orderColumns.size) { selectionArgs += pattern }
+                }
+            }
+            listOf("bills", "pickup_codes", "shipments").forEach { table ->
+                val columns = database.tableColumns(table)
+                if ("associate_memory_id" in columns) {
+                    orderPredicates += "EXISTS (SELECT 1 FROM $table WHERE associate_memory_id=$MEMORIES_TABLE.memory_id)"
+                }
+            }
+            if (orderPredicates.isEmpty()) {
+                return error("COLOROS_ORDER_SCHEMA_UNSUPPORTED", "当前系统记忆没有可用的订单字段")
+            }
+            selectionParts += orderPredicates.joinToString(" OR ", prefix = "(", postfix = ")")
+        }
         if (keyword.isNotBlank()) {
             val pattern = "%${keyword.escapeLikePattern()}%"
             val searchPredicates = mutableListOf<String>()
@@ -174,10 +218,49 @@ internal class AgentColorOsMemoryTools(
         }
         return JSONObject()
             .put("ok", true)
-            .put("tool", TOOL_NAME)
+            .put("tool", toolName)
             .put("items", items)
             .put("count", items.length())
             .put("truncated", resultTruncated || items.length() == limit)
+            .toString()
+    }
+
+    private fun searchPlaces(database: SQLiteDatabase, args: JSONObject): String {
+        val columns = database.tableColumns("memory_address")
+        if ("memory_id" !in columns) {
+            return error("COLOROS_PLACE_SCHEMA_UNSUPPORTED", "当前系统记忆没有可用的地点字段")
+        }
+        val projection = PLACE_COLUMNS.filter(columns::contains)
+        val keyword = args.optString("query").trim()
+        val limit = args.optInt("limit", DEFAULT_LIMIT).coerceIn(1, MAX_LIMIT)
+        val searchable = PLACE_SEARCH_COLUMNS.filter(columns::contains)
+        val selection = if (keyword.isNotBlank() && searchable.isNotEmpty()) {
+            searchable.joinToString(" OR ", prefix = "(", postfix = ")") { "$it LIKE ? ESCAPE '\\' COLLATE NOCASE" }
+        } else {
+            null
+        }
+        val selectionArgs = if (selection != null) {
+            Array(searchable.size) { "%${keyword.escapeLikePattern()}%" }
+        } else {
+            null
+        }
+        val items = JSONArray()
+        database.query(
+            "memory_address",
+            projection.toTypedArray(),
+            selection,
+            selectionArgs,
+            null,
+            null,
+            if ("create_time" in columns) "create_time DESC" else null,
+            limit.toString(),
+        ).use { cursor -> while (cursor.moveToNext()) items.put(cursor.currentRow()) }
+        return JSONObject()
+            .put("ok", true)
+            .put("tool", "search_saved_places")
+            .put("items", items)
+            .put("count", items.length())
+            .put("truncated", items.length() == limit)
             .toString()
     }
 
@@ -340,6 +423,27 @@ internal class AgentColorOsMemoryTools(
             "ocr_entity",
             "scene_name",
             "classify",
+        )
+        val ORDER_SEARCH_COLUMNS = listOf(
+            "data_text", "data_text_cleanup", "data_abstract", "notes", "app_name",
+            "scene_name", "classify",
+        )
+        val ORDER_KEYWORDS = listOf(
+            "订单", "外卖", "取餐", "配送", "骑手", "快递", "车票", "机票", "酒店", "电影票",
+        )
+        val ORDER_PACKAGES = listOf(
+            "com.sankuai.meituan", "me.ele", "com.ss.android.ugc.lifeservices",
+            "com.jingdong.app.mall", "com.taobao.taobao", "com.xunmeng.pinduoduo",
+            "com.taobao.trip", "com.sdu.didi.psnger",
+        )
+        val PLACE_COLUMNS = listOf(
+            "memory_id", "category", "sub_type", "name", "address", "full_address",
+            "country", "province", "city", "district", "location", "longitude", "latitude",
+            "reason", "insight", "deepLink", "shopHours",
+        )
+        val PLACE_SEARCH_COLUMNS = listOf(
+            "category", "sub_type", "name", "address", "full_address", "country", "province",
+            "city", "district", "location", "reason", "insight",
         )
         val DETAIL_SPECS = listOf(
             DetailSpec(
