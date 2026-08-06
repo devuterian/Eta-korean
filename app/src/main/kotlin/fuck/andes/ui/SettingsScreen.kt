@@ -74,9 +74,8 @@ private val ColorOSOrange = Color(0xFFFF7700)
 /**
  * 模块配置界面。
  *
- * 开关默认值由 [Prefs.Keys.BOOLEAN_DEFAULTS] 统一定义。切换时同步提交
- * （RemotePreferences.commit 会同步等待 binder 提交到 LSPosed 数据库，失败返回
- * false）；XposedService 未就绪时不允许写入，避免保存到 hook 进程不可见的本地配置。
+ * 开关默认值由 [Prefs.Keys.BOOLEAN_DEFAULTS] 统一定义。Eta Runtime 自己消费的开关写入
+ * App 本地配置；仅 Hook 消费的开关通过 RemotePreferences 提交到 LSPosed。
  */
 @Composable
 internal fun SettingsScreen(
@@ -133,10 +132,12 @@ internal fun SettingsScreen(
     // prefs 绑定到 XposedService：service 到达时切换到 RemotePreferences（跨进程提交到
     // LSPosed 数据库）；未就绪时保持 null，UI 禁止修改。
     var prefs by remember { mutableStateOf(Prefs.remotePreferencesForUi(FuckAndesApp.serviceInstance)) }
+    val agentPrefs = remember { Prefs.localAgentPreferences() }
     DisposableEffect(Unit) {
         val listener = object : FuckAndesApp.ServiceStateListener {
             override fun onServiceStateChanged(service: io.github.libxposed.service.XposedService?) {
                 prefs = Prefs.remotePreferencesForUi(service)
+                Prefs.reconcileAgentPreferences(service)
                 coroutineScope.launch {
                     RuntimeConfigRepository.ensureDefaults(service)
                 }
@@ -165,7 +166,8 @@ internal fun SettingsScreen(
                 item(key = "service_warning") {
                     Card(modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)) {
                         BasicComponent(
-                            title = "LSPosed 서비스가 연결되지 않음",
+                            title = "LSPosed 服务未连接",
+                            summary = "Agent 与本地工具仍可使用，系统助手接管、Gemini 和一圈即搜设置暂不可修改",
                         )
                     }
                 }
@@ -189,8 +191,8 @@ internal fun SettingsScreen(
                     PrefDivider()
                     SwitchPref(
                         context = context,
-                        prefs = prefs,
-                        title = "기본으로 심층 사고 사용",
+                        prefs = agentPrefs,
+                        title = "默认启用深度思考",
                         key = Prefs.Keys.AGENT_THINKING_ENABLED,
                         icon = LucideR.drawable.lucide_ic_brain,
                         iconTint = ColorOSRoyalBlue,
@@ -215,8 +217,8 @@ internal fun SettingsScreen(
                 Card(modifier = Modifier.padding(horizontal = 12.dp).padding(bottom = 12.dp)) {
                     SwitchPref(
                         context = context,
-                        prefs = prefs,
-                        title = "웹 브라우징 도구 사용",
+                        prefs = agentPrefs,
+                        title = "启用网页浏览工具",
                         key = Prefs.Keys.AGENT_BROWSER_TOOLS,
                         icon = LucideR.drawable.lucide_ic_globe,
                         iconTint = ColorOSVividGreen,
@@ -224,8 +226,8 @@ internal fun SettingsScreen(
                     PrefDivider()
                     SwitchPref(
                         context = context,
-                        prefs = prefs,
-                        title = "기기 직접 제어 도구 사용",
+                        prefs = agentPrefs,
+                        title = "启用设备直达工具",
                         key = Prefs.Keys.AGENT_DEVICE_DIRECT_TOOLS,
                         icon = LucideR.drawable.lucide_ic_smartphone,
                         iconTint = ColorOSVividGreen,
@@ -233,8 +235,8 @@ internal fun SettingsScreen(
                     PrefDivider()
                     SwitchPref(
                         context = context,
-                        prefs = prefs,
-                        title = "민감한 기기 정보 읽기 허용",
+                        prefs = agentPrefs,
+                        title = "允许读取敏感设备信息",
                         key = Prefs.Keys.AGENT_DEVICE_SENSITIVE_READ_TOOLS,
                         icon = LucideR.drawable.lucide_ic_eye,
                         iconTint = ColorOSAmberYellow,
@@ -242,8 +244,8 @@ internal fun SettingsScreen(
                     PrefDivider()
                     SwitchPref(
                         context = context,
-                        prefs = prefs,
-                        title = "민감한 기기 작업 허용",
+                        prefs = agentPrefs,
+                        title = "允许敏感设备操作",
                         key = Prefs.Keys.AGENT_DEVICE_SENSITIVE_ACTION_TOOLS,
                         icon = LucideR.drawable.lucide_ic_shield_alert,
                         iconTint = ColorOSAmberYellow,
@@ -251,8 +253,8 @@ internal fun SettingsScreen(
                     PrefDivider()
                     SwitchPref(
                         context = context,
-                        prefs = prefs,
-                        title = "터미널/파일 도구 사용",
+                        prefs = agentPrefs,
+                        title = "启用终端/文件工具",
                         key = Prefs.Keys.AGENT_TERMINAL_TOOLS,
                         icon = LucideR.drawable.lucide_ic_square_terminal,
                         iconTint = ColorOSAmberYellow,
@@ -620,9 +622,8 @@ private fun SystemizerConfirmDialog(
 /**
  * 单个布尔开关：状态随 [prefs]/[key] 变化重读，切换时同步写入。
  *
- * XposedService 到达时通过 [remember(prefs, key)] 重算初始值；切换写入用
- * [putBooleanSync] 同步提交，避免 RemotePreferences.apply() 异步 binder 失败后 UI 显示
- * 与 hook 侧不一致。
+ * 配置来源由调用方按能力边界传入。Hook 开关仍可能因 LSPosed 未连接而禁用；Agent
+ * Runtime 开关始终使用 App 本地配置。
  */
 @Composable
 private fun SwitchPref(
@@ -638,6 +639,16 @@ private fun SwitchPref(
     var checked by remember(prefs, key) {
         mutableStateOf(prefs?.getBoolean(key, default) ?: default)
     }
+    DisposableEffect(prefs, key) {
+        val targetPrefs = prefs ?: return@DisposableEffect onDispose {}
+        val listener = SharedPreferences.OnSharedPreferenceChangeListener { changedPrefs, changedKey ->
+            if (changedKey == key) {
+                checked = changedPrefs.getBoolean(key, default)
+            }
+        }
+        targetPrefs.registerOnSharedPreferenceChangeListener(listener)
+        onDispose { targetPrefs.unregisterOnSharedPreferenceChangeListener(listener) }
+    }
     SwitchPreference(
         title = title,
         checked = checked,
@@ -647,6 +658,9 @@ private fun SwitchPref(
             val targetPrefs = prefs ?: return@SwitchPreference
             if (putBooleanSync(targetPrefs, key, value)) {
                 checked = value
+                if (key in Prefs.Keys.LOCAL_AGENT_KEYS) {
+                    Prefs.reconcileAgentPreferences(FuckAndesApp.serviceInstance)
+                }
             } else {
                 Toast.makeText(context.applicationContext, "설정을 저장하지 못했습니다.", Toast.LENGTH_SHORT).show()
             }

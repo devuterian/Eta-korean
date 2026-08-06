@@ -299,7 +299,7 @@ ui/screens/                各功能页面
 ui.pages/providers/        模型提供商管理
 ui/components/             通用组件
 systemizer/                Google App 系统化安装器
-config/Prefs.kt            RemotePreferences 配置
+config/Prefs.kt            Agent 本地配置与 Hook RemotePreferences
 ```
 
 Agent Loop、工具批次、steering 与 transcript 语义见 [docs/AGENT_RUNTIME.md](docs/AGENT_RUNTIME.md)。Gemini、一圈即搜和 RemotePreferences 链路见 [docs/TECHNICAL.md](docs/TECHNICAL.md)。

@@ -1,5 +1,6 @@
 package fuck.andes.config
 
+import android.content.Context
 import android.content.SharedPreferences
 import io.github.libxposed.service.XposedService
 
@@ -9,9 +10,9 @@ import io.github.libxposed.service.XposedService
  * - Hook 进程（system_server / SystemUI / Google / 系统助手等）在模块加载时调用
  *   [attachRemote]，缓存框架提供的只读 [SharedPreferences]；之后所有拦截回调用 [isEnabled]
  *   读取当前进程持有的 remote preferences。
- * - UI 进程（模块自身）通过 [remotePreferencesForUi] 拿到可写的 [SharedPreferences]
- *   （XposedService.getRemotePreferences）。XposedService 未就绪时不提供本地 fallback，
- *   避免 UI 显示已修改但 hook 进程无法看到。
+ * - Eta Runtime 自己消费的开关保存在 App 私有配置中，不依赖 Xposed Service。
+ * - Hook 消费的开关通过 [remotePreferencesForUi] 写入 RemotePreferences；
+ *   XposedService 未就绪时不提供本地假 fallback。
  *
  * 基于 libxposed API 102 的 [io.github.libxposed.api.XposedInterface.getRemotePreferences]
  * 与 service 102 的 [XposedService.getRemotePreferences]，两端共用同一 group。
@@ -20,6 +21,8 @@ internal object Prefs {
 
     /** 远程配置组名，UI 写入与 Hook 读取必须一致。 */
     const val GROUP = "fuck_andes_prefs"
+
+    private const val LOCAL_AGENT_GROUP = "eta_agent_preferences"
 
     /** 所有功能开关 key。默认值按功能风险独立定义。 */
     object Keys {
@@ -58,11 +61,38 @@ internal object Prefs {
             AGENT_DEVICE_SENSITIVE_ACTION_TOOLS to true,
             AGENT_THINKING_ENABLED to true
         )
+
+        /** 由 Eta Runtime 最终裁决、不要求 Xposed 框架在线的开关。 */
+        val LOCAL_AGENT_KEYS: Set<String> = setOf(
+            AGENT_TERMINAL_TOOLS,
+            AGENT_BROWSER_TOOLS,
+            AGENT_DEVICE_DIRECT_TOOLS,
+            AGENT_DEVICE_SENSITIVE_READ_TOOLS,
+            AGENT_DEVICE_SENSITIVE_ACTION_TOOLS,
+            AGENT_THINKING_ENABLED,
+        )
     }
 
     /** Hook 进程缓存的只读 remote preferences，由 ModuleMain 在 onModuleLoaded 注入。 */
     @Volatile
     private var remote: SharedPreferences? = null
+
+    @Volatile
+    private var localAgent: SharedPreferences? = null
+
+    /** App 进程调用：初始化不依赖 Xposed Service 的 Agent 配置。 */
+    fun initLocal(context: Context) {
+        if (localAgent == null) {
+            synchronized(this) {
+                if (localAgent == null) {
+                    localAgent = context.applicationContext.getSharedPreferences(
+                        LOCAL_AGENT_GROUP,
+                        Context.MODE_PRIVATE,
+                    )
+                }
+            }
+        }
+    }
 
     /** Hook 进程调用：缓存框架提供的只读 SharedPreferences。 */
     fun attachRemote(prefs: SharedPreferences?) {
@@ -75,7 +105,8 @@ internal object Prefs {
      */
     fun isEnabled(key: String): Boolean {
         val default = Keys.BOOLEAN_DEFAULTS[key] ?: true
-        return remote?.getBoolean(key, default) ?: default
+        val preferences = if (key in Keys.LOCAL_AGENT_KEYS) localAgent ?: remote else remote
+        return preferences?.getBoolean(key, default) ?: default
     }
 
     fun getString(key: String): String {
@@ -90,4 +121,36 @@ internal object Prefs {
      */
     fun remotePreferencesForUi(service: XposedService?): SharedPreferences? =
         runCatching { service?.getRemotePreferences(GROUP) }.getOrNull()
+
+    /** Eta 设置页与 Runtime 使用的本地 Agent 配置，不依赖 LSPosed。 */
+    fun localAgentPreferences(): SharedPreferences? = localAgent
+
+    /**
+     * 首次升级优先把已有 RemotePreferences 值迁入本地；之后本地值是事实源，并在框架
+     * 可用时回写远端，让仍在目标进程中组装请求的 Hook 入口拿到一致的初始配置。
+     */
+    fun reconcileAgentPreferences(service: XposedService?) {
+        val local = localAgent ?: return
+        val remotePreferences = remotePreferencesForUi(service) ?: return
+        val localEditor = local.edit()
+        val remoteEditor = remotePreferences.edit()
+        var updateLocal = false
+        var updateRemote = false
+
+        Keys.LOCAL_AGENT_KEYS.forEach { key ->
+            val default = Keys.BOOLEAN_DEFAULTS.getValue(key)
+            when {
+                local.contains(key) -> {
+                    remoteEditor.putBoolean(key, local.getBoolean(key, default))
+                    updateRemote = true
+                }
+                remotePreferences.contains(key) -> {
+                    localEditor.putBoolean(key, remotePreferences.getBoolean(key, default))
+                    updateLocal = true
+                }
+            }
+        }
+        if (updateLocal) localEditor.commit()
+        if (updateRemote) runCatching { remoteEditor.commit() }
+    }
 }

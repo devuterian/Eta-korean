@@ -89,7 +89,7 @@ internal class AgentAppState(
     private val persistenceLock = Any()
     private var persistenceJob: Job? = null
     private val runtimeRecoveryInProgress = AtomicBoolean(false)
-    private val defaultThinkingEnabled = remoteBooleanForUi(Prefs.Keys.AGENT_THINKING_ENABLED)
+    private val defaultThinkingEnabled = agentBooleanForUi(Prefs.Keys.AGENT_THINKING_ENABLED)
     private val initialConversations = AgentConversationStore.load(appContext)
     private var skillNoticeSequence = 0L
     private var pendingSkillZipUri: Uri? = null
@@ -577,20 +577,20 @@ internal class AgentAppState(
 
         currentRunJob = scope.launch(Dispatchers.IO) {
             val permittedReasoningEffort = if (
-                remoteBooleanForUi(Prefs.Keys.AGENT_THINKING_ENABLED)
+                agentBooleanForUi(Prefs.Keys.AGENT_THINKING_ENABLED)
             ) {
                 reasoningEffort
             } else {
                 ReasoningEffort.OFF
             }
             val config = RuntimeConfigRepository.currentRuntimeConfig()?.copy(
-                terminalTools = remoteBooleanForUi(Prefs.Keys.AGENT_TERMINAL_TOOLS),
-                browserTools = remoteBooleanForUi(Prefs.Keys.AGENT_BROWSER_TOOLS),
-                deviceDirectTools = remoteBooleanForUi(Prefs.Keys.AGENT_DEVICE_DIRECT_TOOLS),
+                terminalTools = agentBooleanForUi(Prefs.Keys.AGENT_TERMINAL_TOOLS),
+                browserTools = agentBooleanForUi(Prefs.Keys.AGENT_BROWSER_TOOLS),
+                deviceDirectTools = agentBooleanForUi(Prefs.Keys.AGENT_DEVICE_DIRECT_TOOLS),
                 deviceSensitiveReadTools =
-                    remoteBooleanForUi(Prefs.Keys.AGENT_DEVICE_SENSITIVE_READ_TOOLS),
+                    agentBooleanForUi(Prefs.Keys.AGENT_DEVICE_SENSITIVE_READ_TOOLS),
                 deviceSensitiveActionTools =
-                    remoteBooleanForUi(Prefs.Keys.AGENT_DEVICE_SENSITIVE_ACTION_TOOLS),
+                    agentBooleanForUi(Prefs.Keys.AGENT_DEVICE_SENSITIVE_ACTION_TOOLS),
                 thinkingEnabled = permittedReasoningEffort.enablesReasoning,
                 reasoningEffort = permittedReasoningEffort,
             )
@@ -1737,11 +1737,8 @@ private fun buildPermissionHealthState(context: Context): PermissionHealthUiStat
     )
 }
 
-private fun remoteBooleanForUi(key: String): Boolean {
-    val default = Prefs.Keys.BOOLEAN_DEFAULTS[key] ?: true
-    return Prefs.remotePreferencesForUi(FuckAndesApp.serviceInstance)
-        ?.getBoolean(key, default)
-        ?: Prefs.isEnabled(key)
+private fun agentBooleanForUi(key: String): Boolean {
+    return Prefs.isEnabled(key)
 }
 
 private fun AgentTokenUsage.toUi(): TokenUsageUi =
