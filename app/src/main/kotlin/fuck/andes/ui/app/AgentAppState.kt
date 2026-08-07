@@ -1516,12 +1516,12 @@ private fun buildToolsState(): AgentToolsUiState =
                 id = "screen",
                 title = "화면 및 컨트롤",
                 tools = listOf(
-                    ToolItemUi("observe_screen", "화면 확인", "스크린샷과 현재 접근성 노드를 읽습니다."),
-                    ToolItemUi("tap_element", "요소 탭", "최근 확인한 노드를 탭합니다."),
-                    ToolItemUi("tap_area", "영역 탭", "좌표 영역을 탭합니다."),
-                    ToolItemUi("long_press", "길게 누르기", "좌표 또는 요소를 길게 누릅니다."),
-                    ToolItemUi("swipe", "스와이프", "상하좌우 스와이프 제스처를 실행합니다."),
-                    ToolItemUi("scroll", "스크롤", "페이지 또는 지정 노드를 스크롤합니다."),
+                    ToolItemUi("observe_screen", "观察屏幕", "读取当前节点，必要时附原图"),
+                    ToolItemUi("tap_element", "点击元素", "按最近一次观察到的节点点击"),
+                    ToolItemUi("tap_area", "点击区域", "按坐标区域点击"),
+                    ToolItemUi("long_press", "长按", "长按坐标或元素"),
+                    ToolItemUi("swipe", "滑动", "执行上下左右滑动手势"),
+                    ToolItemUi("scroll", "滚动", "滚动页面或指定节点"),
                 ),
             ),
             ToolGroupUi(
