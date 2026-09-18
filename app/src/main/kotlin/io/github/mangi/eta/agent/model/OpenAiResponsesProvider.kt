@@ -2,7 +2,9 @@ package io.github.mangi.eta.agent.model
 
 import io.github.mangi.eta.agent.runtime.AgentRunController
 import io.github.mangi.eta.agent.runtime.AgentTokenUsage
+import io.github.mangi.eta.data.auth.ChatGptCodexAuthManager
 import io.github.mangi.eta.data.model.OpenAiEndpointMode
+import io.github.mangi.eta.data.provider.BuiltinProviders
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -34,14 +36,35 @@ internal object OpenAiResponsesProvider : AgentProviderClient {
         require(config.openAiEndpointMode == OpenAiEndpointMode.RESPONSES) {
             "当前 Provider 未配置为 Responses API"
         }
+        val isChatGptCodex = config.providerId == BuiltinProviders.CHATGPT_CODEX_ID
+        val codexCredential = if (isChatGptCodex) {
+            ChatGptCodexAuthManager.validCredential()
+        } else {
+            null
+        }
         val body = buildRequestJson(config, request.messages, request.effectiveTools)
+            .also { payload ->
+                if (isChatGptCodex) {
+                    // ChatGPT Codex는 stateless Responses 호출에서 암호화된 reasoning item을
+                    // 다음 round에 되돌려 받을 수 있도록 공식 Codex와 같은 include를 사용한다.
+                    payload.put("include", JSONArray().put("reasoning.encrypted_content"))
+                    payload.put("parallel_tool_calls", true)
+                }
+            }
             .toString()
             .toRequestBody(JSON_MEDIA_TYPE)
         val headers = okhttp3.Headers.Builder()
             .add("Content-Type", "application/json; charset=utf-8")
             .add("Accept", "text/event-stream")
             .apply {
-                if (config.apiKey.isNotBlank()) add("Authorization", "Bearer ${config.apiKey}")
+                if (codexCredential != null) {
+                    add("Authorization", "Bearer ${codexCredential.accessToken}")
+                    add("ChatGPT-Account-ID", codexCredential.accountId)
+                    add("originator", "eta_android")
+                    add("session_id", request.sessionId)
+                } else if (config.apiKey.isNotBlank()) {
+                    add("Authorization", "Bearer ${config.apiKey}")
+                }
             }
             .also { ProviderRequestHeaders.mergeInto(it, config.baseUrl, config.customHeaders, request.sessionId) }
             .build()
