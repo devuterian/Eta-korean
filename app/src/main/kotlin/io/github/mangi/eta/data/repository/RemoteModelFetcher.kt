@@ -3,12 +3,14 @@ package io.github.mangi.eta.data.repository
 import io.github.mangi.eta.agent.model.AgentHttpClient
 import io.github.mangi.eta.agent.model.ProviderRequestHeaders
 import io.github.mangi.eta.agent.model.ProviderUrls
+import io.github.mangi.eta.data.auth.ChatGptCodexAuthManager
 import io.github.mangi.eta.data.model.AnthropicProviderSetting
 import io.github.mangi.eta.data.model.Model
 import io.github.mangi.eta.data.model.ModelReasoningCapabilities
 import io.github.mangi.eta.data.model.ModelSource
 import io.github.mangi.eta.data.model.ProviderSetting
 import io.github.mangi.eta.data.model.ReasoningEffort
+import io.github.mangi.eta.data.provider.BuiltinProviders
 import io.github.mangi.eta.data.provider.OfficialModelCatalog
 import java.util.UUID
 import kotlinx.coroutines.Dispatchers
@@ -24,6 +26,7 @@ import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import okhttp3.Request
+import org.json.JSONObject
 
 internal object RemoteModelFetcher {
     private const val MAX_ERROR_CHARS = 600
@@ -32,9 +35,13 @@ internal object RemoteModelFetcher {
     suspend fun fetch(provider: ProviderSetting): Result<List<Model>> =
         withContext(Dispatchers.IO) {
             runCatching {
-                when (provider) {
-                    is AnthropicProviderSetting -> fetchAnthropic(provider)
-                    else -> fetchOpenAiCompatible(provider)
+                when {
+                    provider.id == BuiltinProviders.CHATGPT_CODEX_ID ->
+                        fetchChatGptCodex(provider)
+                    provider is AnthropicProviderSetting ->
+                        fetchAnthropic(provider)
+                    else ->
+                        fetchOpenAiCompatible(provider)
                 }
             }
         }
@@ -58,6 +65,127 @@ internal object RemoteModelFetcher {
             ?: return emptyList()
         return data.mapNotNull { element ->
             element.jsonObjectOrNull()?.toAnthropicModel()
+        }
+    }
+
+    private fun fetchChatGptCodex(provider: ProviderSetting): List<Model> {
+        fun requestWithCurrentCredential(forceRefresh: Boolean): Pair<Int, String> {
+            val credential = ChatGptCodexAuthManager.validCredential(forceRefresh)
+            val request = Request.Builder()
+                .url("${BuiltinProviders.CHATGPT_CODEX_BASE_URL}/models?client_version=eta-3.0.4")
+                .headers(
+                    okhttp3.Headers.Builder()
+                        .add("Accept", "application/json")
+                        .add("Authorization", "Bearer ${credential.accessToken}")
+                        .add("ChatGPT-Account-ID", credential.accountId)
+                        .add("originator", "eta_android")
+                        .also {
+                            ProviderRequestHeaders.mergeInto(
+                                it,
+                                provider.baseUrl,
+                                provider.customHeaders,
+                            )
+                        }
+                        .build()
+                )
+                .get()
+                .build()
+            return AgentHttpClient.client.newCall(request).execute().use { response ->
+                response.code to response.body.string()
+            }
+        }
+
+        var (status, body) = requestWithCurrentCredential(forceRefresh = false)
+        if (status == 401 || status == 403) {
+            val retried = requestWithCurrentCredential(forceRefresh = true)
+            status = retried.first
+            body = retried.second
+        }
+        if (status !in 200..299) {
+            error("ChatGPT Codex 모델 목록 요청 실패 HTTP $status: ${body.compactError()}")
+        }
+
+        val remote = parseChatGptCodexModels(body)
+        return if (remote.isNotEmpty()) {
+            OfficialModelCatalog.enrich(provider, remote)
+        } else {
+            OfficialModelCatalog.modelsForProvider(provider)
+        }
+    }
+
+    internal fun parseChatGptCodexModels(body: String): List<Model> {
+        val array = runCatching { JSONObject(body).optJSONArray("models") }.getOrNull()
+            ?: return emptyList()
+        return buildList {
+            for (index in 0 until array.length()) {
+                val item = array.optJSONObject(index) ?: continue
+                val visibility = item.optString("visibility")
+                if (visibility == "none" || visibility == "hide") continue
+                val slug = item.optString("slug").trim()
+                if (slug.isBlank()) continue
+
+                val supportedEfforts = buildList {
+                    val levels = item.optJSONArray("supported_reasoning_levels")
+                    if (levels != null) {
+                        for (levelIndex in 0 until levels.length()) {
+                            val effort = levels.optJSONObject(levelIndex)
+                                ?.optString("effort")
+                                ?.let(ReasoningEffort::fromWireValue)
+                                ?: continue
+                            if (effort != ReasoningEffort.OFF && effort != ReasoningEffort.DEFAULT) {
+                                add(effort)
+                            }
+                        }
+                    }
+                }.distinct()
+                val defaultEffort = ReasoningEffort.fromWireValue(
+                    item.optString("default_reasoning_level")
+                )
+                val inputModalities = buildList {
+                    val values = item.optJSONArray("input_modalities")
+                    if (values != null) {
+                        for (valueIndex in 0 until values.length()) {
+                            values.optString(valueIndex)
+                                .trim()
+                                .takeIf(String::isNotBlank)
+                                ?.let(::add)
+                        }
+                    }
+                }.ifEmpty { listOf(Model.TEXT_MODALITY, Model.IMAGE_MODALITY) }
+                val contextWindow = item.optLong("context_window", 0L)
+                    .takeIf { it in 1..Int.MAX_VALUE.toLong() }
+                    ?.toInt()
+
+                add(
+                    Model(
+                        id = UUID.randomUUID().toString(),
+                        modelId = slug,
+                        displayName = item.optString("display_name").ifBlank { slug },
+                        source = ModelSource.REMOTE,
+                        ownedBy = "openai",
+                        contextWindow = contextWindow,
+                        inputModalities = inputModalities,
+                        attachment = inputModalities.any {
+                            it.equals(Model.IMAGE_MODALITY, ignoreCase = true)
+                        },
+                        toolCall = true,
+                        reasoning = supportedEfforts.isNotEmpty() || defaultEffort != null,
+                        reasoningCapabilities = if (
+                            supportedEfforts.isNotEmpty() || defaultEffort != null
+                        ) {
+                            ModelReasoningCapabilities(
+                                supportedEfforts = supportedEfforts,
+                                defaultEffort = defaultEffort,
+                                defaultEnabled = true,
+                                canDisable = false,
+                            )
+                        } else {
+                            null
+                        },
+                        structuredOutput = true,
+                    )
+                )
+            }
         }
     }
 
