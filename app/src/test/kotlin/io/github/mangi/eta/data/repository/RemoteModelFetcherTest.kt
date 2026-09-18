@@ -278,6 +278,57 @@ class RemoteModelFetcherTest {
     }
 
     @Test
+    fun parsesChatGptCodexModelCatalog() {
+        val models = RemoteModelFetcher.parseChatGptCodexModels(
+            """
+            {
+              "models":[
+                {
+                  "slug":"gpt-5.3-codex",
+                  "display_name":"GPT-5.3-Codex",
+                  "visibility":"list",
+                  "context_window":400000,
+                  "input_modalities":["text","image"],
+                  "default_reasoning_level":"medium",
+                  "supported_reasoning_levels":[
+                    {"effort":"low","description":"Fast"},
+                    {"effort":"medium","description":"Balanced"},
+                    {"effort":"high","description":"Deep"},
+                    {"effort":"xhigh","description":"Deeper"}
+                  ]
+                },
+                {
+                  "slug":"hidden-model",
+                  "display_name":"Hidden",
+                  "visibility":"hide",
+                  "supported_reasoning_levels":[]
+                }
+              ]
+            }
+            """.trimIndent()
+        )
+
+        val model = models.single()
+        assertEquals("gpt-5.3-codex", model.modelId)
+        assertEquals("GPT-5.3-Codex", model.displayName)
+        assertEquals(400000, model.contextWindow)
+        assertTrue(model.supportsVision)
+        assertTrue(model.supportsTools)
+        assertTrue(model.supportsReasoning)
+        assertEquals(
+            listOf(
+                ReasoningEffort.DEFAULT,
+                ReasoningEffort.LOW,
+                ReasoningEffort.MEDIUM,
+                ReasoningEffort.HIGH,
+                ReasoningEffort.XHIGH,
+            ),
+            model.reasoningCapabilities?.selectableEfforts,
+        )
+        assertEquals(ReasoningEffort.MEDIUM, model.reasoningCapabilities?.defaultEffort)
+    }
+
+    @Test
     fun parsesAnthropicContextAndCapabilityMetadata() {
         val model = RemoteModelFetcher.parseAnthropicModels(
             """
