@@ -1,0 +1,50 @@
+name: Sync Eta 3.0.4
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    if: github.head_ref == 'agent/eta-3.0.4-codex-ko'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+
+      - name: Replace branch with upstream v3.0.4
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -q 'versionName = "3.0.4"' app/build.gradle.kts 2>/dev/null && [ ! -f .github/eta-3.0.4-sync-request ]; then
+            echo "Already synchronized."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          cp .github/workflows/android-apk.yml /tmp/android-apk.yml
+
+          git remote add upstream https://github.com/Mangi-11/Eta.git || true
+          git fetch upstream refs/tags/v3.0.4:refs/remotes/upstream/v3.0.4
+
+          git rm -r -f .
+          git checkout refs/remotes/upstream/v3.0.4 -- .
+
+          mkdir -p .github/workflows
+          cp /tmp/android-apk.yml .github/workflows/android-apk.yml
+          rm -f .github/workflows/android-release.yml
+          rm -f .github/workflows/report-eta-2.5.1.yml
+          rm -f .github/eta-3.0.4-sync-request
+
+          git add -A
+          git commit -m "Eta 3.0.4 upstream 동기화"
+          git push origin HEAD:agent/eta-3.0.4-codex-ko
