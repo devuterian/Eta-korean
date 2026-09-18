@@ -1,0 +1,188 @@
+name: Generate Korean locale for Eta 3.0.4
+
+on:
+  pull_request:
+    branches: [main]
+    types: [synchronize]
+
+permissions:
+  contents: write
+
+jobs:
+  translate:
+    if: github.head_ref == 'agent/eta-3.0.4-codex-ko'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+
+      - name: Generate values-ko
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ ! -f .github/eta-ko-translation-request ]]; then
+            echo "No translation request marker."
+            exit 0
+          fi
+
+          python3 - <<'PY'
+          import concurrent.futures
+          import html
+          import json
+          import pathlib
+          import re
+          import time
+          import urllib.parse
+          import urllib.request
+
+          source_path = pathlib.Path("app/src/main/res/values/strings.xml")
+          source = source_path.read_text(encoding="utf-8")
+
+          STRING_RE = re.compile(r'(<string\b[^>]*>)([\s\S]*?)(</string>)')
+          ITEM_RE = re.compile(r'(<item\b[^>]*>)([\s\S]*?)(</item>)')
+          FMT_RE = re.compile(r'%(?:\d+\$)?[sdfoxegcba]', re.I)
+          PROTECT_RE = re.compile(
+              r'%(?:\d+\$)?[sdfoxegcba]|'
+              r'\\[nrt]|'
+              r'https?://[^\s<]+|'
+              r'\b(?:Eta|ColorOS|Gemini|ChatGPT|Codex|OpenAI|API|MCP|LSPosed|Root|Linux|Breeno|'
+              r'Android|WebView|Markdown|GitHub|Google|Anthropic|DeepSeek|Kimi|MiMo|MiniMax|'
+              r'SiliconFlow|OpenRouter|Qwen|SillyTavern|JSON|PNG|UUID|HTTP|HTTPS|URL|URI|'
+              r'Wi-Fi|Bluetooth|NFC|Shell|OAuth|Responses|Chat Completions)\b',
+              re.I,
+          )
+
+          def decode_xml_text(raw):
+              return html.unescape(raw)
+
+          def xml_escape(text):
+              return (
+                  text.replace("&", "&amp;")
+                      .replace("<", "&lt;")
+                      .replace(">", "&gt;")
+              )
+
+          def protect(text):
+              values = []
+              def repl(match):
+                  token = f"ZXQPH{len(values):03d}ZXQ"
+                  values.append(match.group(0))
+                  return token
+              return PROTECT_RE.sub(repl, text), values
+
+          def restore(text, values):
+              for i, value in enumerate(values):
+                  text = text.replace(f"ZXQPH{i:03d}ZXQ", value)
+              return text
+
+          def translate_plain(original):
+              decoded = decode_xml_text(original)
+              if not decoded.strip() or not re.search(r'[A-Za-z]', decoded):
+                  return original
+
+              protected, values = protect(decoded)
+              url = (
+                  "https://translate.googleapis.com/translate_a/single"
+                  "?client=gtx&sl=en&tl=ko&dt=t&q=" + urllib.parse.quote(protected)
+              )
+              translated = None
+              for attempt in range(4):
+                  try:
+                      req = urllib.request.Request(
+                          url,
+                          headers={"User-Agent": "Mozilla/5.0 Eta-localization"},
+                      )
+                      with urllib.request.urlopen(req, timeout=20) as response:
+                          payload = json.loads(response.read().decode("utf-8"))
+                      translated = "".join(
+                          part[0] for part in payload[0] if part and part[0]
+                      )
+                      break
+                  except Exception:
+                      if attempt == 3:
+                          return original
+                      time.sleep(1.5 * (attempt + 1))
+
+              translated = restore(translated, values)
+              if sorted(FMT_RE.findall(decoded)) != sorted(FMT_RE.findall(translated)):
+                  return original
+              return xml_escape(translated)
+
+          entries = []
+          for regex in (STRING_RE, ITEM_RE):
+              for match in regex.finditer(source):
+                  entries.append(match.group(2))
+          unique = list(dict.fromkeys(entries))
+
+          translated = {}
+          with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+              futures = {executor.submit(translate_plain, value): value for value in unique}
+              for index, future in enumerate(concurrent.futures.as_completed(futures), 1):
+                  value = futures[future]
+                  try:
+                      translated[value] = future.result()
+                  except Exception:
+                      translated[value] = value
+                  if index % 100 == 0:
+                      print(f"translated {index}/{len(unique)}")
+
+          def replace_match(match):
+              before, value, after = match.groups()
+              return before + translated.get(value, value) + after
+
+          output = STRING_RE.sub(replace_match, source)
+          output = ITEM_RE.sub(replace_match, output)
+
+          # Android/Korean terminology cleanup for common UI words.
+          cleanup = {
+              "에타": "Eta",
+              "서클 검색": "서클 투 서치",
+              "서클 투 검색": "서클 투 서치",
+              "깊은 생각": "심층 사고",
+              "사고 노력": "사고 강도",
+              "공급자": "제공업체",
+              "제공자": "제공업체",
+              "루트": "Root",
+          }
+          for old, new in cleanup.items():
+              output = output.replace(old, new)
+
+          target = pathlib.Path("app/src/main/res/values-ko/strings.xml")
+          target.parent.mkdir(parents=True, exist_ok=True)
+          target.write_text(output, encoding="utf-8")
+
+          # Final placeholder integrity check by resource key.
+          def key_map(text):
+              result = {}
+              for match in STRING_RE.finditer(text):
+                  name = re.search(r'name="([^"]+)"', match.group(1))
+                  if name:
+                      result[name.group(1)] = match.group(2)
+              return result
+
+          src_map = key_map(source)
+          dst_map = key_map(output)
+          broken = []
+          for key, src in src_map.items():
+              dst = dst_map.get(key, "")
+              if sorted(FMT_RE.findall(html.unescape(src))) != sorted(FMT_RE.findall(html.unescape(dst))):
+                  broken.append(key)
+          if broken:
+              raise SystemExit("Placeholder mismatch: " + ", ".join(broken[:30]))
+
+          untranslated = sum(
+              1 for key, value in src_map.items()
+              if dst_map.get(key) == value and re.search(r'[A-Za-z]{4,}', html.unescape(value))
+          )
+          print(f"Korean locale generated: strings={len(src_map)}, unchanged_english={untranslated}")
+          PY
+
+          rm -f .github/eta-ko-translation-request
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/src/main/res/values-ko/strings.xml .github/eta-ko-translation-request
+          git commit -m "Eta 3.0.4 한국어 locale 추가"
+          git push origin HEAD:agent/eta-3.0.4-codex-ko
