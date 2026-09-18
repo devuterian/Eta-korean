@@ -167,7 +167,7 @@ internal fun SettingsScreen(
                     Card(modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)) {
                         BasicComponent(
                             title = "LSPosed 서비스가 연결되지 않음",
-                            summary = "Agent 与本地工具仍可使用，系统助手接管、Gemini 和一圈即搜设置暂不可修改",
+                            summary = "Agent와 로컬 도구는 계속 사용할 수 있지만, 시스템 어시스턴트 연동·Gemini·서클 투 서치 설정은 현재 변경할 수 없습니다",
                         )
                     }
                 }
