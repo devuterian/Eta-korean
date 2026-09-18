@@ -326,6 +326,16 @@ fun AgentAppRoot() {
                                             }
                                         }
                                     }
+                                    "notification_history" -> {
+                                        runCatching {
+                                            context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+                                        }
+                                    }
+                                    "usage_access" -> {
+                                        runCatching {
+                                            context.startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
+                                        }
+                                    }
                                     "root" -> {
                                         coroutineScope.launch {
                                             try {

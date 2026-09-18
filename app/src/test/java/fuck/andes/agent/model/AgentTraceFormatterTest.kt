@@ -107,6 +107,29 @@ class AgentTraceFormatterTest {
     }
 
     @Test
+    fun screenObservationSummaryUsesTreeFirstDefaults() {
+        val defaultSummary = formatter.summarizeArguments(
+            AgentModelClient.ToolCall(
+                id = "observe-default",
+                name = "observe_screen",
+                argumentsJson = "{}",
+            ),
+        )
+        val screenshotSummary = formatter.summarizeArguments(
+            AgentModelClient.ToolCall(
+                id = "observe-image",
+                name = "observe_screen",
+                argumentsJson = """{"include_screenshot":true}""",
+            ),
+        )
+
+        assertTrue(defaultSummary.contains("screenshot=false"))
+        assertTrue(defaultSummary.contains("ui_tree=true"))
+        assertTrue(screenshotSummary.contains("screenshot=true"))
+        assertTrue(screenshotSummary.contains("ui_tree=true"))
+    }
+
+    @Test
     fun memoryResultSummaryContainsOnlyStatusLineAndByteMetadata() {
         val summary = formatter.summarizeResult(
             "memory_get",

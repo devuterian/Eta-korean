@@ -43,9 +43,6 @@ jobs:
           distribution: temurin
           java-version: '25'
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
@@ -55,8 +52,57 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          yes | sdkmanager --licenses >/dev/null || true
-          sdkmanager --channel=3 'platform-tools' 'platforms;android-37.0'
+
+          ANDROID_SDK_ROOT="$RUNNER_TEMP/android-sdk"
+          ANDROID_HOME="$ANDROID_SDK_ROOT"
+          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT" >> "$GITHUB_ENV"
+          echo "ANDROID_HOME=$ANDROID_HOME" >> "$GITHUB_ENV"
+          echo "$ANDROID_SDK_ROOT/platform-tools" >> "$GITHUB_PATH"
+          echo "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
+
+          TOOLS_ZIP="$RUNNER_TEMP/android-command-line-tools.zip"
+          TOOLS_DIR="$RUNNER_TEMP/android-command-line-tools"
+          curl -fsSLo "$TOOLS_ZIP" \
+            https://dl.google.com/android/repository/commandlinetools-linux-15859902_latest.zip
+          echo '4e4c464f145a7512b57d088ac6c278c03c9eea610886b35a5e0804e74eedf583  '"$TOOLS_ZIP" \
+            | sha256sum -c -
+
+          rm -rf "$TOOLS_DIR" "$ANDROID_SDK_ROOT"
+          mkdir -p "$TOOLS_DIR" "$ANDROID_SDK_ROOT/cmdline-tools/latest"
+          unzip -q "$TOOLS_ZIP" -d "$TOOLS_DIR"
+          mv "$TOOLS_DIR/cmdline-tools/"* "$ANDROID_SDK_ROOT/cmdline-tools/latest/"
+
+          SDKMANAGER="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDKMANAGER" --sdk_root="$ANDROID_SDK_ROOT" --licenses >/dev/null || true
+          "$SDKMANAGER" --sdk_root="$ANDROID_SDK_ROOT" --list --channel=3 \
+            | awk -F '|' '{gsub(/^[ \t]+|[ \t]+$/, "", $1); print $1}' \
+            > "$RUNNER_TEMP/android-sdk-packages.txt"
+
+          PLATFORM_PACKAGE=''
+          for candidate in \
+            'platforms;android-37.0' \
+            'platforms;android-37' \
+            'platforms;android-CinnamonBun'; do
+            if grep -Fxq "$candidate" "$RUNNER_TEMP/android-sdk-packages.txt"; then
+              PLATFORM_PACKAGE="$candidate"
+              break
+            fi
+          done
+          if [[ -z "$PLATFORM_PACKAGE" ]]; then
+            echo 'Android 17 platform package was not found.' >&2
+            grep -E '^platforms;android-(37|CinnamonBun)' "$RUNNER_TEMP/android-sdk-packages.txt" || true
+            exit 1
+          fi
+
+          BUILD_TOOLS_PACKAGE="$({ grep -E '^build-tools;37\.' "$RUNNER_TEMP/android-sdk-packages.txt" || true; } | sort -V | tail -n 1)"
+          if [[ -z "$BUILD_TOOLS_PACKAGE" ]]; then
+            echo 'Android Build-Tools 37 package was not found.' >&2
+            exit 1
+          fi
+
+          echo "Installing $PLATFORM_PACKAGE and $BUILD_TOOLS_PACKAGE"
+          "$SDKMANAGER" --sdk_root="$ANDROID_SDK_ROOT" --channel=3 \
+            'platform-tools' "$PLATFORM_PACKAGE" "$BUILD_TOOLS_PACKAGE"
           chmod +x gradlew
 
       - name: Build debug APK
@@ -104,18 +150,3 @@ jobs:
             gh release create "$VERSION" "$APK_PATH" --repo "$GITHUB_REPOSITORY" \
               --target "$GITHUB_SHA" --title "Eta $VERSION" --notes-file "$NOTES"
           fi
-
-      - name: Report Eta 2.5.0 release
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.version.outputs.version == '2.5.0'
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh pr comment 13 --repo "$GITHUB_REPOSITORY" --body "ETA_RELEASE_SUCCESS
-          version=2.5.0
-          main_sha=${GITHUB_SHA}
-          run_id=${GITHUB_RUN_ID}
-          run_url=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}
-          release=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/tag/2.5.0
-          artifact=Eta-2.5.0
-          apk=Eta-2.5.0.apk"

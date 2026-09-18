@@ -11,6 +11,11 @@ class AgentSensitiveTranscriptTest {
     fun memoryToolArgumentsAndResultsAreAlwaysSensitive() {
         assertTrue(AgentSensitiveToolPolicy.isSensitive("memory_get"))
         assertTrue(AgentSensitiveToolPolicy.isSensitive("memory_write"))
+        assertTrue(AgentSensitiveToolPolicy.isSensitive("search_coloros_memories"))
+        assertTrue(AgentSensitiveToolPolicy.isSensitive("search_notification_history"))
+        assertTrue(AgentSensitiveToolPolicy.isSensitive("recent_app_activity"))
+        assertTrue(AgentSensitiveToolPolicy.isSensitive("get_health_summary"))
+        assertTrue(AgentSensitiveToolPolicy.isSensitive("search_personal_orders"))
     }
 
     @Test

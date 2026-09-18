@@ -4,6 +4,7 @@ import android.app.Application
 import android.os.Handler
 import android.os.Looper
 import fuck.andes.agent.skill.SkillRuntime
+import fuck.andes.config.Prefs
 import fuck.andes.core.AndroidAgentLogger
 import fuck.andes.core.safeLogType
 import fuck.andes.data.datastore.SettingsDataStore
@@ -36,6 +37,7 @@ class FuckAndesApp : Application(), XposedServiceHelper.OnServiceListener {
     override fun onCreate() {
         super.onCreate()
         SettingsDataStore.init(this)
+        Prefs.initLocal(this)
         AgentMemoryRepository.init(this)
         ProviderRepository.init(this)
         XposedServiceHelper.registerListener(this)
@@ -52,6 +54,7 @@ class FuckAndesApp : Application(), XposedServiceHelper.OnServiceListener {
 
     override fun onServiceBind(service: XposedService) {
         serviceInstance = service
+        Prefs.reconcileAgentPreferences(service)
         dispatch(service)
     }
 

@@ -87,7 +87,8 @@ Google App 作为普通用户应用时，缺乏语音唤醒所需的系统权限
 
 模块 UI 基于 Miuix 0.9.3。配置链路如下：
 
-- **UI 进程**：`FuckAndesApp` 在 `Application.onCreate` 注册 `XposedServiceHelper`，框架通过 `XposedProvider` 推送 binder 后拿到 `XposedService`。设置页通过 `XposedService.getRemotePreferences()` 获取可写的 `SharedPreferences`，写入用 `commit()` 同步等待 binder 提交到 LSPosed 数据库；提交失败时保持原开关状态。
+- **Eta Runtime 配置**：默认思考、网页浏览、设备直达、敏感信息读取、敏感设备操作和终端/文件工具保存在 App 私有配置中，不依赖 LSPosed。Runtime 在请求开始和每次工具执行前读取当前值；升级时会兼容迁移已有 RemotePreferences 值。
+- **Hook 配置**：`FuckAndesApp` 在 `Application.onCreate` 注册 `XposedServiceHelper`，框架通过 `XposedProvider` 推送 binder 后拿到 `XposedService`。系统助手接管、Gemini 和一圈即搜等 Hook 开关通过 `XposedService.getRemotePreferences()` 写入 LSPosed 数据库；服务未连接时这些开关保持不可修改。
 - **Hook 进程**：`ModuleMain.onModuleLoaded` 调用 `XposedInterface.getRemotePreferences()` 缓存只读 `SharedPreferences` 到 `Prefs`。各 Hook 拦截回调入口直接读 `Prefs.isEnabled(key)`，关闭则走原逻辑；因此正常使用时，配置切换后的下一次相关触发表现为实时生效。这里的实时生效来自 Hook 入口读取当前配置，不是 libxposed API 102 的 hot reload 特性。
 - **延迟任务复查**：已排队的后台配置修复、`HotwordSelfHealHooks` retry 与 `GoogleAppHooks` 锁屏/亮屏语音命令会在执行前再次检查对应开关，避免用户在任务排队期间关闭开关后被旧任务绕过。
 
@@ -100,7 +101,10 @@ Google App 作为普通用户应用时，缺乏语音唤醒所需的系统权限
 Runtime 提示要求模型在用户目标会明显受益于本机上下文时主动调用已公开的只读工具。对于“了解我”、近期活动、习惯偏好和个性化建议等宽泛任务，模型应从多个相关来源按时间与代表性取样后再归纳；工具已公开即表示对应能力已由用户开启，不重复询问授权，也不因单个来源为空就直接停止。专用工具不存在、结果不足或数据源不可用时，如果 Root Shell、文件或终端工具已公开，模型会继续定位并只读检查相关应用私有文件与数据库，先识别格式和 schema，再执行有界查询，不修改源数据。
 
 - 标准 Android Provider：相册图片、音频、共享文件、日历、通讯录、通话记录、短信和下载记录。
-- ColorOS Provider：便签正文与待办、录音（含普通录音与通话录音）以及录音关联的摘要。
+- ColorOS 数据源：通过固定 Provider 读取便签正文、待办、普通录音、通话录音与录音摘要；系统记忆数据库使用 Root 复制大小受限的只读临时快照，再通过固定表和字段检索记忆正文及其账单、日程、取件码、快递、地点和附件。快照只存在于 Eta 缓存，查询结束后立即删除。
+- 个人上下文：位置按需读取最近系统位置；应用活动与使用时长依赖用户授予的使用情况访问权；闹钟、计时器、输入法剪贴板历史和 Health Connect 聚合值通过固定数据库只读快照查询。健康工具只返回指定时间窗口的汇总，不返回原始测量序列。
+- 通知历史：系统自身没有可用历史时不伪造旧记录。用户授予通知使用权后，Eta 从授权时点开始在独立本机数据库中保存标题、正文、来源包和时间，保留 7 天且最多 1000 条；查询结果仍按敏感工具规则从持久会话移除。
+- 个人订单：优先检索系统记忆已经识别的外卖、购物、快递、票券和出行信息。第三方应用导出的进程通信 Provider 不等于订单查询合同，Eta 不依赖其易变私有订单库。
 - QQ 与微信专用目录：仅扫描已验证的聊天图片缓存目录，按最近修改时间返回有界的文件元数据；不扫描视频、消息数据库、消息正文或任意其他应用私有目录。
 - 设备上缺少相应应用或 Provider 合同变动时，工具返回结构化不可用错误；不会改用遍历其他应用私有目录的方式猜测数据。
 
@@ -144,4 +148,4 @@ Runtime 提示要求模型在用户目标会明显受益于本机上下文时主
 
 如果 Google 的 `voiceinteraction` 尚未就绪，模块会尝试 Google 暴露的助理 Activity；仍无法处理时立即回到小布原逻辑，同时在后台修复默认助理配置。这样不会为了追求一次触发成功而占住 `system_server` 回调，也不会出现长按后无反馈的空窗。
 
-配置界面切换开关后会同步提交到 LSPosed 侧 RemotePreferences；Hook 回调和延迟任务执行前都会读取对应开关，所以后续触发按当前配置执行。
+配置界面按消费边界保存开关：Agent 与本地工具写入 App 私有配置，Hook 能力写入 LSPosed 侧 RemotePreferences。Hook 回调和延迟任务执行前都会读取对应开关，所以后续触发按当前配置执行。

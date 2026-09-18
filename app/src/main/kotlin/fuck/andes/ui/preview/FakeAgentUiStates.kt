@@ -188,7 +188,7 @@ internal object FakeAgentUiStates {
                 id = "screen",
                 title = "화면 조작",
                 tools = listOf(
-                    ToolItemUi("observe", "화면 확인", "현재 화면을 캡처하고 설명"),
+                    ToolItemUi("observe", "观察屏幕", "화면 UI 요소를 읽고, 필요하면 원본 화면 이미지도 함께 확인합니다"),
                     ToolItemUi("click", "탭", "지정한 좌표 또는 요소 탭"),
                     ToolItemUi("long_press", "길게 누르기", "지정한 요소 길게 누르기"),
                     ToolItemUi("swipe", "스와이프", "스와이프, 스크롤, 뒤로 가기 등 제스처"),

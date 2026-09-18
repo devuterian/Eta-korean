@@ -245,7 +245,7 @@ internal class AgentRuntimeService : Service(), LifecycleOwner, SavedStateRegist
                 materialized.fold(
                     onSuccess = { request ->
                         val permissions = AgentRuntimePolicy.permissions(
-                            Prefs.remotePreferencesForUi(FuckAndesApp.serviceInstance)
+                            Prefs.localAgentPreferences()
                         )
                         startRun(
                             request.copy(
@@ -949,7 +949,7 @@ internal class AgentRuntimeService : Service(), LifecycleOwner, SavedStateRegist
 
     private fun currentRuntimePermissions(): AgentRuntimePolicy.Permissions =
         AgentRuntimePolicy.permissions(
-            Prefs.remotePreferencesForUi(FuckAndesApp.serviceInstance)
+            Prefs.localAgentPreferences()
         )
 
     private fun AgentRuntimeWire.RunRequest.withActiveSupplements(): AgentRuntimeWire.RunRequest {

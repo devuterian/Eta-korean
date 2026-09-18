@@ -1,11 +1,15 @@
 package fuck.andes.agent.tool
 
 import android.content.Context
+import fuck.andes.agent.device.RootShellDeviceController
 import fuck.andes.agent.model.AgentModelClient
+import fuck.andes.agent.model.AgentScreenObservationContract
 import fuck.andes.core.AgentLogger
 import java.util.concurrent.atomic.AtomicBoolean
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -150,10 +154,81 @@ class AgentLocalToolsPermissionTest {
         tools.close()
     }
 
+    @Test
+    fun defaultScreenObservationReturnsTreeWithoutImage() {
+        var received: AgentScreenObservationContract.Options? = null
+        val tools = tools(
+            screenObservationProvider = { options ->
+                received = options
+                observation(
+                    observationId = "o-tree",
+                    screenshotRequested = false,
+                )
+            },
+        )
+
+        val result = tools.execute(
+            AgentModelClient.ToolCall(
+                id = "observe-tree",
+                name = "observe_screen",
+                argumentsJson = "{}",
+            ),
+        )
+        val content = JSONObject(result.content)
+
+        assertFalse(checkNotNull(received).includeScreenshot)
+        assertTrue(checkNotNull(received).includeUiTree)
+        assertEquals(60, checkNotNull(received).maxNodes)
+        assertEquals("o-tree", content.getString("observation_id"))
+        assertFalse(content.getJSONObject("screenshot").getBoolean("requested"))
+        assertTrue(result.images.isEmpty())
+        tools.close()
+    }
+
+    @Test
+    fun explicitScreenshotRefreshesTreeAndReturnsImage() {
+        var received: AgentScreenObservationContract.Options? = null
+        val image = AgentModelClient.ModelImage(
+            reference = "data:image/webp;base64,AA==",
+            mimeType = "image/webp",
+            bytes = 1,
+            width = 1080,
+            height = 2400,
+            source = "screen",
+        )
+        val tools = tools(
+            screenObservationProvider = { options ->
+                received = options
+                observation(
+                    observationId = "o-image",
+                    screenshotRequested = true,
+                    image = image,
+                )
+            },
+        )
+
+        val result = tools.execute(
+            AgentModelClient.ToolCall(
+                id = "observe-image",
+                name = "observe_screen",
+                argumentsJson = """{"include_screenshot":true}""",
+            ),
+        )
+
+        assertTrue(checkNotNull(received).includeScreenshot)
+        assertTrue(checkNotNull(received).includeUiTree)
+        assertEquals("o-image", JSONObject(result.content).getString("observation_id"))
+        assertEquals(listOf(image), result.images)
+        tools.close()
+    }
+
     private fun tools(
         terminalEnabled: () -> Boolean = { false },
         browserEnabled: () -> Boolean = { false },
         memoryEnabled: () -> Boolean = { false },
+        screenObservationProvider: (
+            (AgentScreenObservationContract.Options) -> RootShellDeviceController.Observation
+        )? = null,
         beforeToolExecution: (String) -> ToolExecutionDecision = {
             ToolExecutionDecision.Allow
         },
@@ -165,8 +240,49 @@ class AgentLocalToolsPermissionTest {
             terminalToolsEnabled = terminalEnabled,
             browserToolsEnabled = browserEnabled,
             memoryToolsEnabled = memoryEnabled,
+            screenObservationProvider = screenObservationProvider,
             beforeToolExecution = beforeToolExecution,
         )
+
+    private fun observation(
+        observationId: String,
+        screenshotRequested: Boolean,
+        image: AgentModelClient.ModelImage? = null,
+    ): RootShellDeviceController.Observation {
+        val elementObservation = RootShellDeviceController.ElementObservation(
+            id = observationId,
+            source = RootShellDeviceController.ElementSource.ACCESSIBILITY,
+            packageName = "example.app",
+            windowId = 1,
+            nodes = emptyList(),
+            maxNodes = 60,
+            truncated = false,
+        )
+        val content = JSONObject()
+            .put("ok", true)
+            .put("tool", "observe_screen")
+            .put("observation_id", observationId)
+            .put(
+                "screenshot",
+                JSONObject()
+                    .put("requested", screenshotRequested)
+                    .put("attached", image != null),
+            )
+            .toString()
+        return RootShellDeviceController.Observation(
+            content = content,
+            image = image,
+            elementObservation = elementObservation,
+            coordinateSpace = image?.let {
+                RootShellDeviceController.CoordinateSpace(
+                    screenWidth = 1080,
+                    screenHeight = 2400,
+                    screenshotWidth = checkNotNull(it.width),
+                    screenshotHeight = checkNotNull(it.height),
+                )
+            },
+        )
+    }
 
     private object NoOpLogger : AgentLogger {
         override fun debug(message: () -> String) = Unit
