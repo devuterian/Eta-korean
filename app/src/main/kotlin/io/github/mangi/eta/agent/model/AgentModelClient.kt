@@ -220,7 +220,7 @@ internal object AgentModelClient {
 
     private fun ModelConfig.validate() {
         require(baseUrl.isNotBlank()) { "请先配置 API 地址" }
-        require(apiKey.isNotBlank()) { "请先配置 API Key" }
+        require(apiKey.isNotBlank() || providerId == BuiltinProviders.CHATGPT_CODEX_ID) { "请先配置 API Key" }
         require(model.isNotBlank()) { "请先配置模型名" }
         require(
             reasoningCapabilities?.mandatory != true ||
