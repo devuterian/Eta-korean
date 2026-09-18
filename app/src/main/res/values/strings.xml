@@ -1181,4 +1181,22 @@
   <string name="context_compaction">Context compaction</string>
   <string name="context_compact_action">Compact context</string>
   <string name="context_usage_estimated">%1$s\nEstimated after compaction</string>
+  <string name="codex_provider_connection_summary">Uses your ChatGPT account and Codex subscription allowance. An OpenAI API key is not required.</string>
+  <string name="codex_login_title">Sign in with ChatGPT</string>
+  <string name="codex_login_summary">Open OpenAI in your browser and connect this device with a one-time code.</string>
+  <string name="codex_logged_in_title">ChatGPT connected</string>
+  <string name="codex_logged_in_summary">This provider uses the Codex allowance included with your ChatGPT account.</string>
+  <string name="codex_logged_in_email">Connected as %1$s</string>
+  <string name="codex_logout_title">Sign out of ChatGPT</string>
+  <string name="codex_logout_summary">Remove the encrypted ChatGPT tokens stored only on this device.</string>
+  <string name="codex_logged_out">Signed out of ChatGPT.</string>
+  <string name="codex_requesting_device_code">Requesting a one-time login code…</string>
+  <string name="codex_waiting_for_login">Waiting for ChatGPT sign-in in your browser…</string>
+  <string name="codex_login_success">ChatGPT sign-in complete.</string>
+  <string name="codex_login_cancelled">ChatGPT sign-in cancelled.</string>
+  <string name="codex_login_failed">ChatGPT sign-in failed: %1$s</string>
+  <string name="codex_device_code_title">Connect ChatGPT</string>
+  <string name="codex_device_code_summary">In the OpenAI page, enter this one-time code: %1$s\n\nThe code expires in about 15 minutes. Only continue if you started this login in Eta.</string>
+  <string name="codex_open_browser">Open browser</string>
+  <string name="codex_browser_open_failed">Could not open a browser: %1$s</string>
 </resources>
