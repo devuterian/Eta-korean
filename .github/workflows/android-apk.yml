@@ -102,7 +102,8 @@ jobs:
 
           echo "Installing $PLATFORM_PACKAGE and $BUILD_TOOLS_PACKAGE"
           "$SDKMANAGER" --sdk_root="$ANDROID_SDK_ROOT" --channel=3 \
-            'platform-tools' "$PLATFORM_PACKAGE" "$BUILD_TOOLS_PACKAGE"
+            'platform-tools' "$PLATFORM_PACKAGE" "$BUILD_TOOLS_PACKAGE" \
+            'ndk;29.0.14206865'
           chmod +x gradlew
 
       - name: Build debug APK
