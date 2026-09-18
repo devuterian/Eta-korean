@@ -1516,7 +1516,7 @@ private fun buildToolsState(): AgentToolsUiState =
                 id = "screen",
                 title = "화면 및 컨트롤",
                 tools = listOf(
-                    ToolItemUi("observe_screen", "观察屏幕", "读取当前节点，必要时附原图"),
+                    ToolItemUi("observe_screen", "观察屏幕", "현재 화면의 UI 요소를 읽고, 필요하면 원본 화면 이미지도 함께 확인합니다"),
                     ToolItemUi("tap_element", "요소 탭", "최근 확인한 노드를 탭합니다."),
                     ToolItemUi("tap_area", "영역 탭", "좌표 영역을 탭합니다."),
                     ToolItemUi("long_press", "길게 누르기", "좌표 또는 요소를 길게 누릅니다."),
@@ -1577,15 +1577,15 @@ private fun buildToolsState(): AgentToolsUiState =
                 tools = listOf(
                     ToolItemUi("read_sms_code", "인증번호 읽기", "최근 SMS에서 인증번호만 추출합니다."),
                     ToolItemUi("recent_notifications", "알림 읽기", "현재 알림의 제목과 본문을 읽습니다."),
-                    ToolItemUi("search_notification_history", "通知历史", "检索授权后本机保存的最近 7 天通知"),
-                    ToolItemUi("recent_app_activity", "最近应用", "查看最近打开过的应用和时间"),
-                    ToolItemUi("app_usage_summary", "应用使用统计", "按前台时长汇总近期应用使用"),
-                    ToolItemUi("get_current_location", "当前位置", "读取系统已有的最近位置"),
-                    ToolItemUi("get_device_environment", "设备环境", "读取锁屏、勿扰、音频输出和外接屏状态"),
-                    ToolItemUi("list_alarms", "闹钟计划", "读取时钟中已创建的闹钟"),
-                    ToolItemUi("list_active_timers", "活动计时器", "读取正在运行或暂停的计时器"),
-                    ToolItemUi("search_clipboard_history", "剪贴板历史", "检索系统输入法保存的剪贴板内容"),
-                    ToolItemUi("get_health_summary", "健康摘要", "汇总步数、睡眠、运动和身体指标"),
+                    ToolItemUi("search_notification_history", "알림 기록", "권한 허용 후 기기에 저장된 최근 7일 알림을 검색합니다"),
+                    ToolItemUi("recent_app_activity", "최근 앱", "최근에 연 앱과 사용 시각을 확인합니다"),
+                    ToolItemUi("app_usage_summary", "앱 사용 통계", "최근 앱 사용량을 포그라운드 시간 기준으로 요약합니다"),
+                    ToolItemUi("get_current_location", "현재 위치", "시스템에 저장된 최근 위치를 읽습니다"),
+                    ToolItemUi("get_device_environment", "기기 상태", "잠금 화면, 방해 금지, 오디오 출력, 외부 디스플레이 상태를 읽습니다"),
+                    ToolItemUi("list_alarms", "알람 일정", "시계 앱에 등록된 알람을 확인합니다"),
+                    ToolItemUi("list_active_timers", "실행 중 타이머", "실행 중이거나 일시 정지된 타이머를 확인합니다"),
+                    ToolItemUi("search_clipboard_history", "클립보드 기록", "시스템 키보드에 저장된 클립보드 내용을 검색합니다"),
+                    ToolItemUi("get_health_summary", "건강 요약", "걸음 수, 수면, 운동, 신체 지표를 요약합니다"),
                     ToolItemUi("wifi_credentials", "Wi‑Fi 비밀번호", "휴대폰에 저장된 네트워크 인증 정보를 읽습니다."),
                     ToolItemUi("get_setting", "시스템 설정 읽기", "지정한 Settings 키를 읽습니다."),
                     ToolItemUi("set_setting", "시스템 설정 변경", "보안상 중요하지 않은 Settings 키를 변경합니다."),
@@ -1610,9 +1610,9 @@ private fun buildToolsState(): AgentToolsUiState =
                     ToolItemUi("search_coloros_notes", "ColorOS 노트", "메모, 할 일, 텍스트 콘텐츠 검색"),
                     ToolItemUi("search_coloros_recordings", "ColorOS 녹음", "일반 녹음 및 통화 녹음 검색"),
                     ToolItemUi("search_recording_summaries", "녹화 요약", "녹음과 관련된 기록된 요약 및 메모 검색"),
-                    ToolItemUi("search_coloros_memories", "ColorOS 系统记忆", "检索已收集的信息及其结构化关联内容"),
-                    ToolItemUi("search_saved_places", "保存地点", "检索系统记忆中的地点信息"),
-                    ToolItemUi("search_personal_orders", "个人订单", "检索外卖、购物、快递、票券和出行订单"),
+                    ToolItemUi("search_coloros_memories", "ColorOS 시스템 메모리", "수집된 정보와 관련 구조화 데이터를 검색합니다"),
+                    ToolItemUi("search_saved_places", "저장된 장소", "시스템 메모리의 장소 정보를 검색합니다"),
+                    ToolItemUi("search_personal_orders", "개인 주문 내역", "음식 배달, 쇼핑, 택배, 티켓, 교통 주문 내역을 검색합니다"),
                     ToolItemUi("search_qq_chat_images", "QQ 채팅 사진", "QQ 채팅 사진 캐시에서 최근 사진을 검색하세요"),
                     ToolItemUi("search_wechat_chat_images", "위챗 채팅 사진", "WeChat 채팅 사진 캐시에서 최근 사진 검색"),
                 ),
@@ -1703,21 +1703,21 @@ private fun buildPermissionHealthState(context: Context): PermissionHealthUiStat
             ),
             PermissionHealthItemUi(
                 id = "notification_history",
-                title = "通知使用权",
+                title = "알림 접근 권한",
                 summary = if (notificationHistoryEnabled) {
-                    "本机有界保存最近 7 天通知，仅在工具调用时读取"
+                    "최근 7일 알림을 기기에 제한적으로 저장하며, 도구 호출 시에만 읽습니다"
                 } else {
-                    "授权后开始记录可检索的通知历史"
+                    "권한을 허용하면 검색 가능한 알림 기록을 저장하기 시작합니다"
                 },
                 status = if (notificationHistoryEnabled) PermissionStatusUi.Available else PermissionStatusUi.Missing,
-                primaryActionLabel = if (notificationHistoryEnabled) null else "去授权",
+                primaryActionLabel = if (notificationHistoryEnabled) null else "권한 설정",
             ),
             PermissionHealthItemUi(
                 id = "usage_access",
-                title = "使用情况访问",
-                summary = "用于读取最近打开的应用和前台使用时长",
+                title = "사용 정보 접근 권한",
+                summary = "최근에 연 앱과 포그라운드 사용 시간을 확인하는 데 사용합니다",
                 status = if (usageAccessEnabled) PermissionStatusUi.Available else PermissionStatusUi.Missing,
-                primaryActionLabel = if (usageAccessEnabled) null else "去授权",
+                primaryActionLabel = if (usageAccessEnabled) null else "권한 설정",
             ),
             PermissionHealthItemUi(
                 id = "accessibility",
