@@ -9,6 +9,7 @@ import io.github.mangi.eta.agent.terminal.TerminalRuntime
 import io.github.mangi.eta.config.Prefs
 import io.github.mangi.eta.core.AndroidAgentLogger
 import io.github.mangi.eta.core.safeLogType
+import io.github.mangi.eta.data.auth.ChatGptCodexAuthManager
 import io.github.mangi.eta.data.datastore.SettingsDataStore
 import io.github.mangi.eta.data.repository.AgentMemoryRepository
 import io.github.mangi.eta.data.repository.AppearanceSettingsRepository
@@ -43,6 +44,7 @@ class EtaApp : Application(), XposedServiceHelper.OnServiceListener {
 
     override fun onCreate() {
         super.onCreate()
+        ChatGptCodexAuthManager.init(this)
         Prefs.initLocal(this)
         if (!AppProcessPolicy.shouldInitializeFullRuntime(Application.getProcessName(), packageName)) {
             return
