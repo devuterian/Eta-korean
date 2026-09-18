@@ -189,9 +189,9 @@ internal object FakeAgentUiStates {
                 title = "화면 조작",
                 tools = listOf(
                     ToolItemUi("observe", "观察屏幕", "读取界面节点，必要时附原图"),
-                    ToolItemUi("click", "点击", "点击指定坐标或元素"),
-                    ToolItemUi("long_press", "长按", "长按指定元素"),
-                    ToolItemUi("swipe", "滑动", "滑动、滚动、返回等手势"),
+                    ToolItemUi("click", "탭", "지정한 좌표 또는 요소 탭"),
+                    ToolItemUi("long_press", "길게 누르기", "지정한 요소 길게 누르기"),
+                    ToolItemUi("swipe", "스와이프", "스와이프, 스크롤, 뒤로 가기 등 제스처"),
                 ),
             ),
             ToolGroupUi(

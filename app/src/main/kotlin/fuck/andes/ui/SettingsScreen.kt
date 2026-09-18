@@ -166,7 +166,7 @@ internal fun SettingsScreen(
                 item(key = "service_warning") {
                     Card(modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)) {
                         BasicComponent(
-                            title = "LSPosed 服务未连接",
+                            title = "LSPosed 서비스가 연결되지 않음",
                             summary = "Agent 与本地工具仍可使用，系统助手接管、Gemini 和一圈即搜设置暂不可修改",
                         )
                     }
@@ -192,7 +192,7 @@ internal fun SettingsScreen(
                     SwitchPref(
                         context = context,
                         prefs = agentPrefs,
-                        title = "默认启用深度思考",
+                        title = "기본으로 심층 사고 사용",
                         key = Prefs.Keys.AGENT_THINKING_ENABLED,
                         icon = LucideR.drawable.lucide_ic_brain,
                         iconTint = ColorOSRoyalBlue,
@@ -218,7 +218,7 @@ internal fun SettingsScreen(
                     SwitchPref(
                         context = context,
                         prefs = agentPrefs,
-                        title = "启用网页浏览工具",
+                        title = "웹 브라우징 도구 사용",
                         key = Prefs.Keys.AGENT_BROWSER_TOOLS,
                         icon = LucideR.drawable.lucide_ic_globe,
                         iconTint = ColorOSVividGreen,
@@ -227,7 +227,7 @@ internal fun SettingsScreen(
                     SwitchPref(
                         context = context,
                         prefs = agentPrefs,
-                        title = "启用设备直达工具",
+                        title = "기기 직접 제어 도구 사용",
                         key = Prefs.Keys.AGENT_DEVICE_DIRECT_TOOLS,
                         icon = LucideR.drawable.lucide_ic_smartphone,
                         iconTint = ColorOSVividGreen,
@@ -236,7 +236,7 @@ internal fun SettingsScreen(
                     SwitchPref(
                         context = context,
                         prefs = agentPrefs,
-                        title = "允许读取敏感设备信息",
+                        title = "민감한 기기 정보 읽기 허용",
                         key = Prefs.Keys.AGENT_DEVICE_SENSITIVE_READ_TOOLS,
                         icon = LucideR.drawable.lucide_ic_eye,
                         iconTint = ColorOSAmberYellow,
@@ -245,7 +245,7 @@ internal fun SettingsScreen(
                     SwitchPref(
                         context = context,
                         prefs = agentPrefs,
-                        title = "允许敏感设备操作",
+                        title = "민감한 기기 작업 허용",
                         key = Prefs.Keys.AGENT_DEVICE_SENSITIVE_ACTION_TOOLS,
                         icon = LucideR.drawable.lucide_ic_shield_alert,
                         iconTint = ColorOSAmberYellow,
@@ -254,7 +254,7 @@ internal fun SettingsScreen(
                     SwitchPref(
                         context = context,
                         prefs = agentPrefs,
-                        title = "启用终端/文件工具",
+                        title = "터미널/파일 도구 사용",
                         key = Prefs.Keys.AGENT_TERMINAL_TOOLS,
                         icon = LucideR.drawable.lucide_ic_square_terminal,
                         iconTint = ColorOSAmberYellow,
