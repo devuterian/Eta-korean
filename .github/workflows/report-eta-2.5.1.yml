@@ -1,0 +1,45 @@
+name: Report Eta 2.5.1 release
+
+on:
+  workflow_run:
+    workflows: ["Android APK"]
+    types: [completed]
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  report:
+    if: github.event.workflow_run.head_branch == 'main' && github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Report release once
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          RUN_URL: ${{ github.event.workflow_run.html_url }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          MARKER="ETA_RELEASE_SUCCESS version=2.5.1"
+          if gh api "repos/$REPO/issues/14/comments" --paginate --jq '.[].body' | grep -Fq "$MARKER"; then
+            echo "Release already reported."
+            exit 0
+          fi
+
+          ASSET_NAME="$(gh release view 2.5.1 --repo "$REPO" --json assets --jq '.assets[].name' | grep -Fx 'Eta-2.5.1.apk' || true)"
+          if [[ "$ASSET_NAME" != 'Eta-2.5.1.apk' ]]; then
+            echo "Eta-2.5.1.apk is missing from release 2.5.1." >&2
+            exit 1
+          fi
+
+          gh pr comment 14 --repo "$REPO" --body "$MARKER
+          main_sha=$HEAD_SHA
+          run_id=$RUN_ID
+          run_url=$RUN_URL
+          release=https://github.com/$REPO/releases/tag/2.5.1
+          apk=https://github.com/$REPO/releases/download/2.5.1/Eta-2.5.1.apk"
