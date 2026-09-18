@@ -2,6 +2,8 @@
 
 package io.github.mangi.eta.ui.pages.providers
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -39,11 +42,13 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.mangi.eta.EtaApp
 import io.github.mangi.eta.R
+import io.github.mangi.eta.data.auth.ChatGptCodexAuthManager
 import io.github.mangi.eta.data.model.AnthropicProviderSetting
 import io.github.mangi.eta.data.model.CustomProviderSetting
 import io.github.mangi.eta.data.model.OpenAiEndpointMode
 import io.github.mangi.eta.data.model.ProviderSetting
 import io.github.mangi.eta.data.model.withId
+import io.github.mangi.eta.data.provider.BuiltinProviders
 import io.github.mangi.eta.data.repository.ProviderRepository
 import io.github.mangi.eta.data.repository.RemoteModelFetcher
 import io.github.mangi.eta.data.repository.RuntimeConfigRepository
@@ -56,6 +61,7 @@ import io.github.mangi.eta.ui.components.StatusSuccess
 import io.github.mangi.eta.ui.layout.horizontalCutoutPadding
 import io.github.mangi.eta.ui.navigation.NewProviderType
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.BasicComponent
@@ -209,6 +215,7 @@ private fun ProviderConfigTab(
     var showResetDialog by remember { mutableStateOf(false) }
     var isWorking by remember { mutableStateOf(false) }
     var creationCommitted by remember { mutableStateOf(false) }
+    val isChatGptCodex = provider.id == BuiltinProviders.CHATGPT_CODEX_ID
 
     LazyColumn(
         modifier = Modifier
@@ -234,31 +241,40 @@ private fun ProviderConfigTab(
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    TextField(
-                        value = draft.baseUrl,
-                        onValueChange = { onDraftChange(draft.copy(baseUrl = it)) },
-                        label = "Base URL",
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    TextField(
-                        value = draft.apiKey,
-                        onValueChange = { onDraftChange(draft.copy(apiKey = it)) },
-                        label = "API Key",
-                        singleLine = true,
-                        visualTransformation = if (apiKeyVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                        trailingIcon = {
-                            IconButton(onClick = { apiKeyVisible = !apiKeyVisible }) {
-                                Icon(
-                                    imageVector = if (apiKeyVisible) Icons.Rounded.Visibility else Icons.Rounded.VisibilityOff,
-                                    contentDescription = if (apiKeyVisible) context.getString(R.string.page_hide_bb0e7e) else context.getString(R.string.page_show_71b677),
-                                )
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                    if (isChatGptCodex) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            text = stringResource(R.string.codex_provider_connection_summary),
+                            style = MiuixTheme.textStyles.footnote2,
+                            color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                        )
+                    } else {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        TextField(
+                            value = draft.baseUrl,
+                            onValueChange = { onDraftChange(draft.copy(baseUrl = it)) },
+                            label = "Base URL",
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        TextField(
+                            value = draft.apiKey,
+                            onValueChange = { onDraftChange(draft.copy(apiKey = it)) },
+                            label = "API Key",
+                            singleLine = true,
+                            visualTransformation = if (apiKeyVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                            trailingIcon = {
+                                IconButton(onClick = { apiKeyVisible = !apiKeyVisible }) {
+                                    Icon(
+                                        imageVector = if (apiKeyVisible) Icons.Rounded.Visibility else Icons.Rounded.VisibilityOff,
+                                        contentDescription = if (apiKeyVisible) context.getString(R.string.page_hide_bb0e7e) else context.getString(R.string.page_show_71b677),
+                                    )
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
                     if (provider is AnthropicProviderSetting) {
                         Spacer(modifier = Modifier.height(12.dp))
                         TextField(
@@ -270,7 +286,11 @@ private fun ProviderConfigTab(
                         )
                     }
                 }
-                if (provider !is AnthropicProviderSetting) {
+                if (isChatGptCodex) {
+                    HorizontalDivider()
+                    ChatGptCodexAuthControls()
+                }
+                if (provider !is AnthropicProviderSetting && !isChatGptCodex) {
                     HorizontalDivider()
                     WindowSpinnerPreference(
                         items = listOf(
@@ -581,6 +601,124 @@ private fun ProviderConfigTab(
                             isWorking = false
                         }
                     }
+                },
+            )
+        }
+    }
+}
+
+
+@Composable
+private fun ChatGptCodexAuthControls() {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var account by remember { mutableStateOf(ChatGptCodexAuthManager.accountSummary()) }
+    var deviceAuthorization by remember {
+        mutableStateOf<ChatGptCodexAuthManager.DeviceAuthorization?>(null)
+    }
+    var authStatus by remember { mutableStateOf<String?>(null) }
+    var loginJob by remember { mutableStateOf<Job?>(null) }
+    var isWorking by remember { mutableStateOf(false) }
+
+    fun openVerificationPage(url: String) {
+        runCatching {
+            context.startActivity(
+                Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            )
+        }.onFailure { throwable ->
+            authStatus = context.getString(
+                R.string.codex_browser_open_failed,
+                throwable.message ?: throwable.javaClass.simpleName,
+            )
+        }
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            loginJob?.cancel()
+        }
+    }
+
+    BasicComponent(
+        title = if (account == null) {
+            stringResource(R.string.codex_login_title)
+        } else {
+            stringResource(R.string.codex_logged_in_title)
+        },
+        summary = when {
+            account?.email?.isNotBlank() == true ->
+                stringResource(R.string.codex_logged_in_email, account?.email.orEmpty())
+            account != null ->
+                stringResource(R.string.codex_logged_in_summary)
+            authStatus != null ->
+                authStatus
+            else ->
+                stringResource(R.string.codex_login_summary)
+        },
+        enabled = !isWorking && account == null,
+        onClick = {
+            if (account != null || isWorking) return@BasicComponent
+            loginJob?.cancel()
+            loginJob = scope.launch {
+                isWorking = true
+                authStatus = context.getString(R.string.codex_requesting_device_code)
+                try {
+                    val device = ChatGptCodexAuthManager.requestDeviceAuthorization()
+                    deviceAuthorization = device
+                    authStatus = context.getString(R.string.codex_waiting_for_login)
+                    openVerificationPage(device.verificationUrl)
+                    account = ChatGptCodexAuthManager.completeDeviceAuthorization(device)
+                    authStatus = context.getString(R.string.codex_login_success)
+                } catch (cancelled: CancellationException) {
+                    authStatus = context.getString(R.string.codex_login_cancelled)
+                } catch (throwable: Throwable) {
+                    authStatus = context.getString(
+                        R.string.codex_login_failed,
+                        throwable.message ?: throwable.javaClass.simpleName,
+                    )
+                } finally {
+                    deviceAuthorization = null
+                    isWorking = false
+                    loginJob = null
+                }
+            }
+        },
+    )
+
+    if (account != null) {
+        HorizontalDivider(modifier = Modifier.padding(start = 16.dp))
+        BasicComponent(
+            title = stringResource(R.string.codex_logout_title),
+            summary = stringResource(R.string.codex_logout_summary),
+            enabled = !isWorking,
+            onClick = {
+                loginJob?.cancel()
+                ChatGptCodexAuthManager.clearCredential()
+                account = null
+                authStatus = context.getString(R.string.codex_logged_out)
+            },
+        )
+    }
+
+    deviceAuthorization?.let { device ->
+        OverlayDialog(
+            show = true,
+            title = stringResource(R.string.codex_device_code_title),
+            summary = stringResource(R.string.codex_device_code_summary, device.userCode),
+            onDismissRequest = {
+                loginJob?.cancel()
+                deviceAuthorization = null
+            },
+        ) {
+            MiuixDialogActions(
+                confirmText = stringResource(R.string.codex_open_browser),
+                onCancel = {
+                    loginJob?.cancel()
+                    deviceAuthorization = null
+                },
+                onConfirm = {
+                    openVerificationPage(device.verificationUrl)
                 },
             )
         }
