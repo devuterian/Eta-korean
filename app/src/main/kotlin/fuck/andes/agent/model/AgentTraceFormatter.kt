@@ -69,7 +69,7 @@ internal class AgentTraceFormatter {
     private fun summarizeObservationArguments(argumentsJson: String): String =
         runCatching {
             val options = AgentScreenObservationContract.resolve(JSONObject(argumentsJson))
-            "观察屏幕 · screenshot=${options.includeScreenshot} · " +
+            "화면 관찰 · screenshot=${options.includeScreenshot} · " +
                 "ui_tree=${options.includeUiTree}"
         }.getOrDefault("观察屏幕")
 
