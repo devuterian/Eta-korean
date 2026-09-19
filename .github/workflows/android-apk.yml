@@ -106,6 +106,9 @@ jobs:
             'ndk;29.0.14206865'
           chmod +x gradlew
 
+      - name: Run unit tests
+        run: ./gradlew --no-daemon --stacktrace --console=plain testDebugUnitTest
+
       - name: Build debug APK
         run: ./gradlew --no-daemon --stacktrace --console=plain assembleDebug
 
@@ -138,7 +141,9 @@ jobs:
           cat > "$NOTES" <<EOF
           Eta ${VERSION} 한국어 현지화 빌드입니다.
 
-          - upstream 버전: ${VERSION}
+          - upstream 버전: ${{ steps.version.outputs.base_version }}
+          - 한국어 버전: ${VERSION}
+          - ChatGPT Codex 계정 로그인 지원
           - 빌드: GitHub Actions debug APK
           - 커밋: ${GITHUB_SHA}
           - Actions: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}
