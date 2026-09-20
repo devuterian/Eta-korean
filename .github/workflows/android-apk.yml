@@ -120,13 +120,14 @@ jobs:
             "app/build/outputs/apk/debug/${{ steps.version.outputs.apk_name }}"
 
       - name: Upload APK artifact
+        if: github.event_name != 'push'
         uses: actions/upload-artifact@v4
         with:
           name: Eta-${{ steps.version.outputs.version }}
           path: app/build/outputs/apk/debug/${{ steps.version.outputs.apk_name }}
           if-no-files-found: error
           compression-level: 0
-          retention-days: 14
+          retention-days: 3
 
       - name: Publish GitHub Release
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
