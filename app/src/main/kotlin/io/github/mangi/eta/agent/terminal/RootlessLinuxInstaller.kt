@@ -1,5 +1,6 @@
 package io.github.mangi.eta.agent.terminal
 
+import io.github.mangi.eta.i18n.ko
 import java.io.File
 import java.io.IOException
 import java.nio.file.Files
@@ -42,7 +43,7 @@ internal object RootlessLinuxInstaller {
                             require(!Files.isSymbolicLink(target.toPath()))
                             val available = root.usableSpace
                             if (available > 0 && entry.size + 16L * 1024 * 1024 > available) {
-                                throw RootlessInstallFailure("INSUFFICIENT_STORAGE", "存储空间不足，请清理内部存储后重试")
+                                throw RootlessInstallFailure("INSUFFICIENT_STORAGE", ko("存储空间不足，请清理内部存储后重试", "저장 공간이 부족합니다. 내부 저장소를 정리한 후 다시 시도하세요"))
                             }
                             target.outputStream().use { output ->
                                 val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
@@ -110,10 +111,10 @@ internal object RootlessLinuxInstaller {
     suspend fun installBase(artifact: VerifiedArtifact, archive: File, rootfs: File, distribution: LinuxDistribution): Boolean {
         val staging = File(rootfs.parentFile, "rootfs.installing")
         try {
-            if (!staging.parentFile!!.mkdirs() && !staging.parentFile!!.isDirectory) throw RootlessInstallFailure("INSTALL_DIRECTORY_UNAVAILABLE", "无法创建环境目录，请检查内部存储")
+            if (!staging.parentFile!!.mkdirs() && !staging.parentFile!!.isDirectory) throw RootlessInstallFailure("INSTALL_DIRECTORY_UNAVAILABLE", ko("无法创建环境目录，请检查内部存储", "환경 폴더를 만들 수 없습니다. 내부 저장소를 확인하세요"))
             val available = staging.parentFile!!.usableSpace
-            if (available in 1 until 512L * 1024 * 1024) throw RootlessInstallFailure("INSUFFICIENT_STORAGE", "安装 Linux 至少需要 512 MB 可用内部存储，请清理后重试")
-            if (staging.exists() && !staging.deleteRecursively()) throw RootlessInstallFailure("STAGING_CLEANUP_FAILED", "无法清理未完成安装，请重启 Eta 后重试")
+            if (available in 1 until 512L * 1024 * 1024) throw RootlessInstallFailure("INSUFFICIENT_STORAGE", ko("安装 Linux 至少需要 512 MB 可用内部存储，请清理后重试", "Linux를 설치하려면 내부 저장소 여유 공간이 512MB 이상 필요합니다. 정리한 후 다시 시도하세요"))
+            if (staging.exists() && !staging.deleteRecursively()) throw RootlessInstallFailure("STAGING_CLEANUP_FAILED", ko("无法清理未完成安装，请重启 Eta 后重试", "완료되지 않은 설치를 정리할 수 없습니다. Eta를 다시 시작한 후 다시 시도하세요"))
             extract(archive, staging, xz = distribution == LinuxDistribution.DEBIAN, stripComponents = if (distribution == LinuxDistribution.DEBIAN) 1 else 0)
             listOf("proc", "sys", "dev", "dev/shm", "workspace", "storage/emulated/0", "tmp", "usr/local/bin", "root").forEach { File(staging, it).mkdirs() }
             File(staging, "etc/resolv.conf").apply {
@@ -136,10 +137,10 @@ internal object RootlessLinuxInstaller {
             }
             File(staging, "usr/local/bin/${helper.first}").apply { writeText(helper.second + "\n"); setExecutable(true, false) }
             val result = InstallerShellRunner.run("/bin/sh -c ':'", 20, distribution.terminalEnvironment, staging.absolutePath)
-            if (result.exitCode != 0) throw RootlessInstallFailure("PROOT_START_FAILED", "免 Root Linux 无法启动（退出码 ${result.exitCode}），请确认使用受支持的 64 位设备并重试")
+            if (result.exitCode != 0) throw RootlessInstallFailure("PROOT_START_FAILED", ko("免 Root Linux 无法启动（退出码 ${result.exitCode}），请确认使用受支持的 64 位设备并重试", "Root 없는 Linux를 시작할 수 없습니다(종료 코드 ${result.exitCode}). 지원되는 64비트 기기인지 확인한 후 다시 시도하세요"))
             File(staging, LinuxEnvironmentPaths.READY_MARKER).writeText("version=${artifact.version}\nsha256=${artifact.sha256}\nbackend=proot\n")
-            if (rootfs.exists()) throw RootlessInstallFailure("ENVIRONMENT_ALREADY_EXISTS", "已保留原环境目录，无法覆盖；请先导出所需文件再处理未完成的环境")
-            if (!staging.renameTo(rootfs)) throw RootlessInstallFailure("ENVIRONMENT_ACTIVATION_FAILED", "无法启用新环境，请检查内部存储空间后重试")
+            if (rootfs.exists()) throw RootlessInstallFailure("ENVIRONMENT_ALREADY_EXISTS", ko("已保留原环境目录，无法覆盖；请先导出所需文件再处理未完成的环境", "기존 환경 폴더가 남아 있어 덮어쓸 수 없습니다. 필요한 파일을 먼저 내보낸 후 미완료 환경을 정리하세요"))
+            if (!staging.renameTo(rootfs)) throw RootlessInstallFailure("ENVIRONMENT_ACTIVATION_FAILED", ko("无法启用新环境，请检查内部存储空间后重试", "새 환경을 활성화할 수 없습니다. 내부 저장소 공간을 확인한 후 다시 시도하세요"))
             return true
         } finally {
             if (staging.exists()) staging.deleteRecursively()

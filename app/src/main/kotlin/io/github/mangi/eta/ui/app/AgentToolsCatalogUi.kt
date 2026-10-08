@@ -58,7 +58,7 @@ internal fun buildToolsState(context: Context): AgentToolsUiState =
                 id = "device_direct",
                 title = context.getString(R.string.state_direct_access_to_equipment_eda92c),
                 tools = io.github.mangi.eta.agent.model.AgentPhoneToolCatalog.entries.filterNot { it.personal }.map {
-                    ToolItemUi(it.name, it.title, it.description)
+                    ToolItemUi(it.name, it.displayTitle, it.displayDescription)
                 } + listOf(
                     ToolItemUi("list_alarms", context.getString(R.string.tool_ui_alarm_clock_schedule_acae32), context.getString(R.string.tool_ui_read_the_alarm_clock_that_has_been_created_in_th_2320d6)),
                     ToolItemUi("list_active_timers", context.getString(R.string.tool_ui_activity_timer_36f107), context.getString(R.string.tool_ui_read_running_or_paused_timers_3437c8)),
@@ -82,9 +82,9 @@ internal fun buildToolsState(context: Context): AgentToolsUiState =
                 id = "personal_data",
                 title = context.getString(R.string.state_direct_access_to_personal_data_387d7b),
                 tools = io.github.mangi.eta.agent.context.PersonalSearchTools.searches.map {
-                    ToolItemUi(it.name, it.title, it.description)
+                    ToolItemUi(it.name, it.title, it.displayDescription)
                 } + io.github.mangi.eta.agent.model.AgentPhoneToolCatalog.entries.filter { it.personal }.map {
-                    ToolItemUi(it.name, it.title, it.description)
+                    ToolItemUi(it.name, it.displayTitle, it.displayDescription)
                 } + listOf(
                     ToolItemUi("read_personal_item", ko("读取检索详情", "검색 결과 상세 읽기"), ko("读取历史检索结果的完整条目。", "이전 검색 결과의 전체 항목을 읽습니다.")),
                     ToolItemUi("summarize_bills", ko("账单汇总", "청구서 요약"), ko("按时间与关键词精确汇总账单索引。", "기간과 키워드로 청구서 색인을 정확히 집계합니다.")),

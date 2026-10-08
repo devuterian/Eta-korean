@@ -1,5 +1,6 @@
 package io.github.mangi.eta.agent.runtime
 
+import io.github.mangi.eta.i18n.ko
 import android.content.Context
 import io.github.mangi.eta.agent.accessibility.AgentAccessibilityKeeper
 import io.github.mangi.eta.agent.model.AgentConversationCodec
@@ -107,12 +108,12 @@ internal class AgentRuntimeRunExecutor(
                 runBlocking { RoleplayRunContext.resolve(appContext, id, contextWindow, memoryEnabled) }
             }
             if (request.operation == AgentRuntimeWire.OP_REWRITE_REPLY) {
-                require(roleplayContext != null) { "只有角色会话可以改写角色回复" }
+                require(roleplayContext != null) { ko("只有角色会话可以改写角色回复", "캐릭터 대화에서만 캐릭터 답변을 다시 쓸 수 있습니다") }
                 val target = request.rewriteTargetMessageId?.takeIf { it.isNotBlank() && it.length <= 256 }
-                    ?: throw IllegalArgumentException("缺少有效的角色回复目标")
+                    ?: throw IllegalArgumentException(ko("缺少有效的角色回复目标", "다시 쓸 캐릭터 답변을 찾을 수 없습니다"))
                 require(runBlocking {
                     EtaDatabase.get(appContext).conversationDao().hasAssistantMessage(conversationId, target)
-                }) { "角色回复目标不存在或不属于当前会话" }
+                }) { ko("角色回复目标不存在或不属于当前会话", "대상 캐릭터 답변이 없거나 현재 대화에 속하지 않습니다") }
             }
             val characterMemoryTools = roleplayContext?.let { roleplay ->
                 CharacterMemoryTools(appContext, roleplay.characterId) {

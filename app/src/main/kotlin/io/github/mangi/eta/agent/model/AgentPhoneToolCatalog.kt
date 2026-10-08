@@ -2,6 +2,7 @@ package io.github.mangi.eta.agent.model
 
 import io.github.mangi.eta.agent.tool.RootRequirement
 import io.github.mangi.eta.agent.tool.SystemStateControls
+import io.github.mangi.eta.i18n.ko
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -15,7 +16,66 @@ internal object AgentPhoneToolCatalog {
         val root: RootRequirement,
         val colorOs: Boolean = false,
         val personal: Boolean = false,
-        val direct: Boolean = false,
+        val direct: Boolean = false,    ) {
+        /** 한국어 포크: 도구 화면·실행 기록에 보이는 이름. 모델에 보내는 설명은 그대로 둔다. */
+        val displayTitle: String
+            get() = ko(title, KOREAN_TITLES[name] ?: title)
+
+        /** 도구 화면에 보이는 설명. 모델에는 [description] 원문을 보낸다. */
+        val displayDescription: String
+            get() = ko(description, KOREAN_DESCRIPTIONS[name] ?: description)
+    }
+
+    private val KOREAN_DESCRIPTIONS = mapOf(
+            "get_flashlight" to "손전등의 실제 상태와 카메라 사용 여부를 확인합니다.",
+            "set_flashlight" to "손전등을 켜거나 끄고 시스템 콜백으로 확인합니다.",
+            "get_device_state" to "지정한 시스템 스위치 상태를 GUI 없이 확인합니다.",
+            "get_display_state" to "밝기, 자동 밝기, 화면 회전, 화면 꺼짐 시간을 확인합니다.",
+            "set_brightness" to "시스템 밝기 슬라이더 비율로 설정하고 다시 읽어 확인합니다.",
+            "set_screen_timeout" to "화면 자동 꺼짐 시간(초)을 설정하고 확인합니다.",
+            "get_sound_state" to "음량, 벨소리, 방해 금지 상태를 읽습니다.",
+            "set_sound_mode" to "소리, 무음, 진동 모드를 설정하고 확인합니다.",
+            "set_do_not_disturb" to "방해 금지 정책을 설정하고 확인합니다.",
+            "get_hotspot" to "모바일 핫스팟이 켜져 있는지 확인합니다.",
+            "set_hotspot" to "기존 핫스팟 설정으로 테더링을 켜거나 끕니다. 이름과 비밀번호는 바꾸지 않습니다.",
+            "list_calendars" to "쓰기 가능한 캘린더의 ID와 이름을 표시합니다.",
+            "read_calendar_event" to "일정과 알림을 event_id로 읽습니다.",
+            "create_calendar_event" to "일정과 알림을 만들고 저장 결과를 확인합니다.",
+            "create_calendar_events" to "한 캘린더에 일정 여러 개(최대 30개)를 한 번에 만들고 확인합니다.",
+            "update_calendar_event" to "event_id로 일정 내용과 알림을 수정하고 확인합니다.",
+            "delete_calendar_event" to "event_id로 일정을 삭제합니다.",
+            "update_alarm_time" to "alarm_id로 알람 시간을 변경하고 확인합니다.",
+            "set_alarm_enabled" to "alarm_id로 알람을 켜거나 끄고 확인합니다.",
+            "delete_alarm" to "alarm_id로 알람을 삭제하고 확인합니다.",
+            "create_note" to "시스템 메모를 만들고 저장 결과를 확인합니다.",
+            "read_note" to "note_id로 메모 내용을 읽습니다.",
+            "delete_note" to "note_id로 메모를 휴지통으로 옮깁니다. 영구 삭제하지 않습니다."
+    )
+
+    private val KOREAN_TITLES = mapOf(
+            "get_flashlight" to "손전등 상태",
+            "set_flashlight" to "손전등 설정",
+            "get_device_state" to "시스템 스위치 조회",
+            "get_display_state" to "디스플레이 상태",
+            "set_brightness" to "밝기 설정",
+            "set_screen_timeout" to "화면 꺼짐 시간 설정",
+            "get_sound_state" to "소리 상태",
+            "set_sound_mode" to "벨소리 모드 설정",
+            "set_do_not_disturb" to "방해 금지 설정",
+            "get_hotspot" to "핫스팟 상태",
+            "set_hotspot" to "핫스팟 설정",
+            "list_calendars" to "캘린더 목록",
+            "read_calendar_event" to "일정 상세",
+            "create_calendar_event" to "일정 만들기",
+            "create_calendar_events" to "일정 여러 개 만들기",
+            "update_calendar_event" to "일정 수정",
+            "delete_calendar_event" to "일정 삭제",
+            "update_alarm_time" to "알람 시간 변경",
+            "set_alarm_enabled" to "알람 켜기/끄기",
+            "delete_alarm" to "알람 삭제",
+            "create_note" to "메모 만들기",
+            "read_note" to "메모 상세",
+            "delete_note" to "메모 휴지통으로 이동"
     )
 
     val entries =

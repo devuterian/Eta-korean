@@ -1,5 +1,6 @@
 package io.github.mangi.eta.agent.runtime
 
+import io.github.mangi.eta.i18n.ko
 import java.util.concurrent.Executors
 import java.util.concurrent.RejectedExecutionException
 import android.app.Service
@@ -164,12 +165,12 @@ internal class AgentRuntimeService : Service(), LifecycleOwner, SavedStateRegist
                     runId = pending.incoming.request.runId,
                     ok = false,
                     content = "",
-                    error = "Agent Runtime 服务已停止",
+                    error = ko("Agent Runtime 服务已停止", "Agent Runtime 서비스가 중지되었습니다"),
                 ),
             )
         }
         pendingStartRequest = null
-        activeSession?.cancel("Agent Runtime 服务已停止")
+        activeSession?.cancel(ko("Agent Runtime 服务已停止", "Agent Runtime 서비스가 중지되었습니다"))
         activeSession = null
         resultIo.shutdownNow()
         mainHandler.removeCallbacksAndMessages(null)
@@ -200,7 +201,7 @@ internal class AgentRuntimeService : Service(), LifecycleOwner, SavedStateRegist
                 AgentRuntimeWire.MSG_START_RUN -> {
                     val data = msg.data
                     if (data == null) {
-                        finishWithFailure("Agent Runtime 请求缺少消息体", msg.replyTo)
+                        finishWithFailure(ko("Agent Runtime 请求缺少消息体", "Agent Runtime 요청에 메시지 본문이 없습니다"), msg.replyTo)
                         return
                     }
                     val incoming = runCatching {
@@ -209,13 +210,13 @@ internal class AgentRuntimeService : Service(), LifecycleOwner, SavedStateRegist
                         AndroidAgentLogger.warnThrottled("runtime_invalid_start_request") {
                             "Agent runtime rejected invalid start request: type=${throwable.safeLogType()}"
                         }
-                        finishWithFailure("Agent Runtime 请求格式无效", msg.replyTo)
+                        finishWithFailure(ko("Agent Runtime 请求格式无效", "Agent Runtime 요청 형식이 올바르지 않습니다"), msg.replyTo)
                         return
                     }
                     val request = incoming.request
                     if (request.runId.isBlank() || (request.operation != AgentRuntimeWire.OP_COMPACT && request.prompt.isBlank() && incoming.images.isEmpty() && !incoming.hasDeferredPrompt)) {
                         incoming.close()
-                        finishWithFailure("Agent Runtime 请求缺少 runId 或用户输入", msg.replyTo)
+                        finishWithFailure(ko("Agent Runtime 请求缺少 runId 或用户输入", "Agent Runtime 요청에 runId 또는 사용자 입력이 없습니다"), msg.replyTo)
                         return
                     }
                     ingestRunRequest(incoming, msg.replyTo)
@@ -238,7 +239,7 @@ internal class AgentRuntimeService : Service(), LifecycleOwner, SavedStateRegist
                     dispatchResultIo {
                         val target = AgentRuntimeResultStore.readOwned(this@AgentRuntimeService, runId, owner)
                         sendResultNow(replyTo, target?.result ?: AgentRuntimeWire.RunResult(
-                            runId, false, "", "完整运行结果不可用", contextSnapshotRef = runId,
+                            runId, false, "", ko("完整运行结果不可用", "전체 실행 결과를 사용할 수 없습니다"), contextSnapshotRef = runId,
                         ))
                     }
                 }
@@ -275,7 +276,7 @@ internal class AgentRuntimeService : Service(), LifecycleOwner, SavedStateRegist
                     runId = previous.incoming.request.runId,
                     ok = false,
                     content = "",
-                    error = "已被新的 Agent 任务替换",
+                    error = ko("已被新的 Agent 任务替换", "새 Agent 작업으로 대체되었습니다"),
                 ),
             )
         }
@@ -316,10 +317,10 @@ internal class AgentRuntimeService : Service(), LifecycleOwner, SavedStateRegist
                         finishWithFailure(
                             when (throwable) {
                                 is AgentRuntimeImageTransfer.ImageTransferException ->
-                                    throwable.message ?: "Agent Runtime 无法读取图片"
+                                    throwable.message ?: ko("Agent Runtime 无法读取图片", "Agent Runtime이 이미지를 읽을 수 없습니다")
                                 is RuntimeConfigUnavailableException ->
-                                    "请先在 Eta 中配置可用的模型"
-                                else -> "Agent Runtime 无法准备请求"
+                                    ko("请先在 Eta 中配置可用的模型", "먼저 Eta에서 사용할 모델을 설정하세요")
+                                else -> ko("Agent Runtime 无法准备请求", "Agent Runtime이 요청을 준비할 수 없습니다")
                             },
                             replyTo,
                         )
@@ -348,7 +349,7 @@ internal class AgentRuntimeService : Service(), LifecycleOwner, SavedStateRegist
         if (!executionHeld && !allowBoundFallback) {
             session.complete(AgentRuntimeWire.RunResult(
                 runId = request.runId, ok = false, content = "",
-                error = "无法启动后台执行服务，请返回 Eta 后重试",
+                error = ko("无法启动后台执行服务，请返回 Eta 后重试", "백그라운드 실행 서비스를 시작할 수 없습니다. Eta로 돌아가 다시 시도하세요"),
             )) {}
             return
         }
@@ -567,7 +568,7 @@ internal class AgentRuntimeService : Service(), LifecycleOwner, SavedStateRegist
             }
             // 不把传输失败伪装成已交付终态；引用使新客户端保留 outbox，等待完整恢复。
             val fallback = AgentRuntimeWire.RunResult(result.runId, false, "",
-                "完整结果传输失败，已保存的历史未删除。请重新打开会话恢复。",
+                ko("完整结果传输失败，已保存的历史未删除。请重新打开会话恢复。", "전체 결과를 전송하지 못했습니다. 저장된 기록은 삭제되지 않았습니다. 대화를 다시 열어 복구하세요."),
                 contextSnapshotRef = result.runId, operation = result.operation)
             try {
                 target?.send(Message.obtain(null, AgentRuntimeWire.MSG_RESULT).apply {

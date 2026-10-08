@@ -1,5 +1,6 @@
 package io.github.mangi.eta.agent.model
 
+import io.github.mangi.eta.i18n.ko
 import io.github.mangi.eta.agent.runtime.AgentRunController
 import io.github.mangi.eta.agent.runtime.AgentTokenUsage
 import io.github.mangi.eta.data.model.OpenAiEndpointMode
@@ -32,7 +33,7 @@ internal object OpenAiResponsesProvider : AgentProviderClient {
     ): ProviderResponse {
         val config = request.effectiveConfig
         require(config.openAiEndpointMode == OpenAiEndpointMode.RESPONSES) {
-            "当前 Provider 未配置为 Responses API"
+            ko("当前 Provider 未配置为 Responses API", "현재 제공업체가 Responses API로 설정되지 않았습니다")
         }
         val requestJson = buildRequestJson(config, request.messages, request.effectiveTools)
         val body = requestJson.toString().toRequestBody(JSON_MEDIA_TYPE)
@@ -89,7 +90,7 @@ internal object OpenAiResponsesProvider : AgentProviderClient {
         runController: AgentRunController,
         onEvent: (ProviderEvent) -> Unit,
     ): JSONObject {
-        if (stream == null) error("模型接口未返回响应流")
+        if (stream == null) error(ko("模型接口未返回响应流", "모델 API가 응답 스트림을 반환하지 않았습니다"))
         val streamedText = StringBuilder()
         val streamedReasoning = StringBuilder()
         val toolCalls = linkedMapOf<String, StreamingFunctionCall>()
@@ -323,15 +324,15 @@ internal object OpenAiResponsesProvider : AgentProviderClient {
                 "response.web_search_call.in_progress",
                 "response.web_search_call.searching" -> {
                     val itemId = event.hostedToolId("web_search")
-                    startHostedTool(itemId, "网页搜索")
+                    startHostedTool(itemId, ko("网页搜索", "웹 검색"))
                 }
                 "response.web_search_call.completed" -> {
                     val itemId = event.hostedToolId("web_search")
-                    finishHostedTool(itemId, "网页搜索", success = true)
+                    finishHostedTool(itemId, ko("网页搜索", "웹 검색"), success = true)
                 }
                 "response.web_search_call.failed" -> {
                     val itemId = event.hostedToolId("web_search")
-                    finishHostedTool(itemId, "网页搜索", success = false)
+                    finishHostedTool(itemId, ko("网页搜索", "웹 검색"), success = false)
                 }
                 "response.completed", "response.incomplete", "response.failed" -> {
                     terminalType = type
@@ -342,8 +343,8 @@ internal object OpenAiResponsesProvider : AgentProviderClient {
             terminal == null
         }
 
-        if (!sawEvent) throw AgentModelFailure.incompleteStream("模型接口未返回 SSE data chunk")
-        val finalResponse = terminal ?: throw AgentModelFailure.incompleteStream("模型接口 Responses SSE 流缺少合法终止事件")
+        if (!sawEvent) throw AgentModelFailure.incompleteStream(ko("模型接口未返回 SSE data chunk", "모델 API가 SSE 데이터를 반환하지 않았습니다"))
+        val finalResponse = terminal ?: throw AgentModelFailure.incompleteStream(ko("模型接口 Responses SSE 流缺少合法终止事件", "모델 API의 Responses SSE 스트림에 정상 종료 이벤트가 없습니다"))
         if (terminalType == "response.failed") throwResponseFailure(finalResponse)
 
         val terminalOutput = finalResponse.optJSONArray("output")
@@ -428,7 +429,7 @@ internal object OpenAiResponsesProvider : AgentProviderClient {
             }
         }
         hostedTools.filterValues { !it }.forEach { (id, _) ->
-            onEvent(ProviderEvent.HostedToolFinished(id, "网页搜索", success = true))
+            onEvent(ProviderEvent.HostedToolFinished(id, ko("网页搜索", "웹 검색"), success = true))
         }
 
         parseUsage(finalResponse.optJSONObject("usage"))?.let { onEvent(ProviderEvent.Usage(it)) }
@@ -610,21 +611,21 @@ internal object OpenAiResponsesProvider : AgentProviderClient {
 
     private fun throwEventError(event: JSONObject) {
         val error = event.optJSONObject("error") ?: return
-        val message = error.optString("message").ifBlank { "未提供错误信息" }.compactError()
+        val message = error.optString("message").ifBlank { ko("未提供错误信息", "오류 정보가 제공되지 않았습니다") }.compactError()
         val type = error.optString("type").takeIf { it.isNotBlank() }
-        throw AgentModelFailure.stream(error, "模型接口 SSE 返回错误${type?.let { " (type=$it)" }.orEmpty()}：$message")
+        throw AgentModelFailure.stream(error, ko("模型接口 SSE 返回错误${type?.let { " (type=$it)" }.orEmpty()}：$message", "모델 API SSE 오류${type?.let { " (type=$it)" }.orEmpty()}: ${message}"))
     }
 
     private fun throwTopLevelEventError(event: JSONObject): Nothing {
-        val message = event.optString("message").ifBlank { "未提供错误信息" }.compactError()
+        val message = event.optString("message").ifBlank { ko("未提供错误信息", "오류 정보가 제공되지 않았습니다") }.compactError()
         val code = event.optString("code").takeIf { it.isNotBlank() }
-        throw AgentModelFailure.stream(event, "模型接口 SSE 返回错误${code?.let { " (code=$it)" }.orEmpty()}：$message")
+        throw AgentModelFailure.stream(event, ko("模型接口 SSE 返回错误${code?.let { " (code=$it)" }.orEmpty()}：$message", "모델 API SSE 오류${code?.let { " (code=$it)" }.orEmpty()}: ${message}"))
     }
 
     private fun throwResponseFailure(response: JSONObject): Nothing {
         val error = response.optJSONObject("error")
-        val message = error?.optString("message").orEmpty().ifBlank { "未提供错误信息" }
-        throw AgentModelFailure.stream(error ?: JSONObject(), "模型接口 Responses 请求失败：${message.compactError()}")
+        val message = error?.optString("message").orEmpty().ifBlank { ko("未提供错误信息", "오류 정보가 제공되지 않았습니다") }
+        throw AgentModelFailure.stream(error ?: JSONObject(), ko("模型接口 Responses 请求失败：${message.compactError()}", "모델 API Responses 요청 실패: ${message.compactError()}"))
     }
 
     private fun JSONObject.intValue(vararg keys: String): Int? {
@@ -655,12 +656,12 @@ internal object OpenAiResponsesProvider : AgentProviderClient {
             .ifBlank { "${fallbackPrefix}_${optInt("output_index", 0)}" }
 
     private fun String.hostedToolDisplayName(): String? = when (this) {
-        "web_search_call" -> "网页搜索"
-        "file_search_call" -> "文件搜索"
-        "code_interpreter_call" -> "代码执行"
-        "computer_call" -> "计算机操作"
-        "image_generation_call" -> "图像生成"
-        "mcp_call" -> "MCP 工具"
+        "web_search_call" -> ko("网页搜索", "웹 검색")
+        "file_search_call" -> ko("文件搜索", "파일 검색")
+        "code_interpreter_call" -> ko("代码执行", "코드 실행")
+        "computer_call" -> ko("计算机操作", "컴퓨터 조작")
+        "image_generation_call" -> ko("图像生成", "이미지 생성")
+        "mcp_call" -> ko("MCP 工具", "MCP 도구")
         else -> null
     }
 

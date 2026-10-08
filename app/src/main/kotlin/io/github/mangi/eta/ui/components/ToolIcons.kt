@@ -74,17 +74,17 @@ internal fun iconForTool(toolId: String): ImageVector = when (toolId) {
     "get_current_context" -> Icons.Rounded.Smartphone
     "open_app", "launch_app" -> Icons.Rounded.Apps
     "open_uri" -> Icons.AutoMirrored.Rounded.OpenInNew
-    "browser_use", "网页浏览" -> Icons.Rounded.Language
-    "web_search", "web_search_call", "网页搜索" -> Icons.Rounded.TravelExplore
+    "browser_use", "网页浏览", "웹 브라우징" -> Icons.Rounded.Language
+    "web_search", "web_search_call", "网页搜索", "웹 검색" -> Icons.Rounded.TravelExplore
     "browser_read" -> Icons.AutoMirrored.Rounded.MenuBook
     "fetch_url" -> Icons.AutoMirrored.Rounded.Article
     "browser_interact" -> Icons.Rounded.AdsClick
     "browser_screenshot" -> Icons.Rounded.ScreenshotMonitor
-    "file_search", "file_search_call", "文件搜索" -> Icons.AutoMirrored.Rounded.ManageSearch
-    "code_interpreter", "code_interpreter_call", "代码执行" -> Icons.Rounded.Terminal
-    "computer", "computer_call", "计算机操作" -> Icons.Rounded.Computer
-    "image_generation", "image_generation_call", "图像生成" -> Icons.Rounded.Image
-    "mcp_call", "MCP 工具" -> Icons.Rounded.Extension
+    "file_search", "file_search_call", "文件搜索", "파일 검색" -> Icons.AutoMirrored.Rounded.ManageSearch
+    "code_interpreter", "code_interpreter_call", "代码执行", "코드 실행" -> Icons.Rounded.Terminal
+    "computer", "computer_call", "计算机操作", "컴퓨터 조작" -> Icons.Rounded.Computer
+    "image_generation", "image_generation_call", "图像生成", "이미지 생성" -> Icons.Rounded.Image
+    "mcp_call", "MCP 工具", "MCP 도구" -> Icons.Rounded.Extension
     "memory_get", "memory_write", "character_memory_get", "character_memory_write" ->
         Icons.Rounded.Psychology
     "press_key" -> Icons.Rounded.KeyboardCommandKey

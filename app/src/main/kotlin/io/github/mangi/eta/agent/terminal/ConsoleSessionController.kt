@@ -1,5 +1,6 @@
 package io.github.mangi.eta.agent.terminal
 
+import io.github.mangi.eta.i18n.ko
 import io.github.mangi.eta.core.AgentLogger
 import kotlin.concurrent.thread
 
@@ -64,18 +65,18 @@ internal class ConsoleSessionController(
         synchronized(sessionLock) {
             pruneDeadSessionsLocked()
             if (sessions.size >= MAX_SESSIONS) {
-                return OpenResult.Failed("SESSION_LIMIT_REACHED", "会话数量已达上限")
+                return OpenResult.Failed("SESSION_LIMIT_REACHED", ko("会话数量已达上限", "세션 수가 최대치에 도달했습니다"))
             }
             val environmentRootfsPath = rootfsPath(environment)
             val identity = identity ?: if (environment.isLinux) TerminalRuntime.defaultIdentity(environment, environmentRootfsPath) else if (rootAvailable()) "root" else "user"
-            if (identity !in setOf("root", "user")) return OpenResult.Failed("INVALID_ARGUMENT", "执行身份无效")
-            if (environment.isLinux && identity == "user" && LinuxEnvironmentPaths.backendOf(environmentRootfsPath) != LinuxExecutionBackend.PROOT) return OpenResult.Failed("LINUX_ENVIRONMENT_REQUIRES_ROOT", "所选 Linux 环境需要 Root")
-            if (environment.isLinux && identity == "root" && LinuxEnvironmentPaths.backendOf(environmentRootfsPath) == LinuxExecutionBackend.PROOT) return OpenResult.Failed("INVALID_IDENTITY", "免 Root Linux 使用普通应用身份")
-            if (identity == "root" && !rootAvailable()) return OpenResult.Failed("ROOT_REQUIRED", "Root 授权不可用")
+            if (identity !in setOf("root", "user")) return OpenResult.Failed("INVALID_ARGUMENT", ko("执行身份无效", "실행 identity가 올바르지 않습니다"))
+            if (environment.isLinux && identity == "user" && LinuxEnvironmentPaths.backendOf(environmentRootfsPath) != LinuxExecutionBackend.PROOT) return OpenResult.Failed("LINUX_ENVIRONMENT_REQUIRES_ROOT", ko("所选 Linux 环境需要 Root", "선택한 Linux 환경은 Root가 필요합니다"))
+            if (environment.isLinux && identity == "root" && LinuxEnvironmentPaths.backendOf(environmentRootfsPath) == LinuxExecutionBackend.PROOT) return OpenResult.Failed("INVALID_IDENTITY", ko("免 Root Linux 使用普通应用身份", "Root 없는 Linux는 일반 앱 identity를 사용합니다"))
+            if (identity == "root" && !rootAvailable()) return OpenResult.Failed("ROOT_REQUIRED", ko("Root 授权不可用", "Root 권한을 사용할 수 없습니다"))
             if (environment.isLinux &&
                 !LinuxEnvironmentPaths.rootfsReady(environmentRootfsPath)
             ) {
-                return OpenResult.Failed("LINUX_ENVIRONMENT_NOT_READY", "Linux 工具环境尚未安装")
+                return OpenResult.Failed("LINUX_ENVIRONMENT_NOT_READY", ko("Linux 工具环境尚未安装", "Linux 도구 환경이 아직 설치되지 않았습니다"))
             }
             val process = processSupervisor.startShellProcess(
                 identity = identity,
@@ -91,7 +92,7 @@ internal class ConsoleSessionController(
                 pty = true,
                 ptyCols = cols,
                 ptyRows = rows,
-            ) ?: return OpenResult.Failed("PROCESS_START_FAILED", "无法启动控制台进程，请检查所选环境和终端组件")
+            ) ?: return OpenResult.Failed("PROCESS_START_FAILED", ko("无法启动控制台进程，请检查所选环境和终端组件", "콘솔 프로세스를 시작할 수 없습니다. 선택한 환경과 터미널 구성 요소를 확인하세요"))
 
             val sessionId = "c${++nextSessionNumber}"
             val newSession = PtySession(environment, process, identity)
