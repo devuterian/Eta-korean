@@ -4,6 +4,7 @@ import android.content.Context
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.util.Base64
+import io.github.mangi.eta.i18n.ko
 import java.security.KeyStore
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
@@ -49,12 +50,12 @@ internal class McpSecretStore(context: Context) {
             preferences.edit()
             .putString(tokenKey(serverId), Base64.encodeToString(payload, Base64.NO_WRAP))
             .commit()
-        ) { "MCP 凭据保存失败" }
+        ) { ko("MCP 凭据保存失败", "MCP 자격 증명 저장에 실패했습니다.") }
     }
 
     @Synchronized
     fun clear(serverId: String) {
-        check(preferences.edit().remove(tokenKey(serverId)).commit()) { "MCP 凭据删除失败" }
+        check(preferences.edit().remove(tokenKey(serverId)).commit()) { ko("MCP 凭据删除失败", "MCP 자격 증명 삭제에 실패했습니다.") }
     }
 
     private fun secretKey(): SecretKey {

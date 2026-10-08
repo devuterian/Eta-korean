@@ -48,6 +48,7 @@ import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import top.yukonga.miuix.kmp.basic.SmallTopAppBar
 import top.yukonga.miuix.kmp.window.WindowListPopup
+import io.github.mangi.eta.i18n.ko
 
 /**
  * Agent App 统一壳层。
@@ -341,11 +342,11 @@ private fun titleForRoute(route: AppRoute?): String = when (route) {
     is AppRoute.Terminal -> stringResource(R.string.route_terminal)
     is AppRoute.Tools -> stringResource(R.string.route_tools)
     is AppRoute.Skills -> stringResource(R.string.route_skills)
-    is AppRoute.Characters -> "角色"
-    is AppRoute.CharacterDetail -> "角色详情"
-    is AppRoute.CharacterEditor -> "编辑角色"
-    is AppRoute.CharacterPersona -> "我的人设"
-    is AppRoute.CharacterMemory -> "剧情记忆"
+    is AppRoute.Characters -> ko("角色", "캐릭터")
+    is AppRoute.CharacterDetail -> ko("角色详情", "캐릭터 정보")
+    is AppRoute.CharacterEditor -> ko("编辑角色", "캐릭터 편집")
+    is AppRoute.CharacterPersona -> ko("我的人设", "내 페르소나")
+    is AppRoute.CharacterMemory -> ko("剧情记忆", "스토리 메모리")
     is AppRoute.Permissions -> stringResource(R.string.route_permissions)
     is AppRoute.SystemEnhance -> stringResource(R.string.route_system_enhancements)
     is AppRoute.Settings -> stringResource(R.string.route_settings)
@@ -361,8 +362,8 @@ private fun titleForRoute(route: AppRoute?): String = when (route) {
     is AppRoute.SharedFolders -> stringResource(R.string.route_shared_folders)
     is AppRoute.LinuxFiles -> stringResource(R.string.route_linux_files)
     is AppRoute.ModelProviders -> stringResource(R.string.route_model_providers)
-    is AppRoute.CommunityCatalog -> "从目录添加"
-    is AppRoute.CommunityCatalogProvider -> "选择模型"
+    is AppRoute.CommunityCatalog -> ko("从目录添加", "목록에서 추가")
+    is AppRoute.CommunityCatalogProvider -> ko("选择模型", "모델 선택")
     is AppRoute.McpServers -> stringResource(R.string.route_mcp_servers)
     is AppRoute.McpServerDetail -> stringResource(R.string.route_mcp_server_detail)
     is AppRoute.ModelProviderDetail -> stringResource(R.string.route_provider_details)

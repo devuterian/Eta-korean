@@ -3,6 +3,7 @@ package io.github.mangi.eta.agent.model
 import io.github.mangi.eta.CodexOAuthManager
 import io.github.mangi.eta.agent.runtime.AgentRunController
 import io.github.mangi.eta.data.model.OpenAiEndpointMode
+import io.github.mangi.eta.i18n.ko
 
 /**
  * Adapter that obtains a short-lived access token immediately before a
@@ -20,7 +21,7 @@ internal object CodexResponsesProvider : AgentProviderClient {
     ): ProviderResponse {
         val sourceConfig = request.effectiveConfig
         require(sourceConfig.openAiEndpointMode == OpenAiEndpointMode.RESPONSES) {
-            "当前 OpenAI Codex Provider 未配置为 Responses API"
+            ko("当前 OpenAI Codex Provider 未配置为 Responses API", "현재 OpenAI Codex Provider가 Responses API로 설정되어 있지 않습니다.")
         }
         val credentials = CodexOAuthManager.requireCredentials()
         return try {
@@ -51,7 +52,7 @@ internal object CodexResponsesProvider : AgentProviderClient {
             throw AgentModelFailure(
                 code = "CODEX_SUBSCRIPTION_UNAUTHORIZED",
                 retryable = false,
-                message = "OpenAI Codex 对话接口认证失败（HTTP 401）。请重新登录订阅账号后重试；模型目录能刷新不代表对话请求已通过认证。",
+                message = ko("OpenAI Codex 对话接口认证失败（HTTP 401）。请重新登录订阅账号后重试；模型目录能刷新不代表对话请求已通过认证。", "OpenAI Codex 대화 API 인증에 실패했습니다(HTTP 401). 구독 계정으로 다시 로그인한 후 시도하세요. 모델 목록이 새로 고쳐져도 대화 요청 인증이 통과된 것은 아닙니다."),
                 cause = failure,
             )
         }

@@ -3,6 +3,7 @@ package io.github.mangi.eta.agent.voice
 import io.github.mangi.eta.data.model.AsrProvider
 import io.github.mangi.eta.data.model.SpeechCredentials
 import io.github.mangi.eta.data.model.SpeechSettings
+import io.github.mangi.eta.i18n.ko
 import java.util.Base64
 import java.util.UUID
 import kotlinx.coroutines.channels.ReceiveChannel
@@ -76,10 +77,10 @@ private suspend fun recognizeQwen(
                     }
                     "session.finished" -> return@coroutineScope transcript.result()
                     "error", "conversation.item.input_audio_transcription.failed" ->
-                        throw SpeechFailure(SpeechErrorCode.SERVER, "千问识别失败，请检查模型权限和配置")
+                        throw SpeechFailure(SpeechErrorCode.SERVER, ko("千问识别失败，请检查模型权限和配置", "Qwen 인식에 실패했습니다. 모델 권한과 설정을 확인하세요."))
                 }
             }
-            throw SpeechFailure(SpeechErrorCode.PROTOCOL, "千问识别连接提前结束")
+            throw SpeechFailure(SpeechErrorCode.PROTOCOL, ko("千问识别连接提前结束", "Qwen 인식 연결이 일찍 종료되었습니다."))
         } finally { sender?.cancel() }
     }
 }
@@ -125,7 +126,7 @@ private suspend fun recognizeDoubao(
                 }
                 if (message.final) return@coroutineScope text.trim()
             }
-            throw SpeechFailure(SpeechErrorCode.PROTOCOL, "豆包识别连接提前结束")
+            throw SpeechFailure(SpeechErrorCode.PROTOCOL, ko("豆包识别连接提前结束", "Doubao 인식 연결이 일찍 종료되었습니다."))
         } finally { sender.cancel() }
     }
 }

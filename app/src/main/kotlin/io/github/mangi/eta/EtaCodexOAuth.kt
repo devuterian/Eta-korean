@@ -7,6 +7,7 @@ import io.github.mangi.eta.agent.model.CodexCredentials
 import io.github.mangi.eta.agent.model.AgentHttpClient
 import io.github.mangi.eta.core.AndroidAgentLogger
 import io.github.mangi.eta.core.toSafeLogToken
+import io.github.mangi.eta.i18n.ko
 import java.io.IOException
 import java.util.concurrent.locks.ReentrantLock
 import kotlinx.coroutines.Dispatchers
@@ -70,7 +71,7 @@ internal object CodexOAuthManager {
                 if (latest != null && latest.isUsable()) return@withExclusiveLock latest
                 val refreshToken = latest?.refreshToken.orEmpty()
                 if (refreshToken.isBlank()) {
-                    throw CodexReauthenticationRequiredException("OpenAI Codex 需要重新登录")
+                    throw CodexReauthenticationRequiredException(ko("OpenAI Codex 需要重新登录", "OpenAI Codex에 다시 로그인해야 합니다."))
                 }
                 refresh(store, latest, refreshToken)
             }
@@ -119,14 +120,14 @@ internal object CodexOAuthManager {
             val text = CodexOAuthResponseBody.read(response, CodexOAuthStage.DEVICE_REQUEST)
             if (response.code == 429) {
                 throw CodexRateLimitedException(
-                    message = "OpenAI 设备码请求受到限流，请稍后重试",
+                    message = ko("OpenAI 设备码请求受到限流，请稍后重试", "OpenAI 기기 코드 요청이 제한되었습니다. 잠시 후 다시 시도하세요."),
                     stage = CodexOAuthStage.DEVICE_REQUEST,
                     httpStatus = response.code,
                 )
             }
             if (response.code != 200) {
                 throw CodexOAuthHttpException(
-                    message = "获取 OpenAI 设备码失败（HTTP ${response.code}）",
+                    message = ko("获取 OpenAI 设备码失败（HTTP ${response.code}）", "OpenAI 기기 코드를 가져오지 못했습니다(HTTP ${response.code})."),
                     stage = CodexOAuthStage.DEVICE_REQUEST,
                     errorCode = "device_code_request_http",
                     httpStatus = response.code,
@@ -136,7 +137,7 @@ internal object CodexOAuthManager {
                 text = text,
                 stage = CodexOAuthStage.DEVICE_REQUEST,
                 errorCode = "device_code_request_invalid_response",
-                message = "OpenAI 设备码响应无法解析",
+                message = ko("OpenAI 设备码响应无法解析", "OpenAI 기기 코드 응답을 해석할 수 없습니다."),
             )
             CodexDeviceCode(
                 userCode = json.optString("user_code").ifBlank { json.optString("userCode") },
@@ -150,7 +151,7 @@ internal object CodexOAuthManager {
             ).also {
                 if (it.userCode.isBlank() || it.deviceAuthId.isBlank()) {
                     throw CodexOAuthHttpException(
-                        message = "OpenAI 设备码响应缺少必要字段",
+                        message = ko("OpenAI 设备码响应缺少必要字段", "OpenAI 기기 코드 응답에 필수 필드가 없습니다."),
                         stage = CodexOAuthStage.DEVICE_REQUEST,
                         errorCode = "device_code_request_incomplete",
                         httpStatus = response.code,
@@ -189,7 +190,7 @@ internal object CodexOAuthManager {
                 }
             }
             throw CodexOAuthHttpException(
-                message = "OpenAI 设备码已过期，请重新获取",
+                message = ko("OpenAI 设备码已过期，请重新获取", "OpenAI 기기 코드가 만료되었습니다. 다시 발급받으세요."),
                 stage = CodexOAuthStage.DEVICE_POLL,
                 errorCode = "device_code_expired",
             )
@@ -217,21 +218,21 @@ internal object CodexOAuthManager {
                 if (response.code == 429) {
                     // A rate limit must not destroy a still-recoverable refresh token.
                     throw CodexRefreshRateLimitedException(
-                        message = "OpenAI 刷新令牌请求受限，请稍后重试",
+                        message = ko("OpenAI 刷新令牌请求受限，请稍后重试", "OpenAI 토큰 갱신 요청이 제한되었습니다. 잠시 후 다시 시도하세요."),
                         httpStatus = response.code,
                     )
                 }
                 if (CodexCompatibilityProfile.isReauthenticationFailure(response.code, text)) {
                     store.clearLocked()
                     throw CodexReauthenticationRequiredException(
-                        message = "OpenAI 登录已失效，请重新登录",
+                        message = ko("OpenAI 登录已失效，请重新登录", "OpenAI 로그인이 만료되었습니다. 다시 로그인하세요."),
                         stage = CodexOAuthStage.TOKEN_REFRESH,
                         errorCode = "refresh_reauthentication_required",
                         httpStatus = response.code,
                     )
                 }
                 throw CodexOAuthHttpException(
-                    message = "OpenAI 刷新令牌失败（HTTP ${response.code}）",
+                    message = ko("OpenAI 刷新令牌失败（HTTP ${response.code}）", "OpenAI 토큰 갱신에 실패했습니다(HTTP ${response.code})."),
                     stage = CodexOAuthStage.TOKEN_REFRESH,
                     errorCode = "refresh_http_error",
                     httpStatus = response.code,
@@ -241,7 +242,7 @@ internal object CodexOAuthManager {
                 text = text,
                 stage = CodexOAuthStage.TOKEN_REFRESH,
                 errorCode = "refresh_invalid_response",
-                message = "OpenAI 刷新响应无法解析",
+                message = ko("OpenAI 刷新响应无法解析", "OpenAI 갱신 응답을 해석할 수 없습니다."),
             )
             val responseError = json.optString("error")
             if (responseError.isNotBlank() &&
@@ -253,7 +254,7 @@ internal object CodexOAuthManager {
                 // not retried forever.
                 store.clearLocked()
                 throw CodexReauthenticationRequiredException(
-                    message = "OpenAI 登录已失效，请重新登录",
+                    message = ko("OpenAI 登录已失效，请重新登录", "OpenAI 로그인이 만료되었습니다. 다시 로그인하세요."),
                     stage = CodexOAuthStage.TOKEN_REFRESH,
                     errorCode = "refresh_reauthentication_required",
                     httpStatus = response.code,
@@ -262,7 +263,7 @@ internal object CodexOAuthManager {
             val accessToken = json.optString("access_token")
             if (accessToken.isBlank()) {
                 throw CodexOAuthHttpException(
-                    message = "OpenAI 刷新响应缺少访问令牌",
+                    message = ko("OpenAI 刷新响应缺少访问令牌", "OpenAI 갱신 응답에 액세스 토큰이 없습니다."),
                     stage = CodexOAuthStage.TOKEN_REFRESH,
                     errorCode = "refresh_missing_access_token",
                     httpStatus = response.code,
@@ -301,14 +302,14 @@ internal object CodexOAuthManager {
             if (response.code == 403 || response.code == 404) return null
             if (response.code == 429) {
                 throw CodexRateLimitedException(
-                    message = "OpenAI 设备登录轮询受到限流，请稍后重试",
+                    message = ko("OpenAI 设备登录轮询受到限流，请稍后重试", "OpenAI 기기 로그인 확인 요청이 제한되었습니다. 잠시 후 다시 시도하세요."),
                     stage = CodexOAuthStage.DEVICE_POLL,
                     httpStatus = response.code,
                 )
             }
             if (response.code != 200) {
                 throw CodexOAuthHttpException(
-                    message = "轮询 OpenAI 设备登录失败（HTTP ${response.code}）",
+                    message = ko("轮询 OpenAI 设备登录失败（HTTP ${response.code}）", "OpenAI 기기 로그인 확인에 실패했습니다(HTTP ${response.code})."),
                     stage = CodexOAuthStage.DEVICE_POLL,
                     errorCode = "device_code_poll_http",
                     httpStatus = response.code,
@@ -318,7 +319,7 @@ internal object CodexOAuthManager {
                 text = text,
                 stage = CodexOAuthStage.DEVICE_POLL,
                 errorCode = "device_code_poll_invalid_response",
-                message = "OpenAI 设备登录轮询响应无法解析",
+                message = ko("OpenAI 设备登录轮询响应无法解析", "OpenAI 기기 로그인 확인 응답을 해석할 수 없습니다."),
             )
             val authorizationCode = json.optString("authorization_code")
                 .ifBlank { json.optString("authorizationCode") }
@@ -326,7 +327,7 @@ internal object CodexOAuthManager {
                 .ifBlank { json.optString("codeVerifier") }
             if (authorizationCode.isBlank() || codeVerifier.isBlank()) {
                 throw CodexOAuthHttpException(
-                    message = "OpenAI 设备登录轮询响应缺少必要字段",
+                    message = ko("OpenAI 设备登录轮询响应缺少必要字段", "OpenAI 기기 로그인 확인 응답에 필수 필드가 없습니다."),
                     stage = CodexOAuthStage.DEVICE_POLL,
                     errorCode = "device_code_poll_incomplete",
                     httpStatus = response.code,
@@ -354,14 +355,14 @@ internal object CodexOAuthManager {
             val text = CodexOAuthResponseBody.read(response, CodexOAuthStage.TOKEN_EXCHANGE)
             if (response.code == 429) {
                 throw CodexRateLimitedException(
-                    message = "OpenAI 登录交换受到限流，请稍后重试",
+                    message = ko("OpenAI 登录交换受到限流，请稍后重试", "OpenAI 로그인 교환 요청이 제한되었습니다. 잠시 후 다시 시도하세요."),
                     stage = CodexOAuthStage.TOKEN_EXCHANGE,
                     httpStatus = response.code,
                 )
             }
             if (response.code != 200) {
                 throw CodexOAuthHttpException(
-                    message = "OpenAI 登录交换失败（HTTP ${response.code}）",
+                    message = ko("OpenAI 登录交换失败（HTTP ${response.code}）", "OpenAI 로그인 교환에 실패했습니다(HTTP ${response.code})."),
                     stage = CodexOAuthStage.TOKEN_EXCHANGE,
                     errorCode = "token_exchange_http",
                     httpStatus = response.code,
@@ -371,14 +372,14 @@ internal object CodexOAuthManager {
                 text = text,
                 stage = CodexOAuthStage.TOKEN_EXCHANGE,
                 errorCode = "token_exchange_invalid_response",
-                message = "OpenAI 登录交换响应无法解析",
+                message = ko("OpenAI 登录交换响应无法解析", "OpenAI 로그인 교환 응답을 해석할 수 없습니다."),
             )
             val accessToken = json.optString("access_token")
             val refreshToken = json.optString("refresh_token")
                 .takeIf { it.isNotBlank() }
             if (accessToken.isBlank()) {
                 throw CodexOAuthHttpException(
-                    message = "OpenAI 登录交换响应缺少访问令牌",
+                    message = ko("OpenAI 登录交换响应缺少访问令牌", "OpenAI 로그인 교환 응답에 액세스 토큰이 없습니다."),
                     stage = CodexOAuthStage.TOKEN_EXCHANGE,
                     errorCode = "token_exchange_missing_access_token",
                     httpStatus = response.code,
@@ -400,7 +401,7 @@ internal object CodexOAuthManager {
     private fun store(): CodexCredentialStore =
         appContext?.let(::CodexCredentialStore)
             ?: throw CodexOAuthException(
-                message = "OpenAI Codex 本地服务尚未初始化",
+                message = ko("OpenAI Codex 本地服务尚未初始化", "OpenAI Codex 로컬 서비스가 아직 초기화되지 않았습니다."),
                 stage = CodexOAuthStage.CREDENTIAL_STORE,
                 errorCode = "credential_store_uninitialized",
             )
@@ -412,7 +413,7 @@ internal object CodexOAuthManager {
         AgentHttpClient.client.newCall(request).execute()
     } catch (failure: IOException) {
         throw CodexOAuthHttpException(
-            message = "OpenAI ${stage.userFacingName}网络不可用，请检查网络后重试",
+            message = ko("OpenAI ${stage.userFacingName}网络不可用，请检查网络后重试", "OpenAI ${stage.userFacingName} 중 네트워크에 연결할 수 없습니다. 네트워크를 확인한 후 다시 시도하세요."),
             stage = stage,
             errorCode = "${stage.code}_network_error",
             cause = failure,
@@ -477,7 +478,7 @@ internal object CodexOAuthResponseBody {
             response.body.source()
         } catch (failure: IOException) {
             throw CodexOAuthHttpException(
-                message = "OpenAI ${stage.userFacingName}响应读取失败，请稍后重试",
+                message = ko("OpenAI ${stage.userFacingName}响应读取失败，请稍后重试", "OpenAI ${stage.userFacingName} 응답을 읽지 못했습니다. 잠시 후 다시 시도하세요."),
                 stage = stage,
                 errorCode = "${stage.code}_body_read_error",
                 httpStatus = response.code,
@@ -498,7 +499,7 @@ internal object CodexOAuthResponseBody {
             }
         } catch (failure: IOException) {
             throw CodexOAuthHttpException(
-                message = "OpenAI ${stage.userFacingName}响应读取失败，请稍后重试",
+                message = ko("OpenAI ${stage.userFacingName}响应读取失败，请稍后重试", "OpenAI ${stage.userFacingName} 응답을 읽지 못했습니다. 잠시 후 다시 시도하세요."),
                 stage = stage,
                 errorCode = "${stage.code}_body_read_error",
                 httpStatus = response.code,
@@ -507,7 +508,7 @@ internal object CodexOAuthResponseBody {
         }
         if (totalBytes > MAX_RESPONSE_BYTES) {
             throw CodexOAuthHttpException(
-                message = "OpenAI ${stage.userFacingName}响应过大，请稍后重试",
+                message = ko("OpenAI ${stage.userFacingName}响应过大，请稍后重试", "OpenAI ${stage.userFacingName} 응답이 너무 큽니다. 잠시 후 다시 시도하세요."),
                 stage = stage,
                 errorCode = "response_too_large",
                 httpStatus = response.code,
@@ -536,9 +537,9 @@ internal fun codexCredentialsAfterUnauthorized(
     refresh: (CodexCredentials, String) -> CodexCredentials,
 ): CodexCredentials {
     val current = latest
-        ?: throw CodexReauthenticationRequiredException("OpenAI Codex 需要重新登录")
+        ?: throw CodexReauthenticationRequiredException(ko("OpenAI Codex 需要重新登录", "OpenAI Codex에 다시 로그인해야 합니다."))
     val refreshToken = current.refreshToken?.takeIf(String::isNotBlank)
-        ?: throw CodexReauthenticationRequiredException("OpenAI Codex 需要重新登录")
+        ?: throw CodexReauthenticationRequiredException(ko("OpenAI Codex 需要重新登录", "OpenAI Codex에 다시 로그인해야 합니다."))
     if (current.accessToken.isNotBlank() && current.accessToken != failedAccessToken) {
         return current
     }
@@ -548,14 +549,18 @@ internal fun codexCredentialsAfterUnauthorized(
 /** Stable phase identifiers used for diagnostics and UI mapping. */
 internal enum class CodexOAuthStage(
     val code: String,
-    val userFacingName: String,
+    private val originalName: String,
+    private val koreanName: String,
 ) {
-    DEVICE_REQUEST("device_code_request", "设备码请求"),
-    DEVICE_POLL("device_code_poll", "设备登录"),
-    TOKEN_EXCHANGE("token_exchange", "登录交换"),
-    TOKEN_REFRESH("token_refresh", "令牌刷新"),
-    CREDENTIAL_STORE("credential_store", "本地凭据保存"),
-    UNKNOWN("oauth", "登录"),
+    DEVICE_REQUEST("device_code_request", "设备码请求", "기기 코드 요청"),
+    DEVICE_POLL("device_code_poll", "设备登录", "기기 로그인"),
+    TOKEN_EXCHANGE("token_exchange", "登录交换", "로그인 교환"),
+    TOKEN_REFRESH("token_refresh", "令牌刷新", "토큰 갱신"),
+    CREDENTIAL_STORE("credential_store", "本地凭据保存", "로컬 자격 증명 저장"),
+    UNKNOWN("oauth", "登录", "로그인"),
+    ;
+
+    val userFacingName: String get() = ko(originalName, koreanName)
 }
 
 /**

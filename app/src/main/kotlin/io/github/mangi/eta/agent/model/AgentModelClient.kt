@@ -17,6 +17,7 @@ import io.github.mangi.eta.data.model.ProviderSourceTypes
 import io.github.mangi.eta.data.model.ReasoningEffort
 import io.github.mangi.eta.data.provider.BuiltinProviders
 import io.github.mangi.eta.data.provider.ProviderSourceRegistry
+import io.github.mangi.eta.i18n.ko
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.json.JSONArray
@@ -225,20 +226,20 @@ internal object AgentModelClient {
     }
 
     private fun ModelConfig.validate() {
-        require(baseUrl.isNotBlank()) { "请先配置 API 地址" }
+        require(baseUrl.isNotBlank()) { ko("请先配置 API 地址", "먼저 API 주소를 설정하세요.") }
         val usesCodexSubscription = authMode == CodexCompatibilityProfile.AUTH_MODE ||
             providerSourceType == ProviderSourceTypes.OPENAI_CODEX ||
             providerId == BuiltinProviders.OPENAI_CODEX_ID
-        if (!usesCodexSubscription) require(apiKey.isNotBlank()) { "请先配置 API Key" }
-        require(model.isNotBlank()) { "请先配置模型名" }
+        if (!usesCodexSubscription) require(apiKey.isNotBlank()) { ko("请先配置 API Key", "먼저 API Key를 설정하세요.") }
+        require(model.isNotBlank()) { ko("请先配置模型名", "먼저 모델 이름을 설정하세요.") }
         require(
             reasoningCapabilities?.mandatory != true ||
                 effectiveReasoningEffort != ReasoningEffort.OFF
-        ) { "当前模型强制启用思考，不能选择 Off 或禁用思考权限" }
+        ) { ko("当前模型强制启用思考，不能选择 Off 或禁用思考权限", "현재 모델은 사고 기능이 항상 켜져 있어 Off를 선택하거나 사고 권한을 끌 수 없습니다.") }
         if (extraBodyJson.isNotBlank()) {
             runCatching { JSONObject(extraBodyJson) }
                 .getOrElse { throwable ->
-                    error("额外请求体 JSON 无效：${throwable.message ?: throwable.javaClass.simpleName}")
+                    error(ko("额外请求体 JSON 无效：${throwable.message ?: throwable.javaClass.simpleName}", "추가 요청 본문 JSON이 올바르지 않습니다: ${throwable.message ?: throwable.javaClass.simpleName}"))
                 }
         }
     }

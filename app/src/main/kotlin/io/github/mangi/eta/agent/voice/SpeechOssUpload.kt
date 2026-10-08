@@ -5,6 +5,7 @@ import io.github.mangi.eta.core.AndroidAgentLogger
 import io.github.mangi.eta.data.model.SpeechCredentials
 import io.github.mangi.eta.data.model.SpeechOssConfig
 import io.github.mangi.eta.data.repository.SpeechSettingsRepository
+import io.github.mangi.eta.i18n.ko
 import java.util.UUID
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.NonCancellable
@@ -76,10 +77,10 @@ internal class SpeechOssUpload(
 
     private fun remember(entry: String) = synchronized(LOCK) {
         val pending = preferences.getStringSet("pending", emptySet())!!.toMutableSet()
-        if (pending.size >= 100) throw SpeechFailure(SpeechErrorCode.STORAGE, "待清理录音较多，请检查 OSS 删除权限后重启 Eta")
+        if (pending.size >= 100) throw SpeechFailure(SpeechErrorCode.STORAGE, ko("待清理录音较多，请检查 OSS 删除权限后重启 Eta", "정리 대기 중인 녹음이 많습니다. OSS 삭제 권한을 확인한 후 Eta를 다시 시작하세요."))
         pending += entry
         if (!preferences.edit().putStringSet("pending", pending).commit()) {
-            throw SpeechFailure(SpeechErrorCode.STORAGE, "无法记录录音清理信息")
+            throw SpeechFailure(SpeechErrorCode.STORAGE, ko("无法记录录音清理信息", "녹음 정리 정보를 기록할 수 없습니다."))
         }
         active += entry
     }

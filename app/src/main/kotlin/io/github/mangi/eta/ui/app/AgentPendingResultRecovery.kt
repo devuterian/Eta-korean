@@ -9,6 +9,7 @@ import io.github.mangi.eta.ui.model.AgentMessageUi
 import io.github.mangi.eta.ui.model.SystemNoticeCode
 import io.github.mangi.eta.ui.model.SystemNoticeMessageUi
 import io.github.mangi.eta.ui.model.UserMessageUi
+import io.github.mangi.eta.i18n.ko
 
 /** 将 Runtime outbox 的结果幂等折叠回 App 会话。 */
 internal object AgentPendingResultRecovery {
@@ -56,7 +57,7 @@ internal object AgentPendingResultRecovery {
                     runId = runId,
                     messages = state.messages,
                     ok = result.ok,
-                    detail = if (result.ok) "上下文压缩完成" else result.error ?: "上下文压缩失败",
+                    detail = if (result.ok) ko("上下文压缩完成", "컨텍스트 압축 완료") else result.error ?: ko("上下文压缩失败", "컨텍스트 압축 실패"),
                 )), false)
         }
 

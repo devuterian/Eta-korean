@@ -22,6 +22,7 @@ import io.github.mangi.eta.data.repository.AgentMemorySnapshot
 import io.github.mangi.eta.data.repository.AgentMemoryWriteResult
 import io.github.mangi.eta.data.repository.CharacterMemoryRepository
 import io.github.mangi.eta.data.repository.CharacterRepository
+import io.github.mangi.eta.i18n.ko
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -79,14 +80,14 @@ internal class CharacterLibraryStore(
             }
         }
 
-    fun loadLibrary() = runOperation("角色库读取失败，请重试", queueIfBusy = true) {
+    fun loadLibrary() = runOperation(ko("角色库读取失败，请重试", "캐릭터 목록을 불러오지 못했습니다. 다시 시도하세요."), queueIfBusy = true) {
         io { CharacterRepository.ensureDefaultCharacter() }
         characters = io { CharacterRepository.list() }
     }
 
     fun dismissNotice() { notice = null }
 
-    fun loadDetail(id: String) = runOperation("角色读取失败，请返回角色库重试", queueIfBusy = true) {
+    fun loadDetail(id: String) = runOperation(ko("角色读取失败，请返回角色库重试", "캐릭터를 불러오지 못했습니다. 캐릭터 목록으로 돌아가 다시 시도하세요."), queueIfBusy = true) {
         val profile = io { CharacterRepository.get(id) } ?: error("CHARACTER_NOT_FOUND")
         val warnings = io { CharacterCardCompatibility.warnings(profile.card) }
         if (selected?.id != id) greetingIndex = 0
@@ -97,10 +98,10 @@ internal class CharacterLibraryStore(
 
     fun loadEditor(id: String?) {
         if (editorLoaded && editorKey == id) return
-        runOperation("角色读取失败，请重试", queueIfBusy = true) {
+        runOperation(ko("角色读取失败，请重试", "캐릭터를 불러오지 못했습니다. 다시 시도하세요."), queueIfBusy = true) {
             val profile = id?.let { io { CharacterRepository.get(it) } ?: error("CHARACTER_NOT_FOUND") }
             selected = profile
-            draft = profile?.card ?: CharacterCardCodec.create("新角色")
+            draft = profile?.card ?: CharacterCardCodec.create(ko("新角色", "새 캐릭터"))
             draftName = profile?.card?.name.orEmpty()
             editorKey = id
             editorLoaded = true
@@ -124,12 +125,12 @@ internal class CharacterLibraryStore(
         try {
             draft = draft?.let { it.withWorldbook(update(it.worldbookDraft())) }
         } catch (_: IllegalArgumentException) {
-            notice = "世界书设置无效，请检查扫描深度、预算与条目位置"
+            notice = ko("世界书设置无效，请检查扫描深度、预算与条目位置", "월드북 설정이 올바르지 않습니다. 스캔 깊이, 예산, 항목 위치를 확인하세요.")
         }
     }
 
     fun importCard(uri: Uri, onImported: (String) -> Unit) = runOperation(
-        "导入失败，请确认文件是完整的 PNG 或 JSON 角色卡，且未超过大小限制",
+        ko("导入失败，请确认文件是完整的 PNG 或 JSON 角色卡，且未超过大小限制", "가져오지 못했습니다. 온전한 PNG 또는 JSON 캐릭터 카드인지, 크기 제한을 넘지 않는지 확인하세요."),
         diagnoseCardImport = true,
     ) {
         val profile = io {
@@ -145,12 +146,12 @@ internal class CharacterLibraryStore(
     fun saveEditor(onSaved: (String) -> Unit) {
         val originalDraft = draft ?: return
         if (draftName.isBlank()) {
-            notice = "请填写角色名称"
+            notice = ko("请填写角色名称", "캐릭터 이름을 입력하세요")
             return
         }
         val card = originalDraft.withEdits(name = draftName)
         val original = selected
-        runOperation("角色保存失败，请重试") {
+        runOperation(ko("角色保存失败，请重试", "캐릭터를 저장하지 못했습니다. 다시 시도하세요.")) {
             val profile = io {
                 if (original == null) CharacterRepository.create(card)
                 else CharacterRepository.save(original.copy(card = card))
@@ -163,46 +164,46 @@ internal class CharacterLibraryStore(
         }
     }
 
-    fun duplicate(id: String, onDuplicated: (String) -> Unit) = runOperation("角色复制失败，请重试") {
+    fun duplicate(id: String, onDuplicated: (String) -> Unit) = runOperation(ko("角色复制失败，请重试", "캐릭터를 복제하지 못했습니다. 다시 시도하세요.")) {
         val profile = io { CharacterRepository.duplicate(id) }
         characters = io { CharacterRepository.list() }
         onDuplicated(profile.id)
     }
 
-    fun restoreDefaultCharacter() = runOperation("默认角色恢复失败，请重试") {
+    fun restoreDefaultCharacter() = runOperation(ko("默认角色恢复失败，请重试", "기본 캐릭터를 복원하지 못했습니다. 다시 시도하세요.")) {
         io { CharacterRepository.createDefaultCharacter() }
         characters = io { CharacterRepository.list() }
     }
 
-    fun delete(id: String, onDeleted: () -> Unit) = runOperation("角色删除失败，请重试") {
+    fun delete(id: String, onDeleted: () -> Unit) = runOperation(ko("角色删除失败，请重试", "캐릭터를 삭제하지 못했습니다. 다시 시도하세요.")) {
         io { CharacterRepository.delete(id) }
         if (selected?.id == id) selected = null
         characters = io { CharacterRepository.list() }
         onDeleted()
     }
 
-    fun export(id: String, format: CharacterCardFormat, uri: Uri) = runOperation("角色卡导出失败，请重试") {
+    fun export(id: String, format: CharacterCardFormat, uri: Uri) = runOperation(ko("角色卡导出失败，请重试", "캐릭터 카드를 내보내지 못했습니다. 다시 시도하세요.")) {
         io {
             context.contentResolver.openOutputStream(uri, "wt")?.use {
                 CharacterRepository.export(id, format, it)
             } ?: error("CHARACTER_OUTPUT_UNAVAILABLE")
         }
-        notice = "角色卡已导出"
+        notice = ko("角色卡已导出", "캐릭터 카드를 내보냈습니다")
     }
 
     fun startConversation(id: String, onReady: (RoleplayBinding, String) -> Unit) = runOperation(
-        "新对话创建失败，请重试",
+        ko("新对话创建失败，请重试", "새 대화를 만들지 못했습니다. 다시 시도하세요."),
     ) {
         val profile = io { CharacterRepository.get(id) } ?: error("CHARACTER_NOT_FOUND")
         val storedBinding = io { CharacterRepository.binding(id) }
-        val binding = if (usePersona) storedBinding else storedBinding.copy(userName = "用户", userDescription = "")
+        val binding = if (usePersona) storedBinding else storedBinding.copy(userName = ko("用户", "사용자"), userDescription = "")
         val greetings = listOf(profile.card.firstMessage) + profile.card.alternateGreetings
         onReady(binding, greetings.getOrElse(greetingIndex) { profile.card.firstMessage })
     }
 
     fun loadPersona() {
         if (personaLoaded && personaDraft != persona) return
-        runOperation("用户人设读取失败，请重试", queueIfBusy = true) {
+        runOperation(ko("用户人设读取失败，请重试", "내 페르소나를 불러오지 못했습니다. 다시 시도하세요."), queueIfBusy = true) {
             persona = io { CharacterRepository.persona() }
             personaDraft = persona
             personaLoaded = true
@@ -213,8 +214,8 @@ internal class CharacterLibraryStore(
         if (!busy) personaDraft = UserPersona(name, description)
     }
 
-    fun savePersona(onSaved: () -> Unit) = runOperation("用户人设保存失败，请重试") {
-        val normalized = personaDraft.copy(name = personaDraft.name.trim().ifBlank { "用户" })
+    fun savePersona(onSaved: () -> Unit) = runOperation(ko("用户人设保存失败，请重试", "내 페르소나를 저장하지 못했습니다. 다시 시도하세요.")) {
+        val normalized = personaDraft.copy(name = personaDraft.name.trim().ifBlank { ko("用户", "사용자") })
         io { CharacterRepository.savePersona(normalized) }
         persona = normalized
         personaDraft = normalized
@@ -223,7 +224,7 @@ internal class CharacterLibraryStore(
 
     fun loadMemory(id: String, force: Boolean = false) {
         if (!force && memoryCharacterId == id && memorySnapshot != null && memoryDraft != memorySnapshot?.content) return
-        runOperation("剧情记忆读取失败，请重试", queueIfBusy = true) {
+        runOperation(ko("剧情记忆读取失败，请重试", "스토리 메모리를 불러오지 못했습니다. 다시 시도하세요."), queueIfBusy = true) {
             val snapshot = io { CharacterMemoryRepository.snapshot(context, id) }
             memoryCharacterId = id
             memorySnapshot = snapshot
@@ -236,16 +237,16 @@ internal class CharacterLibraryStore(
     fun saveMemory(id: String) {
         val original = memorySnapshot ?: return
         val content = memoryDraft
-        runOperation("剧情记忆保存失败，请检查内容长度后重试") {
+        runOperation(ko("剧情记忆保存失败，请检查内容长度后重试", "스토리 메모리를 저장하지 못했습니다. 내용 길이를 확인한 후 다시 시도하세요.")) {
             when (val result = io {
                 CharacterMemoryRepository.replaceAllIfRevision(context, id, original.revision, content)
             }) {
                 is AgentMemoryWriteResult.Success -> {
                     memorySnapshot = result.snapshot
-                    notice = "剧情记忆已保存"
+                    notice = ko("剧情记忆已保存", "스토리 메모리를 저장했습니다")
                 }
                 is AgentMemoryWriteResult.Conflict -> {
-                    notice = "剧情记忆已被对话更新。当前草稿仍保留，请复制需要的内容后重新载入，再合并保存。"
+                    notice = ko("剧情记忆已被对话更新。当前草稿仍保留，请复制需要的内容后重新载入，再合并保存。", "대화에서 스토리 메모리가 업데이트되었습니다. 현재 초안은 유지됩니다. 필요한 내용을 복사한 후 다시 불러와 병합해 저장하세요.")
                 }
             }
         }

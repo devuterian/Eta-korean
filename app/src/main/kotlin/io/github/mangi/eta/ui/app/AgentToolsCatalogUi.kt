@@ -5,6 +5,7 @@ import io.github.mangi.eta.R
 import io.github.mangi.eta.ui.model.AgentToolsUiState
 import io.github.mangi.eta.ui.model.ToolGroupUi
 import io.github.mangi.eta.ui.model.ToolItemUi
+import io.github.mangi.eta.i18n.ko
 
 internal fun buildToolsState(context: Context): AgentToolsUiState =
     AgentToolsUiState(
@@ -85,8 +86,8 @@ internal fun buildToolsState(context: Context): AgentToolsUiState =
                 } + io.github.mangi.eta.agent.model.AgentPhoneToolCatalog.entries.filter { it.personal }.map {
                     ToolItemUi(it.name, it.title, it.description)
                 } + listOf(
-                    ToolItemUi("read_personal_item", "读取检索详情", "读取历史检索结果的完整条目。"),
-                    ToolItemUi("summarize_bills", "账单汇总", "按时间与关键词精确汇总账单索引。"),
+                    ToolItemUi("read_personal_item", ko("读取检索详情", "검색 결과 상세 읽기"), ko("读取历史检索结果的完整条目。", "이전 검색 결과의 전체 항목을 읽습니다.")),
+                    ToolItemUi("summarize_bills", ko("账单汇总", "청구서 요약"), ko("按时间与关键词精确汇总账单索引。", "기간과 키워드로 청구서 색인을 정확히 집계합니다.")),
                     ToolItemUi("read_sms_code", context.getString(R.string.tool_ui_read_verification_code_7d1121), context.getString(R.string.tool_ui_only_extract_verification_codes_from_recent_sms__0fb8c1)),
                     ToolItemUi("recent_notifications", context.getString(R.string.tool_ui_read_notification_7fdc09), context.getString(R.string.tool_ui_read_the_current_notification_title_and_text_0faee7)),
                     ToolItemUi("search_notification_history", context.getString(R.string.tool_ui_notification_history_95d015), context.getString(R.string.tool_ui_retrieve_the_last_7_days_of_notifications_saved__643e43)),
@@ -129,8 +130,8 @@ internal fun buildToolsState(context: Context): AgentToolsUiState =
                 tools = listOf(
                     ToolItemUi("memory_get", context.getString(R.string.tool_ui_read_memory_979135), context.getString(R.string.tool_ui_paged_to_read_or_retrieve_long_term_memory_in_me_88afc4)),
                     ToolItemUi("memory_write", context.getString(R.string.tool_ui_organize_memory_2b08eb), context.getString(R.string.tool_ui_partially_update_append_or_clear_long_term_memor_c1bab6)),
-                    ToolItemUi("character_memory_get", "读取剧情记忆", "仅角色会话可用，读取当前角色的长期剧情和关系。"),
-                    ToolItemUi("character_memory_write", "整理剧情记忆", "仅角色会话可用，更新当前角色的剧情记忆，不写入现实 MEMORY.md。"),
+                    ToolItemUi("character_memory_get", ko("读取剧情记忆", "스토리 메모리 읽기"), ko("仅角色会话可用，读取当前角色的长期剧情和关系。", "캐릭터 대화에서만 사용할 수 있으며, 현재 캐릭터의 장기 스토리와 관계를 읽습니다.")),
+                    ToolItemUi("character_memory_write", ko("整理剧情记忆", "스토리 메모리 정리"), ko("仅角色会话可用，更新当前角色的剧情记忆，不写入现实 MEMORY.md。", "캐릭터 대화에서만 사용할 수 있으며, 현재 캐릭터의 스토리 메모리를 업데이트합니다. 실제 MEMORY.md에는 쓰지 않습니다.")),
                 ),
             ),
             ToolGroupUi(

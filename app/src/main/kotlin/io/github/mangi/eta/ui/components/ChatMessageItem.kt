@@ -106,6 +106,7 @@ import top.yukonga.miuix.kmp.basic.rememberTooltipState
 import top.yukonga.miuix.kmp.squircle.squircleBorder
 import top.yukonga.miuix.kmp.squircle.squircleSurface
 import top.yukonga.miuix.kmp.theme.MiuixTheme
+import io.github.mangi.eta.i18n.ko
 
 @Composable
 internal fun rememberDataUrlBitmap(dataUrl: String) = remember(dataUrl) {
@@ -647,7 +648,7 @@ private fun AgentMessageBlock(
                         IconButton(onClick = onEdit, enabled = messageActionsEnabled, minWidth = 30.dp, minHeight = 30.dp) {
                             Icon(
                                 imageVector = Icons.Rounded.Edit,
-                                contentDescription = "编辑角色回复",
+                                contentDescription = ko("编辑角色回复", "캐릭터 답변 편집"),
                                 modifier = Modifier.size(15.dp),
                                 tint = MiuixTheme.colorScheme.onSurfaceVariantSummary.copy(alpha = 0.75f),
                             )
@@ -699,7 +700,7 @@ private fun AgentMessageBlock(
                             ) {
                                 Icon(
                                     imageVector = Icons.Rounded.ChevronLeft,
-                                    contentDescription = "上一条候选回复",
+                                    contentDescription = ko("上一条候选回复", "이전 답변 후보"),
                                     modifier = Modifier.size(16.dp),
                                     tint = MiuixTheme.colorScheme.onSurfaceVariantSummary,
                                 )
@@ -718,7 +719,7 @@ private fun AgentMessageBlock(
                             ) {
                                 Icon(
                                     imageVector = Icons.Rounded.ChevronRight,
-                                    contentDescription = "下一条候选回复",
+                                    contentDescription = ko("下一条候选回复", "다음 답변 후보"),
                                     modifier = Modifier.size(16.dp),
                                     tint = MiuixTheme.colorScheme.onSurfaceVariantSummary,
                                 )

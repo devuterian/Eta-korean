@@ -4,6 +4,7 @@ import io.github.mangi.eta.data.datastore.SettingsDataStore
 import io.github.mangi.eta.data.model.Model
 import io.github.mangi.eta.data.model.ModelSource
 import io.github.mangi.eta.data.provider.BuiltinProviders
+import io.github.mangi.eta.i18n.ko
 import java.util.UUID
 import java.util.Locale
 import kotlinx.coroutines.flow.Flow
@@ -37,16 +38,16 @@ internal object ModelRepository {
         val models = currentModels(providerId)
         val modelId = draft.modelId.trim()
         val displayName = draft.displayName.trim()
-        require(modelId.isNotEmpty()) { "Model ID 不能为空" }
-        require(displayName.isNotEmpty()) { "展示名称不能为空" }
+        require(modelId.isNotEmpty()) { ko("Model ID 不能为空", "Model ID는 비워 둘 수 없습니다.") }
+        require(displayName.isNotEmpty()) { ko("展示名称不能为空", "표시 이름은 비워 둘 수 없습니다.") }
         require(draft.contextWindowOverride == null || draft.contextWindowOverride > 0) {
-            "上下文长度必须是正整数"
+            ko("上下文长度必须是正整数", "컨텍스트 길이는 양의 정수여야 합니다.")
         }
         require(
             models.none { existing ->
                 existing.id != draft.id && existing.modelId.trim().equals(modelId, ignoreCase = true)
             }
-        ) { "Model ID 已存在" }
+        ) { ko("Model ID 已存在", "Model ID가 이미 존재합니다.") }
 
         val existing = models.firstOrNull { it.id == draft.id }
         val saved = if (existing == null) {
@@ -205,7 +206,7 @@ internal object ModelRepository {
     fun newId(): String = UUID.randomUUID().toString()
 
     private suspend fun currentModels(providerId: String): List<Model> =
-        requireNotNull(ProviderRepository.providerById(providerId)) { "Provider 不存在" }
+        requireNotNull(ProviderRepository.providerById(providerId)) { ko("Provider 不存在", "Provider가 존재하지 않습니다.") }
             .models
             .sortedBy { it.sortOrder }
 

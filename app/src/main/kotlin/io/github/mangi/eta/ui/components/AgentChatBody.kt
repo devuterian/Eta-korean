@@ -115,6 +115,7 @@ import top.yukonga.miuix.kmp.blur.textureBlur
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.overScrollVertical
 import top.yukonga.miuix.kmp.utils.scrollEndHaptic
+import io.github.mangi.eta.i18n.ko
 
 /**
  * 聊天主体：消息流 + 底部输入框。
@@ -1061,7 +1062,7 @@ private fun EmptyChatState(
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "故事从这里开始",
+                    text = ko("故事从这里开始", "여기서 이야기가 시작됩니다"),
                     style = MiuixTheme.textStyles.body2,
                     color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
                 )

@@ -20,6 +20,7 @@ import io.github.mangi.eta.ui.components.EtaPreferenceGroupTitle
 import io.github.mangi.eta.ui.components.MiuixScaffoldPage
 import top.yukonga.miuix.kmp.basic.BasicComponentDefaults
 import top.yukonga.miuix.kmp.theme.MiuixTheme
+import io.github.mangi.eta.i18n.ko
 
 @Composable
 internal fun SpeechSynthesisScreen(onBack: () -> Unit) {
@@ -106,7 +107,7 @@ private fun SpeechPreviewSection(store: SpeechSettingsStore) {
                     } else {
                         store.playback.speak(
                             "preview",
-                            "你好，我是 Eta。有什么可以帮你？",
+                            ko("你好，我是 Eta。有什么可以帮你？", "안녕하세요, Eta입니다. 무엇을 도와드릴까요?"),
                             store.settings,
                             store.credentials,
                         )

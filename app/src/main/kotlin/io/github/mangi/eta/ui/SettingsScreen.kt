@@ -91,6 +91,7 @@ import kotlinx.coroutines.withContext
 import top.yukonga.miuix.kmp.basic.DropdownItem
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.theme.MiuixTheme
+import io.github.mangi.eta.i18n.ko
 
 /**
  * 模块配置界面。
@@ -330,7 +331,7 @@ private fun SettingsPageContent(
 
                     EtaPreferenceDivider()
                     EtaArrowPreference(
-                        title = "角色",
+                        title = ko("角色", "캐릭터"),
                         startAction = {
                             EtaPreferenceIcon(
                                 icon = Icons.Rounded.SportsBar,

@@ -5,6 +5,7 @@ import io.github.mangi.eta.core.AndroidAgentLogger
 import io.github.mangi.eta.data.model.SpeechCredentials
 import io.github.mangi.eta.data.model.SpeechSettings
 import io.github.mangi.eta.data.repository.SpeechSettingsRepository
+import io.github.mangi.eta.i18n.ko
 import java.io.Closeable
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -50,8 +51,8 @@ internal class SpeechPlaybackController(
                 val secrets = credentials ?: SpeechSettingsRepository.credentials(context)
                 validateSpeechSettings(config, secrets, synthesis = true)
                 val readable = withContext(Dispatchers.Default) { SpeechText.readable(text) }
-                if (readable.isBlank()) throw SpeechFailure(SpeechErrorCode.NO_SPEECH, "这条消息没有可朗读的正文")
-                if (readable.length > 30_000) throw SpeechFailure(SpeechErrorCode.CONFIGURATION, "正文过长，请选择较短的回答朗读")
+                if (readable.isBlank()) throw SpeechFailure(SpeechErrorCode.NO_SPEECH, ko("这条消息没有可朗读的正文", "이 메시지에는 읽을 수 있는 본문이 없습니다."))
+                if (readable.length > 30_000) throw SpeechFailure(SpeechErrorCode.CONFIGURATION, ko("正文过长，请选择较短的回答朗读", "본문이 너무 깁니다. 더 짧은 답변을 선택해 읽으세요."))
                 lease?.requestPlaybackFocus { beforePlayback(); playbackActive = true }
                 val player = createOutput()
                 output = player

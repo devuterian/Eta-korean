@@ -25,6 +25,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.mangi.eta.EtaApp
 import io.github.mangi.eta.R
+import io.github.mangi.eta.i18n.ko
 import io.github.mangi.eta.ui.components.EtaPreferenceRow
 import io.github.mangi.eta.data.model.ProviderSetting
 import io.github.mangi.eta.data.model.ProviderSourceTypes
@@ -88,8 +89,8 @@ internal fun ModelProviderListScreen(
         item(key = "create_section") {
             ProviderSection(title = stringResource(R.string.ui_add_new_provider_74df54)) {
                 EtaArrowPreference(
-                    title = "从目录添加",
-                    summary = "浏览可用提供商并选择模型",
+                    title = ko("从目录添加", "카탈로그에서 추가"),
+                    summary = ko("浏览可用提供商并选择模型", "사용 가능한 제공업체를 둘러보고 모델을 선택합니다"),
                     onClick = { onNavigate(AppRoute.CommunityCatalog) },
                 )
 

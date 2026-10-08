@@ -28,16 +28,18 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import io.github.mangi.eta.i18n.ko
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.Text
 
-private val assistantSuggestions = listOf(
-    "帮我总结当前屏幕内容",
-    "这个页面怎么操作",
-    "屏幕上有什么值得注意的信息",
-)
+private val assistantSuggestions: List<String>
+    get() = listOf(
+        ko("帮我总结当前屏幕内容", "현재 화면 내용을 요약해 줘"),
+        ko("这个页面怎么操作", "이 화면은 어떻게 사용해?"),
+        ko("屏幕上有什么值得注意的信息", "화면에서 주목할 만한 정보가 있어?"),
+    )
 
 @Composable
 internal fun EtaAssistantSuggestions(

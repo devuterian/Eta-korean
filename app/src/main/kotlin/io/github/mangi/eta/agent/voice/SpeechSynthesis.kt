@@ -3,6 +3,7 @@ package io.github.mangi.eta.agent.voice
 import io.github.mangi.eta.data.model.SpeechCredentials
 import io.github.mangi.eta.data.model.SpeechSettings
 import io.github.mangi.eta.data.model.TtsProvider
+import io.github.mangi.eta.i18n.ko
 import java.util.Base64
 import kotlinx.coroutines.withTimeout
 import okhttp3.MediaType.Companion.toMediaType
@@ -30,7 +31,7 @@ internal suspend fun synthesizeSpeech(settings: SpeechSettings, credentials: Spe
         val source = response.body.source()
         while (!source.exhausted() && !decoder.finished) {
             val line = try { source.readUtf8LineStrict(SpeechHttp.MAX_JSON_BYTES) } catch (error: java.io.EOFException) {
-                if (source.buffer.size > SpeechHttp.MAX_JSON_BYTES) throw SpeechFailure(SpeechErrorCode.PROTOCOL, "语音音频块过大")
+                if (source.buffer.size > SpeechHttp.MAX_JSON_BYTES) throw SpeechFailure(SpeechErrorCode.PROTOCOL, ko("语音音频块过大", "음성 오디오 청크가 너무 큽니다."))
                 source.readUtf8()
             }
             decoder.line(line)
@@ -56,7 +57,7 @@ internal class SpeechAudioStreamDecoder(private val qwen: Boolean, onAudio: (Byt
         } else if (line.startsWith("data:")) {
             if (event.isNotEmpty()) event.append('\n')
             event.append(line.removePrefix("data:").removePrefix(" "))
-            if (event.length > SpeechHttp.MAX_JSON_BYTES) throw SpeechFailure(SpeechErrorCode.PROTOCOL, "语音音频块过大")
+            if (event.length > SpeechHttp.MAX_JSON_BYTES) throw SpeechFailure(SpeechErrorCode.PROTOCOL, ko("语音音频块过大", "음성 오디오 청크가 너무 큽니다."))
         }
     }
 
@@ -72,7 +73,7 @@ internal class SpeechAudioStreamDecoder(private val qwen: Boolean, onAudio: (Byt
         val encoded: String
         if (qwen) {
             if (message.optString("code").isNotBlank() || message.optInt("status_code", 200) != 200) {
-                throw SpeechFailure(SpeechErrorCode.SERVER, "千问语音合成失败，请检查配置")
+                throw SpeechFailure(SpeechErrorCode.SERVER, ko("千问语音合成失败，请检查配置", "Qwen 음성 합성에 실패했습니다. 설정을 확인하세요."))
             }
             val output = message.getJSONObject("output")
             encoded = output.optJSONObject("audio")?.optString("data").orEmpty()
@@ -81,7 +82,7 @@ internal class SpeechAudioStreamDecoder(private val qwen: Boolean, onAudio: (Byt
             when (message.getInt("code")) {
                 0 -> Unit
                 20000000 -> finished = true
-                else -> throw SpeechFailure(SpeechErrorCode.SERVER, "豆包语音合成失败（${message.getInt("code")}）")
+                else -> throw SpeechFailure(SpeechErrorCode.SERVER, ko("豆包语音合成失败（${message.getInt("code")}）", "Doubao 음성 합성에 실패했습니다(${message.getInt("code")})."))
             }
             encoded = message.optString("data")
         }
@@ -89,7 +90,7 @@ internal class SpeechAudioStreamDecoder(private val qwen: Boolean, onAudio: (Byt
             val bytes = Base64.getDecoder().decode(encoded)
             audioBytes += bytes.size
             if (audioBytes > 24_000 * 2 * 180) {
-                throw SpeechFailure(SpeechErrorCode.PROTOCOL, "语音音频格式或长度无效")
+                throw SpeechFailure(SpeechErrorCode.PROTOCOL, ko("语音音频格式或长度无效", "음성 오디오 형식 또는 길이가 올바르지 않습니다."))
             }
             pcm.write(bytes)
         }
@@ -97,7 +98,7 @@ internal class SpeechAudioStreamDecoder(private val qwen: Boolean, onAudio: (Byt
 
     fun end() {
         if (qwen && !finished) flush()
-        if (!finished || audioBytes == 0L) throw SpeechFailure(SpeechErrorCode.PROTOCOL, "语音音频不完整，请重试")
+        if (!finished || audioBytes == 0L) throw SpeechFailure(SpeechErrorCode.PROTOCOL, ko("语音音频不完整，请重试", "음성 오디오가 불완전합니다. 다시 시도하세요."))
         pcm.end()
     }
 }

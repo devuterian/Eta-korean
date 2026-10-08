@@ -3,6 +3,7 @@ package io.github.mangi.eta.data.repository
 import android.content.Context
 import android.util.AtomicFile
 import io.github.mangi.eta.data.datastore.SettingsDataStore
+import io.github.mangi.eta.i18n.ko
 import java.io.File
 import java.io.IOException
 import java.security.MessageDigest
@@ -115,14 +116,14 @@ internal class AgentMemoryStore(
         } catch (throwable: IOException) {
             throw AgentMemoryException(
                 code = "MEMORY_READ_FAILED",
-                message = "无法读取记忆文件",
+                message = ko("无法读取记忆文件", "메모리 파일을 읽을 수 없습니다."),
                 cause = throwable,
             )
         }
         if (bytes.size > MAX_FILE_BYTES) {
             throw AgentMemoryException(
                 code = "MEMORY_TOO_LARGE",
-                message = "记忆文件超过 1 MiB 安全上限",
+                message = ko("记忆文件超过 1 MiB 安全上限", "메모리 파일이 1 MiB 안전 한도를 초과했습니다."),
             )
         }
         val content = bytes.toString(Charsets.UTF_8)
@@ -134,13 +135,13 @@ internal class AgentMemoryStore(
         if (bytes.size > MAX_FILE_BYTES) {
             throw AgentMemoryException(
                 code = "MEMORY_TOO_LARGE",
-                message = "记忆文件不能超过 1 MiB UTF-8 字节",
+                message = ko("记忆文件不能超过 1 MiB UTF-8 字节", "메모리 파일은 UTF-8 기준 1 MiB를 넘을 수 없습니다."),
             )
         }
         if (!memoryDir.exists() && !memoryDir.mkdirs() && !memoryDir.isDirectory) {
             throw AgentMemoryException(
                 code = "MEMORY_WRITE_FAILED",
-                message = "无法创建记忆目录",
+                message = ko("无法创建记忆目录", "메모리 디렉터리를 만들 수 없습니다."),
             )
         }
         val output = try {
@@ -148,7 +149,7 @@ internal class AgentMemoryStore(
         } catch (throwable: IOException) {
             throw AgentMemoryException(
                 code = "MEMORY_WRITE_FAILED",
-                message = "无法开始写入记忆文件",
+                message = ko("无法开始写入记忆文件", "메모리 파일 쓰기를 시작할 수 없습니다."),
                 cause = throwable,
             )
         }
@@ -159,7 +160,7 @@ internal class AgentMemoryStore(
             atomicFile.failWrite(output)
             throw AgentMemoryException(
                 code = "MEMORY_WRITE_FAILED",
-                message = "无法保存记忆文件",
+                message = ko("无法保存记忆文件", "메모리 파일을 저장할 수 없습니다."),
                 cause = throwable,
             )
         }

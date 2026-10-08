@@ -26,6 +26,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import io.github.mangi.eta.R
+import io.github.mangi.eta.i18n.ko
 import io.github.mangi.eta.ui.components.EtaPreference
 import io.github.mangi.eta.ui.components.EtaPreferenceDivider
 import top.yukonga.miuix.kmp.basic.BasicComponentDefaults
@@ -42,15 +43,15 @@ internal fun LazyListScope.providerHeadersEditor(
 ) {
     // 请求头数量很少且必须收进同一张卡片，折叠/展开态整组重排，不拆成独立 Lazy 条目。
     item(key = "custom_headers") {
-        ProviderSection(title = "自定义请求头") {
+        ProviderSection(title = ko("自定义请求头", "사용자 지정 요청 헤더")) {
             val chevronRotation by animateFloatAsState(if (expanded) 180f else 0f)
             EtaPreference(
-                title = if (headers.isEmpty()) "未设置" else "已设置 ${headers.size} 项",
-                summary = "可覆盖 User-Agent；认证与传输请求头由系统管理。",
+                title = if (headers.isEmpty()) ko("未设置", "설정 안 됨") else ko("已设置 ${headers.size} 项", "${headers.size}개 설정됨"),
+                summary = ko("可覆盖 User-Agent；认证与传输请求头由系统管理。", "User-Agent를 덮어쓸 수 있습니다. 인증 및 전송 헤더는 시스템이 관리합니다."),
                 endActions = {
                     Icon(
                         imageVector = Icons.Rounded.ExpandMore,
-                        contentDescription = if (expanded) "收起" else "展开",
+                        contentDescription = if (expanded) ko("收起", "접기") else ko("展开", "펼치기"),
                         tint = MiuixTheme.colorScheme.onSurfaceVariantActions,
                         modifier = Modifier.rotate(chevronRotation),
                     )
@@ -77,7 +78,7 @@ internal fun LazyListScope.providerHeadersEditor(
                 }
                 EtaPreferenceDivider(hasLeading = false)
                 EtaPreference(
-                    title = "添加请求头",
+                    title = ko("添加请求头", "요청 헤더 추가"),
                     titleColor = BasicComponentDefaults.titleColor(color = MiuixTheme.colorScheme.primary),
                     startAction = {
                         Icon(
@@ -112,14 +113,14 @@ private fun ProviderHeaderRow(
             TextField(
                 value = row.header.name,
                 onValueChange = onNameChange,
-                label = "名称",
+                label = ko("名称", "이름"),
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
             TextField(
                 value = row.header.value,
                 onValueChange = onValueChange,
-                label = "值",
+                label = ko("值", "값"),
                 singleLine = true,
                 visualTransformation = if (visible) VisualTransformation.None else PasswordVisualTransformation(),
                 trailingIcon = {
