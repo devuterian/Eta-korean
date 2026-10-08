@@ -13,6 +13,7 @@ import io.github.mangi.eta.data.model.CustomHeader
 import io.github.mangi.eta.data.model.OpenAiEndpointMode
 import io.github.mangi.eta.data.model.ModelReasoningCapabilities
 import io.github.mangi.eta.data.model.ProviderTypes
+import io.github.mangi.eta.data.model.ProviderSourceTypes
 import io.github.mangi.eta.data.model.ReasoningEffort
 import io.github.mangi.eta.data.provider.BuiltinProviders
 import io.github.mangi.eta.data.provider.ProviderSourceRegistry
@@ -50,6 +51,7 @@ internal object AgentModelClient {
                         Prefs.isEnabled(Prefs.Keys.AGENT_DEVICE_SENSITIVE_ACTION_TOOLS),
                     thinkingEnabled = effort.enablesReasoning,
                     reasoningEffort = effort,
+                    autoCompactionEnabled = Prefs.isEnabled(Prefs.Keys.AGENT_AUTO_COMPACTION_ENABLED),
                 )
             }
         }
@@ -67,6 +69,7 @@ internal object AgentModelClient {
             model = "gpt-5.5",
             modelDisplayName = "GPT-5.5",
             systemPrompt = BuiltinProviders.DEFAULT_SYSTEM_PROMPT,
+            autoCompactionEnabled = Prefs.isEnabled(Prefs.Keys.AGENT_AUTO_COMPACTION_ENABLED),
             terminalTools = Prefs.isEnabled(Prefs.Keys.AGENT_TERMINAL_TOOLS),
             browserTools = Prefs.isEnabled(Prefs.Keys.AGENT_BROWSER_TOOLS),
             deviceDirectTools = Prefs.isEnabled(Prefs.Keys.AGENT_DEVICE_DIRECT_TOOLS),
@@ -100,6 +103,7 @@ internal object AgentModelClient {
         initialSupplementIndex: Int = 0,
         roleplayContext: RoleplayRunContext? = null,
         rewriteReply: Boolean = false,
+        assistantScreenContext: String = "",
         onContextSnapshot: (AgentContextSnapshot) -> Unit = {},
         onTranscript: (List<ConversationMessage>) -> Unit = {},
         onEvent: (AgentEvent) -> Unit = {}
@@ -124,6 +128,7 @@ internal object AgentModelClient {
             ))
         } else if (!compactOnly) {
             messages.getJSONObject(messages.length() - 1).put("_eta_message_id", initialUserMessageId)
+            AssistantScreenContextProjection.attach(messages.getJSONObject(messages.length() - 1), assistantScreenContext)
         }
         if (compactOnly) messages.remove(messages.length() - 1)
         val transcript = JSONArray()
@@ -144,6 +149,7 @@ internal object AgentModelClient {
                 memoryTools = memoryContext.enabled,
                 memoryWritable = roleplayContext == null,
                 capabilities = capabilities,
+                localWebSearch = !config.usesHostedWebSearch,
             )
             for (index in 0 until additionalTools.length()) {
                 tools.put(additionalTools.opt(index))
@@ -220,7 +226,10 @@ internal object AgentModelClient {
 
     private fun ModelConfig.validate() {
         require(baseUrl.isNotBlank()) { "请先配置 API 地址" }
-        require(apiKey.isNotBlank() || providerId == BuiltinProviders.CHATGPT_CODEX_ID) { "请先配置 API Key" }
+        val usesCodexSubscription = authMode == CodexCompatibilityProfile.AUTH_MODE ||
+            providerSourceType == ProviderSourceTypes.OPENAI_CODEX ||
+            providerId == BuiltinProviders.OPENAI_CODEX_ID
+        if (!usesCodexSubscription) require(apiKey.isNotBlank()) { "请先配置 API Key" }
         require(model.isNotBlank()) { "请先配置模型名" }
         require(
             reasoningCapabilities?.mandatory != true ||
@@ -255,6 +264,8 @@ internal object AgentModelClient {
         val providerName: String = "",
         val providerType: String = ProviderTypes.OPENAI_COMPATIBLE,
         val providerSourceType: String = "",
+        /** Defaults to the existing Platform/API-key authentication path. */
+        val authMode: String = CodexCompatibilityProfile.API_KEY_AUTH_MODE,
         val baseUrl: String,
         val apiKey: String,
         val model: String,
@@ -274,10 +285,19 @@ internal object AgentModelClient {
         val reasoningCapabilities: ModelReasoningCapabilities? = null,
         val extraBodyJson: String = "",
         val customHeaders: List<CustomHeader> = emptyList(),
-        val customBody: List<CustomBody> = emptyList()
+        val customBody: List<CustomBody> = emptyList(),
+        val autoCompactionEnabled: Boolean = Prefs.Keys.BOOLEAN_DEFAULTS.getValue(Prefs.Keys.AGENT_AUTO_COMPACTION_ENABLED),
     ) {
+        val usesHostedWebSearch: Boolean
+            get() = hostedWebSearchEnabled && providerType == ProviderTypes.OPENAI_COMPATIBLE &&
+                openAiEndpointMode == OpenAiEndpointMode.RESPONSES
+
         val effectiveReasoningEffort: ReasoningEffort
             get() = reasoningEffort ?: ReasoningEffort.fromLegacy(thinkingEnabled)
+
+        /** 未知窗口不阻断对话：只关闭依赖窗口的自动压缩，手动压缩与服务商溢出错误照常可用。 */
+        val knownContextWindow: Int?
+            get() = contextWindow?.takeIf { it > 0 }
     }
 
     @Serializable
@@ -321,7 +341,9 @@ internal object AgentModelClient {
         val bytes: Int,
         val width: Int? = null,
         val height: Int? = null,
-        val source: String = "unknown"
+        val source: String = "unknown",
+        /** 截图已具有可上传编码，跨进程物化时保留字节，不走附件转码。 */
+        val preserveOriginal: Boolean = false,
     )
 
     sealed interface ModelResponse {

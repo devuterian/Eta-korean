@@ -17,6 +17,8 @@ internal object OpenAiEndpointMode {
 internal object ProviderSourceTypes {
     const val CUSTOM = "custom"
     const val OPENAI = "openai"
+    /** ChatGPT subscription-backed Codex backend, separate from Platform API keys. */
+    const val OPENAI_CODEX = "openai_codex"
     const val ANTHROPIC = "anthropic"
     const val BAILIAN = "bailian"
     const val DEEPSEEK = "deepseek"
@@ -120,7 +122,8 @@ internal val ProviderSetting.runtimeProviderType: String
 internal val ProviderSetting.typeLabel: String
     get() = when (this) {
         is AnthropicProviderSetting -> "Anthropic Messages"
-        is OpenAiCompatibleProviderSetting -> "OpenAI-compatible"
+        is OpenAiCompatibleProviderSetting ->
+            if (sourceType == ProviderSourceTypes.OPENAI_CODEX) "OpenAI Codex Subscription" else "OpenAI-compatible"
         is CustomProviderSetting -> "Custom OpenAI-compatible"
     }
 
@@ -158,6 +161,18 @@ internal fun ProviderSetting.withApiKey(apiKey: String): ProviderSetting =
         is AnthropicProviderSetting -> copy(apiKey = apiKey)
         is CustomProviderSetting -> copy(apiKey = apiKey)
     }
+
+internal data class ProviderModel(val provider: ProviderSetting, val model: Model)
+
+/** 服务商与模型都启用时才视为可用；会话绑定、选择器与发送共用这一判定。 */
+internal fun List<ProviderSetting>.enabledModel(modelId: String?): ProviderModel? {
+    modelId ?: return null
+    for (provider in this) {
+        if (!provider.isEnabled) continue
+        provider.models.firstOrNull { it.id == modelId && it.isEnabled }?.let { return ProviderModel(provider, it) }
+    }
+    return null
+}
 
 internal fun ProviderSetting.selectedOrFirstModel(modelId: String?): Model? =
     models.firstOrNull { it.id == modelId && it.isEnabled }

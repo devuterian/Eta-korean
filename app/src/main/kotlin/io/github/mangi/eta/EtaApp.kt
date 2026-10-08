@@ -1,5 +1,6 @@
 package io.github.mangi.eta
 
+import io.github.mangi.eta.agent.voice.SpeechOssUpload
 import android.app.Application
 import android.os.Handler
 import android.os.Looper
@@ -9,7 +10,6 @@ import io.github.mangi.eta.agent.terminal.TerminalRuntime
 import io.github.mangi.eta.config.Prefs
 import io.github.mangi.eta.core.AndroidAgentLogger
 import io.github.mangi.eta.core.safeLogType
-import io.github.mangi.eta.data.auth.ChatGptCodexAuthManager
 import io.github.mangi.eta.data.datastore.SettingsDataStore
 import io.github.mangi.eta.data.repository.AgentMemoryRepository
 import io.github.mangi.eta.data.repository.AppearanceSettingsRepository
@@ -44,8 +44,8 @@ class EtaApp : Application(), XposedServiceHelper.OnServiceListener {
 
     override fun onCreate() {
         super.onCreate()
-        ChatGptCodexAuthManager.init(this)
         Prefs.initLocal(this)
+        CodexOAuthManager.init(this)
         if (!AppProcessPolicy.shouldInitializeFullRuntime(Application.getProcessName(), packageName)) {
             return
         }
@@ -60,6 +60,14 @@ class EtaApp : Application(), XposedServiceHelper.OnServiceListener {
         ProviderRepository.init(this)
         McpServerRepository.init(this)
         XposedServiceHelper.registerListener(this)
+        applicationScope.launch {
+            try {
+                SpeechOssUpload(this@EtaApp).retryPending(this@EtaApp)
+            } catch (error: Exception) {
+                if (error is kotlinx.coroutines.CancellationException) throw error
+                AndroidAgentLogger.warn("Eta speech cleanup unavailable: type=${error.javaClass.simpleName}")
+            }
+        }
         applicationScope.launch {
             LinuxEnvironmentSettingsRepository.initialize(this@EtaApp)
             runCatching {

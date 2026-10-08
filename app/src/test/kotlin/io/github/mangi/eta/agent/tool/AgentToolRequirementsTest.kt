@@ -1,6 +1,7 @@
 package io.github.mangi.eta.agent.tool
 
 import io.github.mangi.eta.agent.model.AgentToolCatalog
+import io.github.mangi.eta.agent.roleplay.CharacterMemoryTools
 import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
@@ -12,10 +13,17 @@ import org.junit.Test
 class AgentToolRequirementsTest {
     @Test
     fun everyRegisteredToolHasExactlyOneRequirement() {
-        val tools = catalog(root = true)
-        assertEquals(AgentToolRequirements.toolNames, tools.names())
+        val tools = catalog(root = true).also { CharacterMemoryTools.appendSchemas(it) }
+        val executionOnly = setOf("run_command", "input_text", "replace_text", "clear_text", "paste_text")
+        assertEquals(AgentToolRequirements.toolNames - executionOnly, tools.names())
+        executionOnly.forEach { name -> assertFalse("$name 仅保留执行兼容，不再向模型暴露", name in tools.names()) }
         assertEquals(tools.length(), tools.names().size)
         assertFalse(tools.toString().contains("rootRequirement"))
+    }
+
+    @Test
+    fun ordinaryCatalogDoesNotExposeCharacterMemoryTools() {
+        assertTrue(catalog(root = true).names().none { it in CharacterMemoryTools.NAMES })
     }
 
     @Test
@@ -79,6 +87,16 @@ class AgentToolRequirementsTest {
             .unavailableCode("search_coloros_memories"))
         assertEquals(null, AgentToolCapabilities(rootAvailable = true, lsposedAvailable = false)
             .unavailableCode("search_coloros_memories"))
+    }
+
+    @Test
+    fun indexedSearchNeedsRootAndColorOsButDoesNotRequireAnXposedConnection() {
+        assertEquals("ROOT_REQUIRED", AgentToolCapabilities(rootAvailable = false, colorOs = true)
+            .unavailableCode("search_bills"))
+        assertEquals("DEVICE_UNSUPPORTED", AgentToolCapabilities(rootAvailable = true, colorOs = false)
+            .unavailableCode("search_bills"))
+        assertEquals(null, AgentToolCapabilities(rootAvailable = true, colorOs = true, lsposedAvailable = false)
+            .unavailableCode("search_bills"))
     }
 
     private fun catalog(root: Boolean) = AgentToolCatalog.build(

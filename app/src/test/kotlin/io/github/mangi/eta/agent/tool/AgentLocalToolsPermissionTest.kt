@@ -28,14 +28,29 @@ class AgentLocalToolsPermissionTest {
         )
         root.set(false)
         listOf(
+            "search_bills" to "{}",
             "set_setting" to "{}",
             "terminal" to "{\"action\":\"open\",\"identity\":\"root\"}",
+            "edit_file" to "{\"path\":\"x\",\"identity\":\"root\",\"old_text\":\"a\",\"new_text\":\"b\"}",
             "press_key" to "{\"button\":\"PASTE\"}",
         ).forEach { (name, args) ->
             val result = tools.execute(AgentModelClient.ToolCall("old-$name", name, args))
             assertEquals("ROOT_REQUIRED", JSONObject(result.content).getString("code"))
         }
         tools.close()
+    }
+
+    @Test
+    fun personalContextRechecksSensitiveReadPermissionAndRedactsDeniedCalls() {
+        val enabled = AtomicBoolean(true)
+        val tools = tools(rootAvailable = { true }, sensitiveReadEnabled = enabled::get,
+            beforeToolExecution = { error("已关闭个人信息读取时不能进入数据源执行阶段") })
+        tools.use {
+            enabled.set(false)
+            val result = it.execute(AgentModelClient.ToolCall("personal", "search_bills", "{}"))
+            assertEquals("DEVICE_SENSITIVE_READ_TOOLS_DISABLED", JSONObject(result.content).getString("code"))
+            assertTrue(result.sensitive)
+        }
     }
 
     @Test
@@ -53,6 +68,10 @@ class AgentLocalToolsPermissionTest {
         )
 
         assertEquals("TERMINAL_TOOLS_DISABLED", JSONObject(result.content).getString("code"))
+        listOf("read_file", "edit_file", "glob_files", "grep_files", "stat_file").forEach { name ->
+            val fileResult = tools.execute(AgentModelClient.ToolCall("disabled-$name", name, "{}"))
+            assertEquals(name, "TERMINAL_TOOLS_DISABLED", JSONObject(fileResult.content).getString("code"))
+        }
         tools.close()
     }
 
@@ -71,6 +90,10 @@ class AgentLocalToolsPermissionTest {
         )
 
         assertEquals("BROWSER_TOOLS_DISABLED", JSONObject(result.content).getString("code"))
+        listOf("web_search", "fetch_url").forEach { name ->
+            val webResult = tools.execute(AgentModelClient.ToolCall("disabled-$name", name, "{}"))
+            assertEquals(name, "BROWSER_TOOLS_DISABLED", JSONObject(webResult.content).getString("code"))
+        }
         tools.close()
     }
 
@@ -170,6 +193,37 @@ class AgentLocalToolsPermissionTest {
     }
 
     @Test
+    fun coordinateToolsRequireExplicitCoordinateSpace() {
+        val tools = tools()
+        listOf(
+            "{\"x\":100,\"y\":200}",
+            "{\"x\":100,\"y\":200,\"coordinate_space\":\"pixel\"}",
+            "{\"x\":1000,\"y\":200,\"coordinate_space\":\"normalized\"}",
+        ).forEach { arguments ->
+            val result = tools.execute(AgentModelClient.ToolCall(id = "call-1", name = "tap", argumentsJson = arguments))
+            assertEquals(arguments, "INVALID_ARGUMENT", JSONObject(result.content).getString("code"))
+        }
+        tools.close()
+    }
+
+    @Test
+    fun typeTextRejectsInvalidModesBeforeTouchingTheScreen() {
+        val tools = tools()
+        listOf(
+            "{\"text\":\"hi\",\"mode\":\"paste\"}",
+            "{\"text\":\"\",\"mode\":\"append\"}",
+            "{\"text\":\"hi\",\"mode\":\"append\",\"index\":1}",
+        ).forEach { arguments ->
+            val result = tools.execute(AgentModelClient.ToolCall(id = "call-1", name = "type_text", argumentsJson = arguments))
+            assertEquals(arguments, "INVALID_ARGUMENT", JSONObject(result.content).getString("code"))
+        }
+        // 无障碍未连接时 replace 明确失败，不会退回到盲发按键。
+        val replace = tools.execute(AgentModelClient.ToolCall(id = "call-2", name = "type_text", argumentsJson = "{\"text\":\"hi\"}"))
+        assertEquals("ACCESSIBILITY_UNAVAILABLE", JSONObject(replace.content).getString("code"))
+        tools.close()
+    }
+
+    @Test
     fun textInputWithoutAccessibilityDoesNotSendBlindShellKeys() {
         val tools = tools()
 
@@ -259,6 +313,7 @@ class AgentLocalToolsPermissionTest {
         memoryEnabled: () -> Boolean = { false },
         memoryWritable: Boolean = true,
         rootAvailable: () -> Boolean = { false },
+        sensitiveReadEnabled: () -> Boolean = { false },
         screenObservationProvider: (
             (AgentScreenObservationContract.Options) -> RootShellDeviceController.Observation
         )? = null,
@@ -275,6 +330,7 @@ class AgentLocalToolsPermissionTest {
             memoryToolsEnabled = memoryEnabled,
             memoryWritable = memoryWritable,
             rootAvailable = rootAvailable,
+            deviceSensitiveReadToolsEnabled = sensitiveReadEnabled,
             screenObservationProvider = screenObservationProvider,
             beforeToolExecution = beforeToolExecution,
         )

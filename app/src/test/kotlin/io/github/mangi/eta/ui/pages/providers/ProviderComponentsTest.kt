@@ -34,7 +34,7 @@ class ProviderComponentsTest {
 
     @Test
     fun validatesOptionalPositiveContextWindowOverride() {
-        assertEquals(null, contextWindowInputError(""))
+        assertEquals("Context window must be a positive integer", contextWindowInputError(""))
         assertEquals(null, contextWindowInputError(" 256000 "))
         assertEquals("Context window must be a positive integer", contextWindowInputError("0"))
         assertEquals("Context window must be a positive integer", contextWindowInputError("999999999999"))
@@ -44,6 +44,7 @@ class ProviderComponentsTest {
     fun knownSourcesMapToDistinctBrandLogos() {
         val expected = mapOf(
             ProviderSourceTypes.OPENAI to R.drawable.provider_logo_openai,
+            ProviderSourceTypes.OPENAI_CODEX to R.drawable.provider_logo_codex,
             ProviderSourceTypes.ANTHROPIC to R.drawable.provider_logo_anthropic,
             ProviderSourceTypes.BAILIAN to R.drawable.provider_logo_bailian,
             ProviderSourceTypes.DEEPSEEK to R.drawable.provider_logo_deepseek,

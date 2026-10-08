@@ -12,8 +12,7 @@ internal object BuiltinProviders {
             "回答使用用户的语言，简洁、直接、自然。"
 
     const val OPENAI_ID = "builtin-openai"
-    const val CHATGPT_CODEX_ID = "builtin-chatgpt-codex"
-    const val CHATGPT_CODEX_BASE_URL = "https://chatgpt.com/backend-api/codex"
+    const val OPENAI_CODEX_ID = "builtin-openai-codex"
     const val ANTHROPIC_ID = "builtin-anthropic"
     const val BAILIAN_ID = "builtin-dashscope"
     const val DEEPSEEK_ID = "builtin-deepseek"
@@ -36,10 +35,10 @@ internal object BuiltinProviders {
             endpointMode = OpenAiEndpointMode.RESPONSES,
         ),
         OpenAiCompatibleProviderSetting(
-            id = CHATGPT_CODEX_ID,
-            name = "ChatGPT Codex",
-            baseUrl = CHATGPT_CODEX_BASE_URL,
-            sourceType = ProviderSourceTypes.OPENAI,
+            id = OPENAI_CODEX_ID,
+            name = "OpenAI Codex Subscription",
+            baseUrl = "https://chatgpt.com/backend-api/codex",
+            sourceType = ProviderSourceTypes.OPENAI_CODEX,
             isBuiltIn = true,
             sortOrder = 1,
             systemPrompt = DEFAULT_SYSTEM_PROMPT,
@@ -60,7 +59,7 @@ internal object BuiltinProviders {
             baseUrl = "https://dashscope.aliyuncs.com/compatible-mode/v1",
             sourceType = ProviderSourceTypes.BAILIAN,
             isBuiltIn = true,
-            sortOrder = 3,
+            sortOrder = 2,
             systemPrompt = DEFAULT_SYSTEM_PROMPT,
         ),
         OpenAiCompatibleProviderSetting(
@@ -69,7 +68,7 @@ internal object BuiltinProviders {
             baseUrl = "https://api.deepseek.com",
             sourceType = ProviderSourceTypes.DEEPSEEK,
             isBuiltIn = true,
-            sortOrder = 4,
+            sortOrder = 3,
             systemPrompt = DEFAULT_SYSTEM_PROMPT,
         ),
         OpenAiCompatibleProviderSetting(
@@ -78,7 +77,7 @@ internal object BuiltinProviders {
             baseUrl = "https://api.moonshot.cn/v1",
             sourceType = ProviderSourceTypes.MOONSHOT,
             isBuiltIn = true,
-            sortOrder = 5,
+            sortOrder = 4,
             systemPrompt = DEFAULT_SYSTEM_PROMPT,
         ),
         OpenAiCompatibleProviderSetting(
@@ -87,7 +86,7 @@ internal object BuiltinProviders {
             baseUrl = "https://api.xiaomimimo.com/v1",
             sourceType = ProviderSourceTypes.MIMO,
             isBuiltIn = true,
-            sortOrder = 6,
+            sortOrder = 5,
             systemPrompt = DEFAULT_SYSTEM_PROMPT
         ),
         OpenAiCompatibleProviderSetting(
@@ -96,7 +95,7 @@ internal object BuiltinProviders {
             baseUrl = "https://api.minimaxi.com/v1",
             sourceType = ProviderSourceTypes.MINIMAX,
             isBuiltIn = true,
-            sortOrder = 7,
+            sortOrder = 6,
             systemPrompt = DEFAULT_SYSTEM_PROMPT
         ),
         OpenAiCompatibleProviderSetting(
@@ -105,7 +104,7 @@ internal object BuiltinProviders {
             baseUrl = "https://api.stepfun.com/v1",
             sourceType = ProviderSourceTypes.STEPFUN,
             isBuiltIn = true,
-            sortOrder = 8,
+            sortOrder = 7,
             systemPrompt = DEFAULT_SYSTEM_PROMPT
         ),
         OpenAiCompatibleProviderSetting(
@@ -114,7 +113,7 @@ internal object BuiltinProviders {
             baseUrl = "https://api.siliconflow.cn/v1",
             sourceType = ProviderSourceTypes.SILICONFLOW,
             isBuiltIn = true,
-            sortOrder = 9,
+            sortOrder = 8,
             systemPrompt = DEFAULT_SYSTEM_PROMPT
         ),
         OpenAiCompatibleProviderSetting(
@@ -123,7 +122,7 @@ internal object BuiltinProviders {
             baseUrl = "https://openrouter.ai/api/v1",
             sourceType = ProviderSourceTypes.OPENROUTER,
             isBuiltIn = true,
-            sortOrder = 10,
+            sortOrder = 9,
             systemPrompt = DEFAULT_SYSTEM_PROMPT
         )
     )

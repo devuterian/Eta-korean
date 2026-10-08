@@ -2,15 +2,39 @@ package io.github.mangi.eta.ui.model
 
 import io.github.mangi.eta.data.model.CustomProviderSetting
 import io.github.mangi.eta.data.model.Model
+import io.github.mangi.eta.data.model.OpenAiCompatibleProviderSetting
 import io.github.mangi.eta.data.model.ProviderSourceTypes
+import io.github.mangi.eta.data.model.enabledModel
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 
 class AgentModelPickerProjectorTest {
     @Test
+    fun subscriptionModelsAppearWithoutApiKey() {
+        val codexModel = model(id = "codex-model", displayName = "Codex")
+        val codex = OpenAiCompatibleProviderSetting(
+            id = "builtin-openai-codex",
+            name = "OpenAI Codex Subscription",
+            baseUrl = "https://chatgpt.com/backend-api/codex",
+            sourceType = ProviderSourceTypes.OPENAI_CODEX,
+            apiKey = "",
+            models = listOf(codexModel),
+        )
+
+        val result = AgentModelPickerProjector.project(
+            providers = listOf(codex),
+            selectedProviderId = codex.id,
+            selectedModelId = codexModel.id,
+        )
+
+        assertEquals(listOf(codex.id), result.providerGroups.map { it.providerId })
+        assertEquals(codexModel.id, result.providerGroups.single().models.single().id)
+    }
+
+    @Test
     fun project_keepsOnlyEnabledProvidersAndModelsAndResolvesSelection() {
-        val selected = model(id = "model-selected", displayName = "GPT 5.6", contextWindow = 1_050_000)
+        val selected = model(id = "model-selected", displayName = "GPT 5.6", contextWindowOverride = 1_050_000)
         val providers = listOf(
             provider(
                 id = "disabled-provider",
@@ -124,7 +148,7 @@ class AgentModelPickerProjectorTest {
             formatContextUsage(AgentContextUsageUi(contextTokens = null, contextWindow = 100_000)),
         )
         assertEquals(
-            "12K tokens\nThis model has no context limit",
+            "Context window unknown, so automatic compaction is off",
             formatContextUsage(AgentContextUsageUi(contextTokens = 12_000, contextWindow = null)),
         )
     }
@@ -138,6 +162,20 @@ class AgentModelPickerProjectorTest {
                 locale = java.util.Locale.GERMANY,
             ),
         )
+    }
+
+    @Test
+    fun enabledModel_requiresBothProviderAndModelEnabled() {
+        val providers = listOf(
+            provider(id = "off", enabled = false, models = listOf(model(id = "in-disabled-provider"))),
+            provider(id = "on", models = listOf(model(id = "available"), model(id = "disabled", enabled = false))),
+        )
+
+        assertEquals("on", providers.enabledModel("available")?.provider?.id)
+        assertNull(providers.enabledModel("disabled"))
+        assertNull(providers.enabledModel("in-disabled-provider"))
+        assertNull(providers.enabledModel("deleted"))
+        assertNull(providers.enabledModel(null))
     }
 
     private fun provider(
@@ -162,12 +200,12 @@ class AgentModelPickerProjectorTest {
         modelId: String = id,
         displayName: String = modelId,
         enabled: Boolean = true,
-        contextWindow: Int? = null,
+        contextWindowOverride: Int? = null,
     ) = Model(
         id = id,
         modelId = modelId,
         displayName = displayName,
         isEnabled = enabled,
-        contextWindow = contextWindow,
+        contextWindowOverride = contextWindowOverride,
     )
 }

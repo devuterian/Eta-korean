@@ -21,14 +21,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import io.github.mangi.eta.R
-import top.yukonga.miuix.kmp.basic.BasicComponent
+import io.github.mangi.eta.ui.components.EtaPreference
+import io.github.mangi.eta.ui.components.EtaPreferenceDivider
 import top.yukonga.miuix.kmp.basic.BasicComponentDefaults
-import top.yukonga.miuix.kmp.basic.HorizontalDivider
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.TextField
@@ -44,7 +44,7 @@ internal fun LazyListScope.providerHeadersEditor(
     item(key = "custom_headers") {
         ProviderSection(title = "自定义请求头") {
             val chevronRotation by animateFloatAsState(if (expanded) 180f else 0f)
-            BasicComponent(
+            EtaPreference(
                 title = if (headers.isEmpty()) "未设置" else "已设置 ${headers.size} 项",
                 summary = "可覆盖 User-Agent；认证与传输请求头由系统管理。",
                 endActions = {
@@ -59,7 +59,7 @@ internal fun LazyListScope.providerHeadersEditor(
             )
             if (expanded) {
                 headers.forEach { row ->
-                    HorizontalDivider()
+                    EtaPreferenceDivider(hasLeading = false)
                     ProviderHeaderRow(
                         row = row,
                         onNameChange = { value ->
@@ -75,8 +75,8 @@ internal fun LazyListScope.providerHeadersEditor(
                         onRemove = { onHeadersChange(headers.filterNot { it.id == row.id }) },
                     )
                 }
-                HorizontalDivider()
-                BasicComponent(
+                EtaPreferenceDivider(hasLeading = false)
+                EtaPreference(
                     title = "添加请求头",
                     titleColor = BasicComponentDefaults.titleColor(color = MiuixTheme.colorScheme.primary),
                     startAction = {
@@ -100,7 +100,6 @@ private fun ProviderHeaderRow(
     onValueChange: (String) -> Unit,
     onRemove: () -> Unit,
 ) {
-    val context = LocalContext.current
     var visible by remember(row.id) { mutableStateOf(false) }
     Row(
         modifier = Modifier.padding(start = 16.dp, top = 12.dp, bottom = 12.dp, end = 6.dp),
@@ -128,9 +127,9 @@ private fun ProviderHeaderRow(
                         Icon(
                             imageVector = if (visible) Icons.Rounded.Visibility else Icons.Rounded.VisibilityOff,
                             contentDescription = if (visible) {
-                                context.getString(R.string.page_hide_bb0e7e)
+                                stringResource(R.string.page_hide_bb0e7e)
                             } else {
-                                context.getString(R.string.page_show_71b677)
+                                stringResource(R.string.page_show_71b677)
                             },
                         )
                     }
@@ -141,7 +140,7 @@ private fun ProviderHeaderRow(
         IconButton(onClick = onRemove) {
             Icon(
                 imageVector = Icons.Rounded.Delete,
-                contentDescription = context.getString(R.string.ui_delete_3755f5),
+                contentDescription = stringResource(R.string.ui_delete_3755f5),
                 tint = MiuixTheme.colorScheme.onSurfaceVariantActions,
             )
         }

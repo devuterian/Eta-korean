@@ -1,5 +1,6 @@
 package io.github.mangi.eta.ui.components
 
+import io.github.mangi.eta.ui.voice.SpeechPlaybackHost
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
@@ -44,6 +45,7 @@ import androidx.compose.material.icons.rounded.RocketLaunch
 import androidx.compose.material.icons.rounded.Terminal
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -77,6 +79,7 @@ import io.github.mangi.eta.agent.browser.AgentBrowserSession
 import io.github.mangi.eta.data.model.ReasoningEffort
 import io.github.mangi.eta.ui.app.AgentConversationRevisionReducer
 import io.github.mangi.eta.ui.app.LocalBlurEnabled
+import io.github.mangi.eta.ui.markdown.StreamingMarkdownState
 import io.github.mangi.eta.ui.model.AgentChatMessageUi
 import io.github.mangi.eta.ui.model.AgentContextUsageUi
 import io.github.mangi.eta.ui.model.AgentMessageUi
@@ -209,53 +212,55 @@ internal fun AgentChatBody(
         }
     }
 
-    AgentChatScaffold(
-        visibleMessages = visibleMessages,
-        hasMessages = visibleMessages.isNotEmpty(),
-        scrollState = scrollState,
-        input = input,
-        modelPickerState = modelPickerState,
-        isCompacting = isCompacting,
-        contextUsage = contextUsage,
-        isStreaming = isStreaming,
-        reasoningEffort = reasoningEffort,
-        availableReasoningEfforts = availableReasoningEfforts,
-        pendingImages = pendingImages,
-        pendingFileReferences = pendingFileReferences,
-        messageEdit = messageEdit,
-        showEmptySuggestions = !isKeyboardVisible,
-        characterName = characterName,
-        keepBottomAnchored = keepBottomAnchored,
-        onBottomAnchorChanged = { keepBottomAnchored = it },
-        onSubmit = { text ->
-            sentFromKeyboard = true
-            // 发送即重新锚定底部：用户从历史上方直接发送时，同帧内 isStreaming 与
-            // 新消息一起到位，立即回到底部并恢复后续的流式平滑跟底。
-            keepBottomAnchored = true
-            onSubmit(text)
-        },
-        onReasoningEffortChange = onReasoningEffortChange,
-        onCompactContext = onCompactContext,
-        canCompactContext = canCompactContext,
-        onModelSelected = onModelSelected,
-        onStop = onStop,
-        onAttachImage = onAttachImage,
-        onRemoveImage = onRemoveImage,
-        onAttachFiles = onAttachFiles,
-        onAttachFolder = onAttachFolder,
-        onAttachFilePath = onAttachFilePath,
-        onRemoveFileReference = onRemoveFileReference,
-        onEditMessage = onEditMessage,
-        onCancelMessageEdit = onCancelMessageEdit,
-        onDeleteMessage = onDeleteMessage,
-        onRegenerateMessage = onRegenerateMessage,
-        onSelectReplyCandidate = onSelectReplyCandidate,
-        onSuggestionClick = onSuggestionClick,
-        onRunTraceClick = onRunTraceClick,
-        onOpenBrowser = onOpenBrowser,
-        currentBrowserMessageId = currentBrowserMessageId,
-        modifier = modifier,
-    )
+    SpeechPlaybackHost {
+        AgentChatScaffold(
+            visibleMessages = visibleMessages,
+            hasMessages = visibleMessages.isNotEmpty(),
+            scrollState = scrollState,
+            input = input,
+            modelPickerState = modelPickerState,
+            isCompacting = isCompacting,
+            contextUsage = contextUsage,
+            isStreaming = isStreaming,
+            reasoningEffort = reasoningEffort,
+            availableReasoningEfforts = availableReasoningEfforts,
+            pendingImages = pendingImages,
+            pendingFileReferences = pendingFileReferences,
+            messageEdit = messageEdit,
+            showEmptySuggestions = !isKeyboardVisible,
+            characterName = characterName,
+            keepBottomAnchored = keepBottomAnchored,
+            onBottomAnchorChanged = { keepBottomAnchored = it },
+            onSubmit = { text ->
+                sentFromKeyboard = true
+                // 发送即重新锚定底部：用户从历史上方直接发送时，同帧内 isStreaming 与
+                // 新消息一起到位，立即回到底部并恢复后续的流式平滑跟底。
+                keepBottomAnchored = true
+                onSubmit(text)
+            },
+            onReasoningEffortChange = onReasoningEffortChange,
+            onCompactContext = onCompactContext,
+            canCompactContext = canCompactContext,
+            onModelSelected = onModelSelected,
+            onStop = onStop,
+            onAttachImage = onAttachImage,
+            onRemoveImage = onRemoveImage,
+            onAttachFiles = onAttachFiles,
+            onAttachFolder = onAttachFolder,
+            onAttachFilePath = onAttachFilePath,
+            onRemoveFileReference = onRemoveFileReference,
+            onEditMessage = onEditMessage,
+            onCancelMessageEdit = onCancelMessageEdit,
+            onDeleteMessage = onDeleteMessage,
+            onRegenerateMessage = onRegenerateMessage,
+            onSelectReplyCandidate = onSelectReplyCandidate,
+            onSuggestionClick = onSuggestionClick,
+            onRunTraceClick = onRunTraceClick,
+            onOpenBrowser = onOpenBrowser,
+            currentBrowserMessageId = currentBrowserMessageId,
+            modifier = modifier,
+        )
+    }
 }
 
 @Composable
@@ -393,6 +398,7 @@ internal fun AgentConversationMessages(
     bottomInset: Dp,
     keepBottomAnchored: Boolean,
     onBottomAnchorChanged: (Boolean) -> Unit,
+    assistantOverlay: Boolean = false,
     onSuggestionClick: (String) -> Unit = {},
     onRunTraceClick: () -> Unit = {},
     onOpenBrowser: () -> Unit = {},
@@ -405,7 +411,17 @@ internal fun AgentConversationMessages(
     currentBrowserMessageId: String? = null,
     modifier: Modifier = Modifier,
 ) {
-    val timelineEntries = remember(visibleMessages) { visibleMessages.toTimelineEntries() }
+    // 上一版条目只作复用比对，不参与组合观察。
+    val previousTimelineEntries = remember { arrayOf(emptyList<AgentTimelineEntry>()) }
+    val timelineEntries = remember(visibleMessages) {
+        visibleMessages.toTimelineEntries(previous = previousTimelineEntries[0])
+    }
+    SideEffect { previousTimelineEntries[0] = timelineEntries }
+    val activeWorkProcessKey = if (isStreaming) {
+        (timelineEntries.lastOrNull() as? AgentTimelineEntry.WorkProcess)?.key
+    } else {
+        null
+    }
     // 复制按钮只出现在每轮对话的最终结果上，中间步骤的过渡文本不提供复制入口。
     // 流式进行中当前这一轮尚未收尾，此时的“最后一条正文”只是中间步骤，不标记。
     val finalResultMessageIds = remember(visibleMessages, isStreaming) {
@@ -438,11 +454,17 @@ internal fun AgentConversationMessages(
     }
 
     val tailMessage = visibleMessages.lastOrNull() as? AgentMessageUi
-    val isTailRendering = tailMessage?.let { message ->
-        streamingMarkdownStates[message.id]?.let { state ->
-            state.revealedContent != message.content
+    val currentTailMessage by rememberUpdatedState(tailMessage)
+    // 显现进度属于尾部条目的高频状态；列表作用域只观察离散化后的布尔值。
+    val isTailRendering by remember {
+        derivedStateOf {
+            currentTailMessage?.let { message ->
+                streamingMarkdownStates[message.id]?.let { state ->
+                    state.revealedContent != message.content
+                }
+            } == true
         }
-    } == true
+    }
     var isBottomSettling by remember { mutableStateOf(isStreaming) }
 
     LaunchedEffect(isStreaming, isTailRendering, keepBottomAnchored, isUserDragging) {
@@ -611,6 +633,7 @@ internal fun AgentConversationMessages(
             items(
                 items = timelineEntries,
                 key = { it.key },
+                contentType = { it.contentType() },
             ) { entry ->
                 val itemModifier = Modifier.animateItem(
                     fadeInSpec = tween(durationMillis = 180),
@@ -624,6 +647,7 @@ internal fun AgentConversationMessages(
                         val message = entry.message
                         ChatMessageItem(
                             message = message,
+                            assistantOverlay = assistantOverlay,
                             retainedStreamingState = (message as? AgentMessageUi)
                                 ?.takeIf { it.isStreaming || streamingMarkdownStates.containsKey(it.id) }
                                 ?.let { agentMessage ->
@@ -661,7 +685,9 @@ internal fun AgentConversationMessages(
                         }
                         AgentWorkProcess(
                             id = entry.key,
+                            active = entry.key == activeWorkProcessKey,
                             messages = entry.messages,
+                            assistantOverlay = assistantOverlay,
                             onOpenBrowser = onOpenBrowser,
                             currentBrowserMessageId = currentBrowserMessageId,
                             retainedStreamingStates = streamingMarkdownStates,
@@ -754,7 +780,7 @@ internal fun smoothBottomFollowStep(
     return min(distancePx, min(easedStep.coerceAtLeast(BOTTOM_FOLLOW_MIN_STEP_PX), speedLimitedStep))
 }
 
-private sealed interface AgentTimelineEntry {
+internal sealed interface AgentTimelineEntry {
     val key: String
 
     data class Message(
@@ -769,17 +795,26 @@ private sealed interface AgentTimelineEntry {
     ) : AgentTimelineEntry
 }
 
-private fun List<AgentChatMessageUi>.toTimelineEntries(): List<AgentTimelineEntry> = buildList {
+/**
+ * 投影层只替换真正变化的消息实例；工作过程分组若成员实例全部未变，就复用上一版条目，
+ * 让已结束的分组在正文流式刷新时保持参数同一性并跳过重组。
+ */
+internal fun List<AgentChatMessageUi>.toTimelineEntries(
+    previous: List<AgentTimelineEntry> = emptyList(),
+): List<AgentTimelineEntry> = buildList {
+    val previousWork = previous.asSequence()
+        .filterIsInstance<AgentTimelineEntry.WorkProcess>()
+        .associateBy { it.key }
     val workMessages = mutableListOf<AgentChatMessageUi>()
 
     fun flushWorkProcess() {
         if (workMessages.isEmpty()) return
-        add(
-            AgentTimelineEntry.WorkProcess(
-                key = "work-${workMessages.first().id}",
-                messages = workMessages.toList(),
-            )
-        )
+        val key = "work-${workMessages.first().id}"
+        val reusable = previousWork[key]?.takeIf { entry ->
+            entry.messages.size == workMessages.size &&
+                entry.messages.indices.all { index -> entry.messages[index] === workMessages[index] }
+        }
+        add(reusable ?: AgentTimelineEntry.WorkProcess(key = key, messages = workMessages.toList()))
         workMessages.clear()
     }
 
@@ -792,6 +827,11 @@ private fun List<AgentChatMessageUi>.toTimelineEntries(): List<AgentTimelineEntr
         }
     }
     flushWorkProcess()
+}
+
+private fun AgentTimelineEntry.contentType(): Any = when (this) {
+    is AgentTimelineEntry.WorkProcess -> AgentTimelineEntry.WorkProcess::class
+    is AgentTimelineEntry.Message -> message::class
 }
 
 private fun AgentChatMessageUi.isWorkProcessMessage(): Boolean =

@@ -1,6 +1,7 @@
 package io.github.mangi.eta.agent.voice
 
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -9,7 +10,7 @@ import android.speech.RecognitionService
 import android.speech.SpeechRecognizer
 
 /**
- * Android 助理角色要求声明识别服务。当前文本会话不会启动它；若系统主动调用，则委托给外部 ASR。
+ * Android 助理角色要求声明识别服务。系统调用委托给外部 ASR；浮窗直接使用同一服务解析入口，避免回调自身。
  */
 class EtaRecognitionService : RecognitionService() {
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -120,7 +121,9 @@ class EtaRecognitionService : RecognitionService() {
         }
 
         override fun onLanguageDetection(results: Bundle) {
-            runCatching { callback.languageDetection(results) }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                runCatching { callback.languageDetection(results) }
+            }
         }
     }
 }

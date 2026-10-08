@@ -22,6 +22,13 @@ java {
     }
 }
 
+// CI 对非发版构建传入提交号，按 SemVer 构建元数据追加为 +<sha>，不影响版本先后；本地与发版构建不传
+val buildMetadata = providers.gradleProperty("eta.buildMetadata").orNull?.takeIf { it.isNotBlank() }
+require(buildMetadata == null || buildMetadata.matches(Regex("[0-9A-Za-z.-]+"))) {
+    "eta.buildMetadata 只能包含字母、数字、点和连字符"
+}
+val buildMetadataSuffix = buildMetadata?.let { "+$it" }.orEmpty()
+
 android {
     namespace = "io.github.mangi.eta"
     compileSdk = 37
@@ -29,11 +36,11 @@ android {
 
     defaultConfig {
         applicationId = "io.github.mangi.eta"
-        minSdk = 34
-        targetSdk = 36
+        minSdk = 33
+        targetSdk = 37
         // versionCode 规则：yyyyMMdd + 两位当日序号（01 起），发版时随 versionName 一起手动递增。
-        versionCode = 2026091202
-        versionName = "3.0.4"
+        versionCode = 2026100701
+        versionName = "3.3.0"
         versionNameSuffix = "-ko"
     }
 
@@ -50,10 +57,13 @@ android {
 
     buildTypes {
         debug {
+            // 版本名带构建类型标记，设置页与 APK 文件名据此区分 Debug 包
+            versionNameSuffix = "-debug" + buildMetadataSuffix
             isMinifyEnabled = false
             isPseudoLocalesEnabled = true
         }
         release {
+            versionNameSuffix = buildMetadataSuffix
             signingConfig = signingConfigs.findByName("release")
             isMinifyEnabled = true
             isShrinkResources = true
@@ -65,6 +75,7 @@ android {
     }
 
     compileOptions {
+        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_25
         targetCompatibility = JavaVersion.VERSION_25
     }
@@ -96,20 +107,49 @@ android {
     lint {
         abortOnError = true
         checkReleaseBuilds = false
+        // versionCode 采用日期编码，已发布值只能递增；上限 2100000000 足够覆盖到 2099 年。
+        disable += "HighAppVersionCode"
     }
 
     testOptions {
         unitTests.isIncludeAndroidResources = true
+        // Robolectric 在高版本 JDK 下需要访问内部 API，参数只作用于测试 JVM。
+        unitTests.all {
+            it.jvmArgs(
+                "--add-opens=java.base/java.lang=ALL-UNNAMED",
+                "--add-opens=java.base/java.util=ALL-UNNAMED",
+                "--add-opens=java.base/java.io=ALL-UNNAMED",
+                "--add-opens=java.base/java.net=ALL-UNNAMED",
+                "--add-opens=java.base/java.security=ALL-UNNAMED",
+                "--add-opens=java.base/java.text=ALL-UNNAMED",
+                "--add-opens=java.base/jdk.internal.access=ALL-UNNAMED",
+                "--add-opens=java.desktop/java.awt.font=ALL-UNNAMED",
+                "--add-opens=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED",
+                "--enable-native-access=ALL-UNNAMED",
+            )
+        }
+    }
+}
+
+androidComponents {
+    onVariants { variant ->
+        // 文件名只取 versionName：构建类型标记与 CI 构建元数据都由 versionNameSuffix 带出
+        variant.outputs.forEach { output ->
+            output.outputFileName.set(output.versionName.map { "Eta-v$it.apk" })
+        }
     }
 }
 
 dependencies {
+    coreLibraryDesugaring(libs.desugar.jdk.libs.nio)
+    implementation(libs.jsoup)
     implementation(libs.commons.compress)
     implementation(libs.xz)
     compileOnly(libs.libxposed.api)
     // UI 侧 RemotePreferences 写入桥：通过 XposedService 将配置提交到 LSPosed 数据库；
     // Hook 侧用 XposedInterface.getRemotePreferences 读取当前进程持有的配置缓存。
     implementation(libs.libxposed.service)
+    implementation(libs.dexkit)
     implementation(libs.miuix.ui)
     implementation(libs.miuix.blur)
     implementation(libs.miuix.nav)
@@ -119,10 +159,8 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.activity.compose)
-    implementation(libs.markdown.renderer)
-    implementation(libs.markdown.renderer.m3)
-    // markdown-renderer-m3 将 material3 作为 compileOnly，需显式引入以满足运行时依赖
-    implementation(libs.material3)
+    // 只使用 GFM 解析器；聊天渲染层由 ui/markdown 自建，按块冻结并接入逐字显现。
+    implementation(libs.intellij.markdown)
     implementation(libs.hidden.api.bypass)
 
     // DataStore：Provider / Model 结构化 JSON 与当前选中 ID 等键值

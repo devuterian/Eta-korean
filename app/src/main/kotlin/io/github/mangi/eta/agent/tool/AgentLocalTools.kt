@@ -12,8 +12,13 @@ import io.github.mangi.eta.agent.device.RootAccess
 import io.github.mangi.eta.agent.device.RootShellDeviceController
 import io.github.mangi.eta.agent.device.BoundedRootCommandExecutor
 import io.github.mangi.eta.agent.model.AgentModelClient
+import io.github.mangi.eta.agent.model.AgentHttpClient
+import io.github.mangi.eta.agent.device.LocalNetworkPermission
+import io.github.mangi.eta.agent.web.AgentWebTools
+import io.github.mangi.eta.agent.web.WebHttpTransport
 import io.github.mangi.eta.agent.model.AgentScreenObservationContract
 import io.github.mangi.eta.agent.model.AgentSensitiveToolPolicy
+import io.github.mangi.eta.agent.model.AgentFileToolCatalog
 import io.github.mangi.eta.agent.overlay.AgentHapticFeedback
 import io.github.mangi.eta.agent.overlay.GestureIndicator
 import io.github.mangi.eta.agent.runtime.AgentAppContext
@@ -103,6 +108,10 @@ internal class AgentLocalTools(
         rootAvailable = rootAvailable,
     )
     private val imageTools = AgentImageTools(context, rootCommandExecutor, rootAvailable)
+    private val webTools = AgentWebTools(
+        transport = WebHttpTransport(AgentHttpClient.client),
+        localNetworkAccess = { LocalNetworkPermission.accessState(context).name.lowercase(Locale.ROOT) },
+    )
     private val terminalController = RootShellTerminalController(
         logger = logger,
         rootAvailable = rootAvailable,
@@ -141,6 +150,7 @@ internal class AgentLocalTools(
         if (!closed.compareAndSet(false, true)) return
         publishedObservation.set(PublishedObservation())
         AgentBrowserSession.interruptAgentAction(browserRunId)
+        webTools.close()
         terminalController.interruptAll()
         rootCommandExecutor.close()
         githubSkillSource?.close()
@@ -175,22 +185,28 @@ internal class AgentLocalTools(
                 "launch_app" -> textResult(launchApp(args))
                 "open_uri" -> textResult(openUri(args))
                 "browser_use" -> browserUse(args, toolCall.id)
+                "web_search", "fetch_url" -> {
+                    if (!browserToolsEnabled()) textResult(errorResult("BROWSER_TOOLS_DISABLED", "请先启用网页搜索、读取与浏览器工具"))
+                    else textResult(webTools.execute(toolCall.name, args))
+                }
                 "observe_screen" -> observeScreen(args)
-                "tap" -> textResult(tap(args))
-                "tap_area" -> textResult(tapArea(args))
-                "tap_element" -> textResult(tapElement(args))
-                "long_press" -> textResult(longPress(args))
-                "long_press_element" -> textResult(longPressElement(args))
-                "swipe" -> textResult(swipe(args))
-                "scroll" -> textResult(deviceController.scroll(args.optString("direction")))
-                "scroll_element" -> textResult(scrollElement(args))
-                "input_text" -> textResult(inputText(args))
-                "replace_text" -> textResult(replaceText(args))
-                "clear_text" -> textResult(clearText(args))
+                "tap" -> afterAction(tap(args))
+                "tap_area" -> afterAction(tapArea(args))
+                "tap_element" -> afterAction(tapElement(args))
+                "long_press" -> afterAction(longPress(args))
+                "long_press_element" -> afterAction(longPressElement(args))
+                "swipe" -> afterAction(swipe(args))
+                "scroll" -> afterAction(deviceController.scroll(args.optString("direction"), args.optString("amount")))
+                "scroll_element" -> afterAction(scrollElement(args))
+                "type_text" -> afterAction(typeText(args))
+                // 旧会话或旧入口仍可能请求这些工具名；保留执行路径，但不再出现在模型目录里。
+                "input_text" -> afterAction(inputText(args))
+                "replace_text" -> afterAction(replaceText(args))
+                "clear_text" -> afterAction(clearText(args))
                 "set_clipboard" -> textResult(setClipboard(args))
                 "get_clipboard" -> textResult(getClipboard())
-                "paste_text" -> textResult(pasteText(args))
-                "press_key" -> textResult(deviceController.pressKey(args.optString("button")))
+                "paste_text" -> afterAction(pasteText(args))
+                "press_key" -> afterAction(deviceController.pressKey(args.optString("button")))
                 "wait" -> textResult(deviceController.waitMs(args.optInt("duration_ms", 1_000)))
                 "wait_for_text" -> textResult(waitForText(args))
                 "wait_for_package" -> textResult(waitForPackage(args))
@@ -201,9 +217,7 @@ internal class AgentLocalTools(
                 "read_image" -> fileVisionTool { imageTools.readImage(args) }
                 "terminal" -> textResult(terminalTool { terminal(args) })
                 "run_command" -> textResult(terminalTool { runCommand(args) })
-                "read_file" -> textResult(terminalTool { readFile(args) })
-                "write_file" -> textResult(terminalTool { writeFile(args) })
-                "list_directory" -> textResult(terminalTool { listDirectory(args) })
+                in AgentFileToolCatalog.names -> textResult(terminalTool { terminalController.fileTool(toolCall.name, args) })
                 "memory_get" -> textResult(memoryGet(args))
                 "memory_write" -> textResult(memoryWrite(args))
                 "skills_list" -> textResult(skillsList(args))
@@ -362,6 +376,7 @@ internal class AgentLocalTools(
                     width = image.width,
                     height = image.height,
                     source = "agent_browser",
+                    preserveOriginal = true,
                 )
             },
         )
@@ -394,6 +409,33 @@ internal class AgentLocalTools(
             content = observation.content,
             images = listOfNotNull(observation.image)
         )
+    }
+
+    /**
+     * 成功的 GUI 动作附带一次轻量观察：只读 UI 树、不截图，节点数减半。
+     * 模型据此确认动作生效并直接用新的 observation_id 继续操作，不必再单独 observe_screen；
+     * 失败或结果未知的动作不附带，保持"先重新观察"的既有约束。
+     */
+    private fun afterAction(raw: String): AgentModelClient.ToolResult {
+        val result = runCatching { JSONObject(raw) }.getOrNull()
+        if (result == null || !result.optBoolean("ok")) return textResult(raw)
+        val before = publishedObservation.get().elements
+        val after = runCatching {
+            screenObservationProvider?.invoke(AFTER_ACTION_OPTIONS)
+                ?: deviceController.observe(
+                    includeScreenshot = false,
+                    includeUiTree = true,
+                    maxNodes = AFTER_ACTION_OPTIONS.maxNodes,
+                )
+        }.getOrElse { throwable ->
+            logger.debug { "Agent local tool after-action observation failed: type=${throwable.javaClass.simpleName}" }
+            return textResult(raw)
+        }
+        val elements = after.elementObservation ?: return textResult(raw)
+        // 新快照取代动作前的快照：旧 index 在界面变化后本就不可靠，继续保留只会让模型误用。
+        publishedObservation.set(publishedObservation.get().copy(elements = elements))
+        result.put("after", AgentAfterActionSummary.build(before, elements))
+        return textResult(result.toString())
     }
 
     private fun tap(args: JSONObject): String {
@@ -495,8 +537,41 @@ internal class AgentLocalTools(
         return deviceController.scrollElement(
             observation = observation,
             index = args.optInt("index", -1),
-            direction = args.optString("direction")
+            direction = args.optString("direction"),
+            amount = args.optString("amount"),
         )
+    }
+
+    /**
+     * 统一的文本输入：replace（默认）整体替换为 text，text 为空即清空；append 在光标处插入。
+     * 指定 index 时先确认节点来自最近一次观察；不指定时作用于当前输入焦点。
+     * submit=true 在写入成功后按输入法回车，用于搜索、发送等提交动作。
+     */
+    private fun typeText(args: JSONObject): String {
+        val text = args.optString("text")
+        val mode = args.optString("mode", "replace").trim().lowercase(Locale.ROOT).ifBlank { "replace" }
+        val written = when (mode) {
+            "replace" -> replaceText(args)
+            "append" -> {
+                if (text.isEmpty()) return errorResult("INVALID_ARGUMENT", "append 模式的 text 不能为空")
+                if (args.optNullableInt("index") != null) {
+                    return errorResult("INVALID_ARGUMENT", "append 只作用于当前输入焦点；要写入指定输入框请用 mode=replace")
+                }
+                // 长文本走选区插入加粘贴回退，比逐字键入更稳定。
+                if (text.length > TYPE_TEXT_INCREMENTAL_CHARS) pasteText(args) else deviceController.inputText(text)
+            }
+            else -> return errorResult("INVALID_ARGUMENT", "mode 只能是 replace 或 append")
+        }
+        val json = runCatching { JSONObject(written) }.getOrNull() ?: return written
+        json.put("tool", "type_text").put("mode", mode)
+        if (!json.optBoolean("ok") || !args.optBoolean("submit")) return json.toString()
+        val submitted = runCatching { JSONObject(deviceController.pressKey("ENTER")) }.getOrNull()
+        json.put("submitted", submitted?.optBoolean("ok") == true)
+        if (submitted?.optBoolean("ok") != true) {
+            // 文本已写入但提交失败：整体仍算成功，避免模型重复输入；由 submitted=false 提示单独补按回车或点按钮。
+            json.put("submit_error", submitted?.optString("code").orEmpty().ifBlank { "SUBMIT_FAILED" })
+        }
+        return json.toString()
     }
 
     private fun inputText(args: JSONObject): String {
@@ -558,10 +633,30 @@ internal class AgentLocalTools(
             timeoutMs = args.optInt("timeout_ms", 10_000)
         )
 
+    /**
+     * 坐标系必须显式声明。旧版按"上一次观察是否带截图"隐式切换默认值，模型无从得知，
+     * 经常把截图像素当成屏幕像素；缺省时直接报参数错误，让模型在下一步改正。
+     */
     private fun convertPoint(x: Int, y: Int, coordinateSpace: String): ScreenPoint {
         val space = publishedObservation.get().coordinateSpace
         val requestedSpace = coordinateSpace.trim().lowercase(Locale.ROOT)
-        if (requestedSpace == "screen" || (requestedSpace.isBlank() && space == null)) {
+        if (requestedSpace.isBlank()) {
+            throw InvalidToolArgumentException(
+                "缺少 coordinate_space：看截图定位用 normalized（0–999），坐标来自 ui_nodes 用 screen",
+            )
+        }
+        if (requestedSpace == "normalized") {
+            if (x !in 0..NORMALIZED_MAX || y !in 0..NORMALIZED_MAX) {
+                throw InvalidToolArgumentException("normalized 坐标必须在 0–$NORMALIZED_MAX 之间：($x,$y)")
+            }
+            val (width, height) = space?.let { it.screenWidth to it.screenHeight }
+                ?: deviceController.screenDimensions()
+            return ScreenPoint(
+                x = (x.toLong() * (width - 1) / NORMALIZED_MAX).toInt(),
+                y = (y.toLong() * (height - 1) / NORMALIZED_MAX).toInt(),
+            )
+        }
+        if (requestedSpace == "screen") {
             val (width, height) = space?.let { it.screenWidth to it.screenHeight }
                 ?: deviceController.screenDimensions()
             if (x !in 0 until width || y !in 0 until height) {
@@ -571,9 +666,12 @@ internal class AgentLocalTools(
             }
             return ScreenPoint(x, y)
         }
+        if (requestedSpace != "screenshot") {
+            throw InvalidToolArgumentException("coordinate_space 只能是 normalized、screen 或 screenshot")
+        }
         if (space == null) {
             throw InvalidToolArgumentException(
-                "当前没有可用的截图坐标系；请先 observe_screen，或明确设置 coordinate_space=screen",
+                "最近一次观察没有附图，没有 screenshot 坐标系；看截图定位请用 normalized，或先带截图重新观察",
             )
         }
         val point = runCatching { space.fromScreenshot(x, y) }
@@ -684,45 +782,7 @@ internal class AgentLocalTools(
             timeoutSeconds = args.optInt("timeout_seconds", 30)
         )
 
-    private fun terminal(args: JSONObject): String {
-        return terminalController.terminalAction(
-            action = args.optString("action", "open_and_exec"),
-            command = args.optString("command"),
-            cwd = args.optString("cwd").ifBlank { null },
-            timeoutMs = args.optInt("timeout_ms", 30_000),
-            identity = args.optString("identity"),
-            mergeStderr = args.optBoolean("merge_stderr", false),
-            sessionId = args.optString("session_id").ifBlank { null },
-            jobId = args.optString("job_id").ifBlank { null },
-            async = args.optBoolean("async", false),
-            offsetChars = args.optInt("offset_chars", 0),
-            maxChars = args.optInt("max_chars", 8_000),
-            closeIfDone = args.optBoolean("close_if_done", false),
-            environment = args.optString("environment", "android"),
-            taskId = args.optString("task_id").ifBlank { null },
-        )
-    }
-
-    private fun readFile(args: JSONObject): String =
-        terminalController.readFile(
-            path = args.optString("path"),
-            offsetBytes = args.optInt("offset_bytes", 0),
-            maxBytes = args.optInt("max_bytes", 65_536)
-        )
-
-    private fun writeFile(args: JSONObject): String =
-        terminalController.writeFile(
-            path = args.optString("path"),
-            content = args.optString("content"),
-            append = args.optBoolean("append", false)
-        )
-
-    private fun listDirectory(args: JSONObject): String =
-        terminalController.listDirectory(
-            path = args.optString("path"),
-            showHidden = args.optBoolean("show_hidden", false),
-            limit = args.optInt("limit", 80)
-        )
+    private fun terminal(args: JSONObject): String = terminalController.terminalAction(args)
 
     private fun findAppByPackage(packageName: String): AppInfo? =
         installedLauncherApps().firstOrNull { it.packageName == packageName }
@@ -1320,17 +1380,19 @@ internal class AgentLocalTools(
     )
 
     private companion object {
-        val DEVICE_DIRECT_TOOL_NAMES = setOf(
+        val DEVICE_DIRECT_TOOL_NAMES = io.github.mangi.eta.agent.model.AgentPhoneToolCatalog.direct + setOf(
             "set_alarm",
             "set_timer",
             "device_status",
+            "inspect_app",
             "network_info",
             "top_memory_apps",
             "top_storage_apps",
             "media_control",
             "set_volume",
         )
-        val DEVICE_SENSITIVE_READ_TOOL_NAMES = setOf(
+        val DEVICE_SENSITIVE_READ_TOOL_NAMES = io.github.mangi.eta.agent.context.PersonalSearchTools.names + io.github.mangi.eta.agent.model.AgentPhoneToolCatalog.reads + setOf(
+            "search_notes", "search_system_memories",
             "get_setting",
             "wifi_credentials",
             "recent_notifications",
@@ -1363,7 +1425,7 @@ internal class AgentLocalTools(
             "search_qq_chat_images",
             "search_wechat_chat_images",
         )
-        val DEVICE_SENSITIVE_ACTION_TOOL_NAMES = setOf(
+        val DEVICE_SENSITIVE_ACTION_TOOL_NAMES = io.github.mangi.eta.agent.model.AgentPhoneToolCatalog.writes + setOf(
             "set_setting",
             "set_device_state",
             "app_state_control",
@@ -1374,3 +1436,15 @@ internal class AgentLocalTools(
         val MEMORY_TOOL_NAMES = setOf("memory_get", "memory_write")
     }
 }
+
+private val AFTER_ACTION_OPTIONS = AgentScreenObservationContract.Options(
+    includeScreenshot = false,
+    includeUiTree = true,
+    maxNodes = 30,
+)
+
+/** append 超过该长度改走粘贴路径；逐字键入的增量重建对长文本既慢又容易被输入法打断。 */
+private const val TYPE_TEXT_INCREMENTAL_CHARS = 200
+
+/** 归一化坐标上界：0–999，与主流 GUI 模型的输出习惯一致。 */
+private const val NORMALIZED_MAX = 999

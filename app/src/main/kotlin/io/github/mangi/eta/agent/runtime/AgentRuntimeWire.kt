@@ -1,6 +1,7 @@
 package io.github.mangi.eta.agent.runtime
 
 import io.github.mangi.eta.agent.model.AgentContextSnapshot
+import io.github.mangi.eta.agent.model.AssistantScreenContextProjection
 
 import android.content.ComponentName
 import android.content.Intent
@@ -9,9 +10,12 @@ import android.os.Parcel
 import android.os.ParcelFileDescriptor
 import io.github.mangi.eta.agent.model.AgentConversationCodec
 import io.github.mangi.eta.agent.model.AgentModelClient
+import io.github.mangi.eta.config.Prefs
+import io.github.mangi.eta.agent.model.CodexCompatibilityProfile
 import io.github.mangi.eta.data.model.CustomBody
 import io.github.mangi.eta.data.model.CustomHeader
 import io.github.mangi.eta.data.model.ModelReasoningCapabilities
+import io.github.mangi.eta.data.model.ProviderSourceTypes
 import io.github.mangi.eta.data.model.ReasoningEffort
 import java.io.Closeable
 import java.util.concurrent.atomic.AtomicBoolean
@@ -87,16 +91,19 @@ internal object AgentRuntimeWire {
     private const val KEY_TYPE = "type"
     private const val KEY_RUN_ID = "run_id"
     private const val KEY_PROMPT = "prompt"
+    private const val KEY_ASSISTANT_SCREEN_CONTEXT = "assistant_screen_context"
     private const val KEY_MODEL_SESSION_ID = "model_session_id"
     private const val KEY_PROVIDER_ID = "provider_id"
     private const val KEY_PROVIDER_NAME = "provider_name"
     private const val KEY_PROVIDER_TYPE = "provider_type"
     private const val KEY_PROVIDER_SOURCE_TYPE = "provider_source_type"
+    private const val KEY_AUTH_MODE = "auth_mode"
     private const val KEY_BASE_URL = "base_url"
     private const val KEY_API_KEY = "api_key"
     private const val KEY_MODEL = "model"
     private const val KEY_MODEL_DISPLAY_NAME = "model_display_name"
     private const val KEY_CONTEXT_WINDOW = "context_window"
+    private const val KEY_AUTO_COMPACTION_ENABLED = "auto_compaction_enabled"
     private const val KEY_SYSTEM_PROMPT = "system_prompt"
     private const val KEY_ANTHROPIC_VERSION = "anthropic_version"
     private const val KEY_OPENAI_ENDPOINT_MODE = "openai_endpoint_mode"
@@ -126,6 +133,7 @@ internal object AgentRuntimeWire {
     private const val KEY_WIDTH = "width"
     private const val KEY_HEIGHT = "height"
     private const val KEY_SOURCE = "source"
+    private const val KEY_PRESERVE_ORIGINAL = "preserve_original"
     private const val KEY_OK = "ok"
     private const val KEY_CONTENT = "content"
     private const val KEY_REASONING_CONTENT = "reasoning_content"
@@ -158,6 +166,7 @@ internal object AgentRuntimeWire {
         val modelSessionId: String = "",
         val operation: String = OP_CHAT,
         val rewriteTargetMessageId: String? = null,
+        val assistantScreenContext: String = "",
     ) {
         // 旧入口沿用会话 handoff；无持久会话的入口以首个 run 为会话起点。
         val effectiveModelSessionId: String
@@ -179,6 +188,7 @@ internal object AgentRuntimeWire {
         val width: Int? = null,
         val height: Int? = null,
         val source: String = "unknown",
+        val preserveOriginal: Boolean = false,
     )
 
     /** 接收端在后台完成图片物化前持有文件描述符；关闭后不可再次使用。 */
@@ -252,6 +262,7 @@ internal object AgentRuntimeWire {
                 image.width?.let { putInt(KEY_WIDTH, it) }
                 image.height?.let { putInt(KEY_HEIGHT, it) }
                 putString(KEY_SOURCE, image.source)
+                putBoolean(KEY_PRESERVE_ORIGINAL, image.preserveOriginal)
             }
         }
         return requestBundle(request, imageBundles, payloadDirectory)
@@ -268,26 +279,43 @@ internal object AgentRuntimeWire {
                 image.width?.let { putInt(KEY_WIDTH, it) }
                 image.height?.let { putInt(KEY_HEIGHT, it) }
                 putString(KEY_SOURCE, image.source)
+                putBoolean(KEY_PRESERVE_ORIGINAL, image.preserveOriginal)
             }
         },
     )
 
     private fun requestBundle(request: RunRequest, imageBundles: List<Bundle>, payloadDirectory: File? = null): Bundle = Bundle().apply {
+        require(request.assistantScreenContext.length <= AssistantScreenContextProjection.MAX_CHARS) {
+            "助理屏幕上下文超过容量预算"
+        }
         AgentWireText.put(this, "history_json", AgentConversationCodec.encodeTranscriptForStorage(request.history), payloadDirectory)
         putString(KEY_RUN_ID, request.runId)
         AgentWireText.put(this, KEY_PROMPT, request.prompt, payloadDirectory)
+        putString(KEY_ASSISTANT_SCREEN_CONTEXT, request.assistantScreenContext)
         putString(KEY_MODEL_SESSION_ID, request.modelSessionId)
         putString(KEY_PROVIDER_ID, request.config.providerId)
         putString(KEY_PROVIDER_NAME, request.config.providerName)
         putString(KEY_PROVIDER_TYPE, request.config.providerType)
         putString(KEY_PROVIDER_SOURCE_TYPE, request.config.providerSourceType)
+        putString(KEY_AUTH_MODE, request.config.authMode)
         putString(KEY_BASE_URL, request.config.baseUrl)
-        putString(KEY_API_KEY, request.config.apiKey)
+        putString(
+            KEY_API_KEY,
+            if (request.config.authMode == CodexCompatibilityProfile.AUTH_MODE ||
+                request.config.providerSourceType == ProviderSourceTypes.OPENAI_CODEX ||
+                request.config.providerId == io.github.mangi.eta.data.provider.BuiltinProviders.OPENAI_CODEX_ID
+            ) {
+                ""
+            } else {
+                request.config.apiKey
+            },
+        )
         putString(KEY_MODEL, request.config.model)
         putString(KEY_MODEL_DISPLAY_NAME, request.config.modelDisplayName)
         putString("operation", request.operation)
         request.rewriteTargetMessageId?.let { putString("rewrite_target_message_id", it) }
         request.config.contextWindow?.let { putInt(KEY_CONTEXT_WINDOW, it) }
+        putBoolean(KEY_AUTO_COMPACTION_ENABLED, request.config.autoCompactionEnabled)
         AgentWireText.put(this, KEY_SYSTEM_PROMPT, request.config.systemPrompt, payloadDirectory)
         putString(KEY_ANTHROPIC_VERSION, request.config.anthropicVersion)
         putString(KEY_OPENAI_ENDPOINT_MODE, request.config.openAiEndpointMode)
@@ -348,6 +376,7 @@ internal object AgentRuntimeWire {
                     width = image.optionalInt(KEY_WIDTH),
                     height = image.optionalInt(KEY_HEIGHT),
                     source = image.getString(KEY_SOURCE).orEmpty(),
+                    preserveOriginal = image.getBoolean(KEY_PRESERVE_ORIGINAL, false),
                 )
             }
             return IncomingRunRequest(
@@ -386,6 +415,7 @@ internal object AgentRuntimeWire {
                         width = image.width,
                         height = image.height,
                         source = image.source,
+                        preserveOriginal = image.preserveOriginal,
                     )
                 },
             )
@@ -398,6 +428,9 @@ internal object AgentRuntimeWire {
     ): RunRequest = RunRequest(
             runId = bundle.getString(KEY_RUN_ID).orEmpty(),
             prompt = if (readText) AgentWireText.read(bundle, KEY_PROMPT).orEmpty() else bundle.getString(KEY_PROMPT).orEmpty(),
+            assistantScreenContext = bundle.getString(KEY_ASSISTANT_SCREEN_CONTEXT).orEmpty().also {
+                require(it.length <= AssistantScreenContextProjection.MAX_CHARS) { "助理屏幕上下文超过容量预算" }
+            },
             operation = bundle.getString("operation")?.also { require(it in setOf(OP_CHAT, OP_COMPACT, OP_REWRITE_REPLY)) } ?: OP_CHAT,
             rewriteTargetMessageId = bundle.getString("rewrite_target_message_id")?.also {
                 require(it.isNotBlank() && it.length <= 256) { "Invalid rewrite target" }
@@ -409,11 +442,18 @@ internal object AgentRuntimeWire {
                 providerType = bundle.getString(KEY_PROVIDER_TYPE).orEmpty()
                     .ifBlank { io.github.mangi.eta.data.model.ProviderTypes.OPENAI_COMPATIBLE },
                 providerSourceType = bundle.getString(KEY_PROVIDER_SOURCE_TYPE).orEmpty(),
+                authMode = bundle.getString(KEY_AUTH_MODE)
+                    ?.takeIf { it in setOf(CodexCompatibilityProfile.AUTH_MODE, CodexCompatibilityProfile.API_KEY_AUTH_MODE) }
+                    ?: CodexCompatibilityProfile.API_KEY_AUTH_MODE,
                 baseUrl = bundle.getString(KEY_BASE_URL).orEmpty(),
                 apiKey = bundle.getString(KEY_API_KEY).orEmpty(),
                 model = bundle.getString(KEY_MODEL).orEmpty(),
                 modelDisplayName = bundle.getString(KEY_MODEL_DISPLAY_NAME).orEmpty(),
                 contextWindow = bundle.optionalInt(KEY_CONTEXT_WINDOW),
+                autoCompactionEnabled = bundle.getBoolean(
+                    KEY_AUTO_COMPACTION_ENABLED,
+                    Prefs.Keys.BOOLEAN_DEFAULTS.getValue(Prefs.Keys.AGENT_AUTO_COMPACTION_ENABLED),
+                ),
                 systemPrompt = if (readText) AgentWireText.read(bundle, KEY_SYSTEM_PROMPT).orEmpty() else "",
                 anthropicVersion = bundle.getString(KEY_ANTHROPIC_VERSION).orEmpty()
                     .ifBlank { io.github.mangi.eta.data.model.AnthropicProviderSetting.DEFAULT_ANTHROPIC_VERSION },
@@ -619,7 +659,7 @@ internal object AgentRuntimeWire {
                 putString(KEY_TYPE, "context_compaction")
                 putString("operation_id", event.operationId)
                 putString("phase", event.phase)
-                putInt("tokens_before", event.tokensBefore)
+                event.tokensBefore?.let { putInt("tokens_before", it) }
                 event.tokensAfter?.let { putInt("tokens_after", it) }
                 putString("reason_code", event.reasonCode)
             }
@@ -766,7 +806,7 @@ internal object AgentRuntimeWire {
         "context_compaction" -> AgentEvent.ContextCompaction(
             operationId = bundle.getString("operation_id").orEmpty(),
             phase = bundle.getString("phase").orEmpty(),
-            tokensBefore = bundle.getInt("tokens_before"),
+            tokensBefore = bundle.optionalInt("tokens_before"),
             tokensAfter = bundle.optionalInt("tokens_after"),
             reasonCode = bundle.getString("reason_code").orEmpty(),
         )
