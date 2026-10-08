@@ -115,6 +115,8 @@ android {
         unitTests.isIncludeAndroidResources = true
         // Robolectric 在高版本 JDK 下需要访问内部 API，参数只作用于测试 JVM。
         unitTests.all {
+            // 한국어 포크: 개발 PC가 한국어 로케일이어도 upstream 테스트의 원문 비교가 유지되도록 고정한다.
+            it.jvmArgs("-Duser.language=en", "-Duser.country=US")
             it.jvmArgs(
                 "--add-opens=java.base/java.lang=ALL-UNNAMED",
                 "--add-opens=java.base/java.util=ALL-UNNAMED",

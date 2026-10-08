@@ -6,6 +6,7 @@ import android.security.keystore.KeyProperties
 import io.github.mangi.eta.data.datastore.SettingsDataStore
 import io.github.mangi.eta.data.model.SpeechCredentials
 import io.github.mangi.eta.data.model.SpeechSettings
+import io.github.mangi.eta.i18n.ko
 import java.security.KeyStore
 import java.util.Base64
 import javax.crypto.Cipher
@@ -46,7 +47,7 @@ internal object SpeechSettingsRepository {
         val encrypted = cipher.iv + cipher.doFinal(json.encodeToString(credentials).toByteArray(Charsets.UTF_8))
         check(context.getSharedPreferences("eta_speech_secrets", Context.MODE_PRIVATE).edit()
             .putString("credentials", Base64.getEncoder().encodeToString(encrypted)).commit()) {
-            "语音凭据保存失败"
+            ko("语音凭据保存失败", "음성 자격 증명 저장에 실패했습니다.")
         }
     }
 
@@ -64,4 +65,4 @@ internal object SpeechSettingsRepository {
     }
 }
 
-internal class SpeechCredentialsUnavailable : Exception("语音凭据无法解密，请重新填写并保存")
+internal class SpeechCredentialsUnavailable : Exception(ko("语音凭据无法解密，请重新填写并保存", "음성 자격 증명을 복호화할 수 없습니다. 다시 입력하고 저장하세요."))

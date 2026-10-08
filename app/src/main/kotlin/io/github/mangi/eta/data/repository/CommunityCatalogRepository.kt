@@ -11,6 +11,7 @@ import io.github.mangi.eta.data.provider.CommunityCatalog
 import io.github.mangi.eta.data.provider.CommunityCatalogParser
 import io.github.mangi.eta.data.provider.CommunityCatalogProvider
 import io.github.mangi.eta.data.provider.CommunityCatalogSource
+import io.github.mangi.eta.i18n.ko
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.InputStream
@@ -78,9 +79,9 @@ internal object CommunityCatalogRepository {
             }
             val raw = try {
                 call.execute().use { response ->
-                    if (!response.isSuccessful) error("目录更新失败：HTTP ${response.code}")
+                    if (!response.isSuccessful) error(ko("目录更新失败：HTTP ${response.code}", "목록 업데이트 실패: HTTP ${response.code}"))
                     if (!response.header("Content-Type").orEmpty().startsWith("application/json", ignoreCase = true)) {
-                        error("目录更新失败：响应格式不是 JSON")
+                        error(ko("目录更新失败：响应格式不是 JSON", "목록 업데이트 실패: 응답 형식이 JSON이 아닙니다."))
                     }
                     response.body.byteStream().use { it.readUtf8Limited() }
                 }
@@ -94,7 +95,7 @@ internal object CommunityCatalogRepository {
                     fetchedAt = System.currentTimeMillis(),
                 )
             } catch (failure: Exception) {
-                throw IllegalStateException("目录数据格式无效", failure)
+                throw IllegalStateException(ko("目录数据格式无效", "목록 데이터 형식이 올바르지 않습니다."), failure)
             }
             val file = AtomicFile(cacheFile(context.applicationContext))
             val output = file.startWrite()
@@ -114,9 +115,9 @@ internal object CommunityCatalogRepository {
     }
 
     fun newProvider(selection: CommunityCatalogProvider, modelIds: Set<String>): ProviderSetting {
-        require(modelIds.isNotEmpty()) { "请至少选择一个模型" }
+        require(modelIds.isNotEmpty()) { ko("请至少选择一个模型", "모델을 하나 이상 선택하세요.") }
         val models = selection.models.filter { it.modelId in modelIds }
-        require(models.size == modelIds.size) { "选中的模型已不在目录中，请重新选择" }
+        require(models.size == modelIds.size) { ko("选中的模型已不在目录中，请重新选择", "선택한 모델이 더 이상 목록에 없습니다. 다시 선택하세요.") }
         return CustomProviderSetting(
             id = UUID.randomUUID().toString(),
             name = selection.name,
@@ -150,7 +151,7 @@ internal object CommunityCatalogRepository {
         while (true) {
             val count = read(buffer)
             if (count < 0) break
-            if (output.size() + count > MAX_JSON_BYTES) error("模型目录超出大小限制")
+            if (output.size() + count > MAX_JSON_BYTES) error(ko("模型目录超出大小限制", "모델 목록이 크기 제한을 초과했습니다."))
             output.write(buffer, 0, count)
         }
         return output.toString(Charsets.UTF_8.name())

@@ -4,6 +4,7 @@ import io.github.mangi.eta.agent.model.AgentModelClient.ConversationMessage
 import io.github.mangi.eta.agent.roleplay.RoleplayMessageLink
 import io.github.mangi.eta.agent.roleplay.RoleplayReplyRevision
 import io.github.mangi.eta.agent.runtime.AgentRuntimeWire
+import io.github.mangi.eta.i18n.ko
 import io.github.mangi.eta.ui.model.AgentChatUiState
 import io.github.mangi.eta.ui.model.AgentMessageUi
 import io.github.mangi.eta.ui.model.SystemNoticeCode
@@ -136,7 +137,7 @@ internal object RoleplayConversationReducer {
         val base = edited ?: state
         val messages = if (edited != null) base.messages else base.messages + SystemNoticeMessageUi(
             id = "rewrite-result-$runId", code = SystemNoticeCode.RuntimeFailed,
-            detail = result.error ?: "重新生成未完成，已保留原回复。",
+            detail = result.error ?: ko("重新生成未完成，已保留原回复。", "다시 생성하지 못해 원래 답변을 유지했습니다."),
         )
         return base.copy(
             messages = messages,

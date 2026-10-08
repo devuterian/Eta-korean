@@ -1,5 +1,6 @@
 package io.github.mangi.eta.agent.voice
 
+import io.github.mangi.eta.i18n.ko
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.nio.ByteBuffer
@@ -23,7 +24,7 @@ internal object DoubaoAsrCodec {
     }
 
     fun decode(bytes: ByteArray): Result {
-        fun invalid(): Nothing = throw SpeechFailure(SpeechErrorCode.PROTOCOL, "豆包识别返回了无效音频协议帧")
+        fun invalid(): Nothing = throw SpeechFailure(SpeechErrorCode.PROTOCOL, ko("豆包识别返回了无效音频协议帧", "Doubao 인식이 잘못된 오디오 프로토콜 프레임을 반환했습니다."))
         if (bytes.size < 8 || bytes.size > SpeechHttp.MAX_JSON_BYTES) invalid()
         val buffer = ByteBuffer.wrap(bytes).order(ByteOrder.BIG_ENDIAN)
         val version = buffer.get().toInt() and 0xff
@@ -37,7 +38,7 @@ internal object DoubaoAsrCodec {
         if (type == 15) {
             if (buffer.remaining() < 8) invalid()
             val code = buffer.int
-            throw SpeechFailure(SpeechErrorCode.SERVER, "豆包识别失败（$code）")
+            throw SpeechFailure(SpeechErrorCode.SERVER, ko("豆包识别失败（$code）", "Doubao 인식에 실패했습니다($code)."))
         }
         if (type != 9 || encoding shr 4 != 1 || flags !in 0..3) invalid()
         if (flags and 1 != 0) {

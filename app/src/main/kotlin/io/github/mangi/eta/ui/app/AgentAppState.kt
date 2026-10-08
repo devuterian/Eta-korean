@@ -84,6 +84,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runInterruptible
 import kotlinx.coroutines.withContext
+import io.github.mangi.eta.i18n.ko
 
 internal class AgentAppState(
     context: Context,
@@ -223,7 +224,7 @@ internal class AgentAppState(
             currentRunId != null || conversationsById.values.any { it.isStreaming }
         }
         if (locallyBusy) {
-            throw IllegalStateException("请先停止正在运行的 Agent 任务")
+            throw IllegalStateException(ko("请先停止正在运行的 Agent 任务", "실행 중인 Agent 작업을 먼저 중지하세요"))
         }
 
         val activeRunQuery = withContext(Dispatchers.IO) {
@@ -232,16 +233,16 @@ internal class AgentAppState(
         when (val active = activeRunQuery) {
             is AgentRuntimeClient.ActiveRunQuery.Known -> {
                 if (active.runId != null) {
-                    throw IllegalStateException("请先停止正在运行的 Agent 任务")
+                    throw IllegalStateException(ko("请先停止正在运行的 Agent 任务", "실행 중인 Agent 작업을 먼저 중지하세요"))
                 }
             }
             AgentRuntimeClient.ActiveRunQuery.Unavailable -> {
-                throw IllegalStateException("无法确认 Agent Runtime 状态，请稍后重试")
+                throw IllegalStateException(ko("无法确认 Agent Runtime 状态，请稍后重试", "Agent Runtime 상태를 확인할 수 없습니다. 잠시 후 다시 시도하세요"))
             }
         }
 
         val pendingPersistence = synchronized(persistenceLock) {
-            check(!persistencePaused) { "备份正在导入" }
+            check(!persistencePaused) { ko("备份正在导入", "백업을 가져오는 중입니다") }
             persistencePaused = true
             persistenceJob
         }
@@ -394,7 +395,7 @@ internal class AgentAppState(
             orphanRewrites.forEach { (conversationId, runId) ->
                 conversationsById[conversationId]?.let { state ->
                     updateConversation(conversationId, RoleplayConversationReducer.applyRewrite(state, runId,
-                        AgentRuntimeWire.RunResult(runId, false, "", "重新生成已中断，原回复已保留。",
+                        AgentRuntimeWire.RunResult(runId, false, "", ko("重新生成已中断，原回复已保留。", "다시 생성이 중단되어 기존 답변을 유지했습니다."),
                             operation = AgentRuntimeWire.OP_REWRITE_REPLY)))
                     stateChanged = true
                 }
@@ -433,7 +434,7 @@ internal class AgentAppState(
         if (checkpoint.operation == AgentRuntimeWire.OP_REWRITE_REPLY) {
             val restored = RoleplayConversationReducer.restorePendingRewrite(existing, runId, checkpoint.rewriteTargetMessageId)
             if (interrupted) updateConversation(conversationId, RoleplayConversationReducer.applyRewrite(
-                restored, runId, AgentRuntimeWire.RunResult(runId, false, "", "重新生成已中断，原回复已保留。",
+                restored, runId, AgentRuntimeWire.RunResult(runId, false, "", ko("重新生成已中断，原回复已保留。", "다시 생성이 중단되어 기존 답변을 유지했습니다."),
                     operation = AgentRuntimeWire.OP_REWRITE_REPLY, rewriteTargetMessageId = checkpoint.rewriteTargetMessageId),
             )) else updateConversation(conversationId, restored)
             return interrupted || restored != existing
@@ -449,7 +450,7 @@ internal class AgentAppState(
             if (interrupted) {
                 val interruptedTools = runMessageProjector.interruptRunningTools(
                     reason = appContext.getString(R.string.system_notice_interrupted),
-                    messages = runMessageProjector.finishContextCompaction(runId, finalizedText, "上下文压缩已中断"),
+                    messages = runMessageProjector.finishContextCompaction(runId, finalizedText, ko("上下文压缩已中断", "컨텍스트 압축 중단됨")),
                 )
                 val noticeId = "interrupted-$runId"
                 if (interruptedTools.any { it.id == noticeId }) {
@@ -1161,7 +1162,7 @@ internal class AgentAppState(
                         "Character preparation failed: type=${failure.safeLogType()}"
                     }
                     withContext(Dispatchers.Main) {
-                        applyRunResult(runId, AgentRuntimeWire.RunResult(runId, false, "", "无法读取或保存角色设定，请重试。",
+                        applyRunResult(runId, AgentRuntimeWire.RunResult(runId, false, "", ko("无法读取或保存角色设定，请重试。", "캐릭터 설정을 읽거나 저장할 수 없습니다. 다시 시도하세요."),
                             operation = operation, rewriteTargetMessageId = rewriteTargetMessageId))
                     }
                     return@launch
@@ -1569,7 +1570,7 @@ internal class AgentAppState(
         updateRunTrace(runId) { messages ->
             runMessageProjector.finishContextCompaction(runId,
                 runMessageProjector.finalizeRun(runId, messages),
-                if (result.ok) "上下文压缩完成" else result.error ?: "上下文压缩已停止")
+                if (result.ok) ko("上下文压缩完成", "컨텍스트 압축 완료") else result.error ?: ko("上下文压缩已停止", "컨텍스트 압축 중지됨"))
         }
         if (result.contextSnapshotRef.isBlank()) {
             applyConversationHistoryResult(runId, result.transcript, result.contextSnapshot, !result.ok || result.contextSnapshot != null)
@@ -1581,7 +1582,7 @@ internal class AgentAppState(
                         runId = runId,
                         messages = messages,
                         ok = result.ok,
-                        detail = if (result.ok) "上下文压缩完成" else result.error ?: "上下文压缩失败",
+                        detail = if (result.ok) ko("上下文压缩完成", "컨텍스트 압축 완료") else result.error ?: ko("上下文压缩失败", "컨텍스트 압축 실패"),
                     )
                 }
             else -> {

@@ -1,5 +1,6 @@
 package io.github.mangi.eta.agent.roleplay
 
+import io.github.mangi.eta.i18n.ko
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -61,8 +62,8 @@ internal object CharacterWorldbookDraftCodec {
     }
 
     fun write(card: CharacterCard, draft: CharacterBookDraft): CharacterCard {
-        require(draft.scanDepth == null || draft.scanDepth >= 0) { "扫描深度不能为负数" }
-        require(draft.tokenBudget == null || draft.tokenBudget >= 0) { "世界书预算不能为负数" }
+        require(draft.scanDepth == null || draft.scanDepth >= 0) { ko("扫描深度不能为负数", "스캔 깊이는 음수일 수 없습니다") }
+        require(draft.tokenBudget == null || draft.tokenBudget >= 0) { ko("世界书预算不能为负数", "월드북 예산은 음수일 수 없습니다") }
         val book = draft.raw.toMutableMap().apply {
             if (draft.name != draft.raw.text("name")) put("name", JsonPrimitive(draft.name))
             if (draft.scanDepth != (draft.raw["scan_depth"] as? JsonPrimitive)?.intOrNull) {
@@ -77,7 +78,7 @@ internal object CharacterWorldbookDraftCodec {
             if (draft.raw.isEmpty()) put("extensions", JsonObject(emptyMap()))
             if (draft.raw.isEmpty() || draft.raw.containsKey("entries") || draft.entries.isNotEmpty()) put("entries", JsonArray(draft.entries.map { entry ->
                 require(entry.position in setOf("before_char", "after_char") || entry.position == entry.raw.text("position")) {
-                    "不支持的世界书插入位置"
+                    ko("不支持的世界书插入位置", "지원하지 않는 월드북 삽입 위치")
                 }
                 JsonObject(entry.raw.toMutableMap().apply {
                     val fresh = entry.raw.isEmpty()

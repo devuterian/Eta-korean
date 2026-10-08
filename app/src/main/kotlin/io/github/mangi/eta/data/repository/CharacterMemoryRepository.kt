@@ -1,6 +1,7 @@
 package io.github.mangi.eta.data.repository
 
 import android.content.Context
+import io.github.mangi.eta.i18n.ko
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 
@@ -36,14 +37,14 @@ internal object CharacterMemoryRepository {
     ): AgentMemoryWriteResult = store(context, characterId).replaceAllIfRevision(content, revision)
 
     fun discard(context: Context, characterId: String) {
-        require(characterId.matches(Regex("[A-Za-z0-9_-]{1,128}"))) { "角色记忆标识无效" }
+        require(characterId.matches(Regex("[A-Za-z0-9_-]{1,128}"))) { ko("角色记忆标识无效", "캐릭터 메모리 식별자가 올바르지 않습니다.") }
         val root = File(context.applicationContext.filesDir, "roleplay/$characterId").canonicalFile
         stores.remove(root.path)
         root.deleteRecursively()
     }
 
     private fun store(context: Context, characterId: String): AgentMemoryStore {
-        require(characterId.matches(Regex("[A-Za-z0-9_-]{1,128}"))) { "角色记忆标识无效" }
+        require(characterId.matches(Regex("[A-Za-z0-9_-]{1,128}"))) { ko("角色记忆标识无效", "캐릭터 메모리 식별자가 올바르지 않습니다.") }
         val root = File(context.applicationContext.filesDir, "roleplay/$characterId").canonicalFile
         return stores.getOrPut(root.path) { AgentMemoryStore(root) }
     }

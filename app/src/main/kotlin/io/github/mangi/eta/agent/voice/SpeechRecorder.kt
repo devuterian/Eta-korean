@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
+import io.github.mangi.eta.i18n.ko
 import java.io.ByteArrayOutputStream
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -21,16 +22,16 @@ internal class SpeechRecorder {
     @SuppressLint("MissingPermission")
     suspend fun record(onReady: () -> Unit, onLevel: (Float) -> Unit) = withContext(Dispatchers.IO) {
         val minimum = AudioRecord.getMinBufferSize(RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT)
-        if (minimum <= 0) throw SpeechFailure(SpeechErrorCode.AUDIO, "设备不支持语音录音格式")
+        if (minimum <= 0) throw SpeechFailure(SpeechErrorCode.AUDIO, ko("设备不支持语音录音格式", "기기가 음성 녹음 형식을 지원하지 않습니다."))
         val audio = AudioRecord(MediaRecorder.AudioSource.VOICE_RECOGNITION, RATE,
             AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, maxOf(minimum, FRAME_BYTES * 2))
         recorder = audio
         try {
-            if (audio.state != AudioRecord.STATE_INITIALIZED) throw SpeechFailure(SpeechErrorCode.AUDIO, "无法初始化麦克风")
+            if (audio.state != AudioRecord.STATE_INITIALIZED) throw SpeechFailure(SpeechErrorCode.AUDIO, ko("无法初始化麦克风", "마이크를 초기화할 수 없습니다."))
             if (finishing.get()) return@withContext
             audio.startRecording()
             if (audio.recordingState != AudioRecord.RECORDSTATE_RECORDING) {
-                throw SpeechFailure(SpeechErrorCode.AUDIO, "麦克风不可用，可能正被其他应用占用")
+                throw SpeechFailure(SpeechErrorCode.AUDIO, ko("麦克风不可用，可能正被其他应用占用", "마이크를 사용할 수 없습니다. 다른 앱이 사용 중일 수 있습니다."))
             }
             onReady()
             var total = 0
@@ -38,12 +39,12 @@ internal class SpeechRecorder {
                 val frame = ByteArray(minOf(FRAME_BYTES, MAX_BYTES - total))
                 val count = audio.read(frame, 0, frame.size)
                 if (count <= 0 && finishing.get()) break
-                if (count <= 0 || count % 2 != 0) throw SpeechFailure(SpeechErrorCode.AUDIO, "麦克风读取失败")
+                if (count <= 0 || count % 2 != 0) throw SpeechFailure(SpeechErrorCode.AUDIO, ko("麦克风读取失败", "마이크 읽기에 실패했습니다."))
                 val bytes = if (count == frame.size) frame else frame.copyOf(count)
                 val sent = frames.trySend(bytes)
                 if (sent.isFailure) {
                     if (finishing.get() && sent.isClosed) break
-                    throw SpeechFailure(SpeechErrorCode.BACKPRESSURE, "网络上传不及时，请重试")
+                    throw SpeechFailure(SpeechErrorCode.BACKPRESSURE, ko("网络上传不及时，请重试", "네트워크 업로드가 지연되었습니다. 다시 시도하세요."))
                 }
                 total += count
                 var energy = 0.0
@@ -88,10 +89,10 @@ internal suspend fun collectSpeechAudio(frames: kotlinx.coroutines.channels.Rece
     val out = ByteArrayOutputStream()
     for (frame in frames) {
         if (out.size() + frame.size > SpeechRecorder.MAX_BYTES) {
-            throw SpeechFailure(SpeechErrorCode.AUDIO, "录音超过长度限制")
+            throw SpeechFailure(SpeechErrorCode.AUDIO, ko("录音超过长度限制", "녹음이 길이 제한을 초과했습니다."))
         }
         out.write(frame)
     }
-    if (out.size() == 0) throw SpeechFailure(SpeechErrorCode.NO_SPEECH, "没有录到语音，请重试")
+    if (out.size() == 0) throw SpeechFailure(SpeechErrorCode.NO_SPEECH, ko("没有录到语音，请重试", "녹음된 음성이 없습니다. 다시 시도하세요."))
     return pcmToWav(out.toByteArray())
 }

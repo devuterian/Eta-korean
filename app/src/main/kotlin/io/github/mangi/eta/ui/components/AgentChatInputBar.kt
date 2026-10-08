@@ -92,6 +92,7 @@ import top.yukonga.miuix.kmp.squircle.squircleSurface
 import top.yukonga.miuix.kmp.theme.LocalDismissState
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.window.WindowListPopup
+import io.github.mangi.eta.i18n.ko
 
 private val SendButtonVisualSize = ChatInputActionIconSize
 private val SendIconSize = 16.dp
@@ -211,7 +212,7 @@ internal fun AgentChatInputBar(
         ) {
             Text(
                 text = if (preserveFollowingMessages) {
-                    "保存后原位更新这条消息，并保留后续对话"
+                    ko("保存后原位更新这条消息，并保留后续对话", "저장하면 이 메시지를 그 자리에서 업데이트하고 이후 대화는 유지합니다")
                 } else if (editHasLaterTurns) {
                     stringResource(R.string.chat_edit_replace_later)
                 } else {
@@ -399,7 +400,7 @@ internal fun AgentChatInputBar(
                                         },
                                         contentDescription = when {
                                             streaming -> stringResource(R.string.chat_stop)
-                                            isEditingMessage && preserveFollowingMessages -> "保存消息"
+                                            isEditingMessage && preserveFollowingMessages -> ko("保存消息", "메시지 저장")
                                             else -> stringResource(R.string.chat_send)
                                         },
                                         modifier = Modifier.size(

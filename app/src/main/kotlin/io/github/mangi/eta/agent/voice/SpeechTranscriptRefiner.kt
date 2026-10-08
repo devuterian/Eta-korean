@@ -12,6 +12,7 @@ import io.github.mangi.eta.agent.model.ProviderRequestPurpose
 import io.github.mangi.eta.agent.runtime.AgentRunController
 import io.github.mangi.eta.data.model.ReasoningEffort
 import io.github.mangi.eta.data.repository.RuntimeConfigRepository
+import io.github.mangi.eta.i18n.ko
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -32,7 +33,7 @@ internal class SpeechTranscriptRefiner(
         val input = transcript.trim()
         if (input.length < MIN_CHARS || input.length > MAX_CHARS) return transcript
         val config = loadConfig()?.let(::lightweight)
-            ?: throw SpeechFailure(SpeechErrorCode.CONFIGURATION, "请先配置对话模型")
+            ?: throw SpeechFailure(SpeechErrorCode.CONFIGURATION, ko("请先配置对话模型", "먼저 대화 모델을 설정하세요."))
         val output = withTimeout(TIMEOUT_MS) { request(config, input) }
         return output.takeIf { plausible(input, it) } ?: transcript
     }
@@ -50,11 +51,11 @@ internal class SpeechTranscriptRefiner(
             ) { event ->
                 if (event is ProviderEvent.HostedToolStarted ||
                     event is ProviderEvent.BlockStart && event.kind == AssistantBlockKind.TOOL_CALL) {
-                    throw SpeechFailure(SpeechErrorCode.PROTOCOL, "纠错模型返回了工具调用")
+                    throw SpeechFailure(SpeechErrorCode.PROTOCOL, ko("纠错模型返回了工具调用", "교정 모델이 도구 호출을 반환했습니다."))
                 }
             }
             if (response.stopReason != AssistantStopReason.END_TURN) {
-                throw SpeechFailure(SpeechErrorCode.PROTOCOL, "纠错模型未完整返回")
+                throw SpeechFailure(SpeechErrorCode.PROTOCOL, ko("纠错模型未完整返回", "교정 모델이 응답을 끝까지 반환하지 않았습니다."))
             }
             response.assistantMessage.optString("content").trim()
         }

@@ -98,6 +98,7 @@ import top.yukonga.miuix.kmp.nav.core.rememberNavSystemCornerRadius
 import top.yukonga.miuix.kmp.nav.transition.NavSwipeDirection
 import top.yukonga.miuix.kmp.layout.DialogDefaults
 import top.yukonga.miuix.kmp.window.WindowDialog
+import io.github.mangi.eta.i18n.ko
 
 /**
  * Agent App 根组件：持有本地导航栈，并把 Screen actions 交给 [AgentAppState]。
@@ -714,13 +715,13 @@ fun AgentAppRoot(
     characterStore.notice?.let { notice ->
         WindowDialog(
             show = true,
-            title = "角色",
+            title = ko("角色", "캐릭터"),
             summary = notice,
             cornerRadius = DialogDefaults.CornerRadius,
             onDismissRequest = characterStore::dismissNotice,
         ) {
             top.yukonga.miuix.kmp.basic.TextButton(
-                text = "知道了", onClick = characterStore::dismissNotice, modifier = Modifier.fillMaxWidth(),
+                text = ko("知道了", "확인"), onClick = characterStore::dismissNotice, modifier = Modifier.fillMaxWidth(),
             )
         }
     }

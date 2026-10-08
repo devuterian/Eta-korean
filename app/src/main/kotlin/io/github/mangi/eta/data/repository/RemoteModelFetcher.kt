@@ -16,6 +16,7 @@ import io.github.mangi.eta.data.model.ReasoningEffort
 import io.github.mangi.eta.data.provider.BuiltinProviders
 import io.github.mangi.eta.data.provider.OfficialModelCatalog
 import io.github.mangi.eta.data.provider.ProviderSourceRegistry
+import io.github.mangi.eta.i18n.ko
 import java.util.UUID
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -121,7 +122,7 @@ internal object RemoteModelFetcher {
             )
             .get()
             .build()
-        return OfficialModelCatalog.enrich(provider, executeJson(request, "拉取模型失败").let(::parseOpenAiModels))
+        return OfficialModelCatalog.enrich(provider, executeJson(request, ko("拉取模型失败", "모델 가져오기 실패")).let(::parseOpenAiModels))
     }
 
     private fun fetchCodex(provider: ProviderSetting): List<Model> {
@@ -158,7 +159,7 @@ internal object RemoteModelFetcher {
     internal fun codexModelsUrl(
         clientVersion: String = CodexCompatibilityProfile.CODEX_CATALOG_COMPATIBILITY_VERSION,
     ): String {
-        require(clientVersion.isNotBlank()) { "Codex 客户端版本不能为空" }
+        require(clientVersion.isNotBlank()) { ko("Codex 客户端版本不能为空", "Codex 클라이언트 버전은 비워 둘 수 없습니다.") }
         return CodexCompatibilityProfile.CODEX_MODELS_URL
             .toHttpUrl()
             .newBuilder()
@@ -227,7 +228,7 @@ internal object RemoteModelFetcher {
             )
             .get()
             .build()
-        return OfficialModelCatalog.enrich(provider, executeJson(request, "拉取 Anthropic 模型失败").let(::parseAnthropicModels))
+        return OfficialModelCatalog.enrich(provider, executeJson(request, ko("拉取 Anthropic 模型失败", "Anthropic 모델 가져오기 실패")).let(::parseAnthropicModels))
     }
 
     private fun executeJson(request: Request, errorPrefix: String): String =

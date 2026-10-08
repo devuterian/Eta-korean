@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import io.github.mangi.eta.i18n.ko
 import io.github.mangi.eta.ui.app.CharacterLibraryStore
 import io.github.mangi.eta.ui.components.EtaArrowPreference
 import io.github.mangi.eta.ui.components.EtaCard
@@ -57,14 +58,14 @@ internal fun CharacterLibraryScreen(
         onNavigate(AppRoute.CharacterEditor())
     }
     MiuixScaffoldPage(
-        title = "角色",
+        title = ko("角色", "캐릭터"),
         onBack = onBack,
         actions = {
             IconButton(onClick = importCard, enabled = !store.busy) {
-                Icon(Icons.Rounded.FileUpload, contentDescription = "导入角色卡")
+                Icon(Icons.Rounded.FileUpload, contentDescription = ko("导入角色卡", "캐릭터 카드 가져오기"))
             }
             IconButton(onClick = createCharacter, enabled = !store.busy) {
-                Icon(Icons.Rounded.Add, contentDescription = "创建角色")
+                Icon(Icons.Rounded.Add, contentDescription = ko("创建角色", "캐릭터 만들기"))
             }
         },
     ) {
@@ -82,7 +83,7 @@ internal fun CharacterLibraryScreen(
                         onSearch = { store.query = it },
                         expanded = false,
                         onExpandedChange = {},
-                        label = "搜索名称或标签",
+                        label = ko("搜索名称或标签", "이름 또는 태그 검색"),
                     )
                 },
                 content = {},
@@ -102,17 +103,17 @@ internal fun CharacterLibraryScreen(
             store.characters.isEmpty() -> {
                 item(key = "empty-library") {
                     ListEmptyState(
-                        title = "还没有角色",
-                        summary = "创建一个角色，或导入 PNG、JSON 角色卡开始对话",
+                        title = ko("还没有角色", "캐릭터가 없습니다"),
+                        summary = ko("创建一个角色，或导入 PNG、JSON 角色卡开始对话", "캐릭터를 만들거나 PNG, JSON 캐릭터 카드를 가져와 대화를 시작하세요"),
                         action = {
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 EtaTextButton(
-                                    text = "恢复默认角色",
+                                    text = ko("恢复默认角色", "기본 캐릭터 복원"),
                                     onClick = { store.restoreDefaultCharacter() },
                                     enabled = !store.busy,
                                 )
                                 EtaTextButton(
-                                    text = "创建角色",
+                                    text = ko("创建角色", "캐릭터 만들기"),
                                     onClick = createCharacter,
                                     colors = ButtonDefaults.textButtonColorsPrimary(),
                                 )
@@ -124,8 +125,8 @@ internal fun CharacterLibraryScreen(
             store.filteredCharacters.isEmpty() -> {
                 item(key = "empty-search") {
                     ListEmptyState(
-                        title = "没有找到匹配的角色",
-                        summary = "换个关键词试试，搜索会匹配名称与标签",
+                        title = ko("没有找到匹配的角色", "일치하는 캐릭터 없음"),
+                        summary = ko("换个关键词试试，搜索会匹配名称与标签", "다른 키워드로 검색해 보세요. 이름과 태그를 검색합니다."),
                     )
                 }
             }
@@ -159,7 +160,7 @@ internal fun CharacterLibraryScreen(
                 }
             }
         }
-        item(key = "persona-title") { EtaPreferenceGroupTitle("我的") }
+        item(key = "persona-title") { EtaPreferenceGroupTitle(ko("我的", "나")) }
         item(key = "persona") {
             EtaPreferenceGroup(
                 modifier = Modifier
@@ -167,8 +168,8 @@ internal fun CharacterLibraryScreen(
                     .padding(bottom = 16.dp),
             ) {
                 EtaArrowPreference(
-                    title = "我的人设",
-                    summary = "设置角色如何称呼你，以及你在故事中的身份",
+                    title = ko("我的人设", "내 페르소나"),
+                    summary = ko("设置角色如何称呼你，以及你在故事中的身份", "캐릭터가 나를 부르는 호칭과 이야기 속 내 정체성을 설정합니다"),
                     onClick = { onNavigate(AppRoute.CharacterPersona) },
                 )
             }

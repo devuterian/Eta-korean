@@ -9,6 +9,7 @@ import io.github.mangi.eta.data.db.CharacterEntity
 import io.github.mangi.eta.data.db.ConversationEntity
 import io.github.mangi.eta.data.db.EtaDatabase
 import io.github.mangi.eta.data.db.UserPersonaEntity
+import io.github.mangi.eta.i18n.ko
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -59,33 +60,33 @@ internal object CharacterBackupTransfer {
 
     fun validate(data: CharacterBackupData, bindingIds: Set<String>) {
         val ids = data.characters.map { it.id }
-        require(ids.size == ids.toSet().size && ids.all(::validId)) { "备份中的角色 ID 重复或无效" }
+        require(ids.size == ids.toSet().size && ids.all(::validId)) { ko("备份中的角色 ID 重复或无效", "백업의 캐릭터 ID가 중복되었거나 올바르지 않습니다.") }
         data.characters.forEach { character ->
             val card = CharacterCardCodec.decodeJson(character.cardJson)
-            require(card.name.length <= 512) { "备份中的角色名称过长" }
+            require(card.name.length <= 512) { ko("备份中的角色名称过长", "백업의 캐릭터 이름이 너무 깁니다.") }
         }
         val assets = data.assets.map { it.characterId }
-        require(assets.size == assets.toSet().size && assets.all { it in ids || it in bindingIds }) { "备份中的角色资源无效" }
+        require(assets.size == assets.toSet().size && assets.all { it in ids || it in bindingIds }) { ko("备份中的角色资源无效", "백업의 캐릭터 리소스가 올바르지 않습니다.") }
         data.assets.forEach { asset ->
-            require(asset.memoryMd.toByteArray(Charsets.UTF_8).size <= 1024 * 1024) { "角色记忆超过 1 MiB 限制" }
+            require(asset.memoryMd.toByteArray(Charsets.UTF_8).size <= 1024 * 1024) { ko("角色记忆超过 1 MiB 限制", "캐릭터 메모리가 1 MiB 제한을 초과했습니다.") }
             asset.avatarBase64?.let {
                 val bytes = Base64.getDecoder().decode(it)
-                require(bytes.size <= CharacterRepository.MAX_FILE_BYTES && CharacterCardPng.isPng(bytes)) { "备份中的角色图片无效" }
+                require(bytes.size <= CharacterRepository.MAX_FILE_BYTES && CharacterCardPng.isPng(bytes)) { ko("备份中的角色图片无效", "백업의 캐릭터 이미지가 올바르지 않습니다.") }
                 CharacterCardPng.validate(bytes)
             }
         }
         data.persona?.let {
-            require(it.id == "main" && it.name.isNotBlank() && it.name.length <= 256) { "备份中的用户人设无效" }
-            require(it.description.toByteArray(Charsets.UTF_8).size <= 1024 * 1024) { "用户设定超过 1 MiB 限制" }
+            require(it.id == "main" && it.name.isNotBlank() && it.name.length <= 256) { ko("备份中的用户人设无效", "백업의 사용자 페르소나가 올바르지 않습니다.") }
+            require(it.description.toByteArray(Charsets.UTF_8).size <= 1024 * 1024) { ko("用户设定超过 1 MiB 限制", "사용자 설정이 1 MiB 제한을 초과했습니다.") }
         }
     }
 
     fun validateBindings(conversations: List<ConversationEntity>): List<RoleplayBinding> =
         conversations.mapNotNull { binding(it) }.onEach { binding ->
-            require(validId(binding.characterId)) { "备份中的角色会话 ID 无效" }
+            require(validId(binding.characterId)) { ko("备份中的角色会话 ID 无效", "백업의 캐릭터 대화 ID가 올바르지 않습니다.") }
             CharacterCardCodec.decodeJson(binding.cardSnapshotJson)
             require(binding.userName.length <= 256 && binding.userDescription.toByteArray(Charsets.UTF_8).size <= 1024 * 1024) {
-                "备份中的角色用户设定过大"
+                ko("备份中的角色用户设定过大", "백업의 캐릭터 사용자 설정이 너무 큽니다.")
             }
         }
 
@@ -94,17 +95,17 @@ internal object CharacterBackupTransfer {
         val state = json.decodeFromString<RoleplayMessageState>(row.revisionsJson)
         state.links.forEach { (id, link) ->
             require(messageTypes[id] in setOf("user", "assistant") && link.transcriptMessageId.isNotBlank() && link.blockOrder >= 0) {
-                "备份中的正文关联缺少有效消息"
+                ko("备份中的正文关联缺少有效消息", "백업의 본문 연결에 유효한 메시지가 없습니다.")
             }
         }
         state.revisions.forEach { (id, revision) ->
             require(id in state.links && revision.candidates.isNotEmpty() && revision.selected in revision.candidates.indices) {
-                "备份中的正文候选或选中版本无效"
+                ko("备份中的正文候选或选中版本无效", "백업의 본문 후보 또는 선택된 버전이 올바르지 않습니다.")
             }
         }
         state.pendingRewrites.forEach { (runId, target) ->
             require(runId.isNotBlank() && target in state.links && messageTypes[target] == "assistant") {
-                "备份中的重新生成目标无效"
+                ko("备份中的重新生成目标无效", "백업의 재생성 대상이 올바르지 않습니다.")
             }
         }
     }

@@ -13,6 +13,7 @@ import io.github.mangi.eta.ui.model.UserMessageUi
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import io.github.mangi.eta.i18n.ko
 
 /**
  * 会话导出：把内存消息流投影为自持的 Markdown 文档。
@@ -38,7 +39,7 @@ internal object ConversationMarkdownExporter {
         val noticeModelRetry: String,
         val noticeRuntimeFailed: String,
         val noticeInterrupted: String,
-        val noticeContextCompaction: String = "上下文压缩",
+        val noticeContextCompaction: String = ko("上下文压缩", "컨텍스트 압축"),
     ) {
         fun toolStatus(status: ToolActivityStatusUi): String = when (status) {
             ToolActivityStatusUi.Running -> toolStatusRunning

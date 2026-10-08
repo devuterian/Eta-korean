@@ -75,6 +75,7 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.overScrollVertical
 import top.yukonga.miuix.kmp.utils.scrollEndHaptic
 import top.yukonga.miuix.kmp.window.WindowListPopup
+import io.github.mangi.eta.i18n.ko
 
 private object ConversationPanelMetrics {
     val PaneHorizontalPadding = 16.dp
@@ -488,19 +489,19 @@ private fun PaneDock(
     ) {
         DockEntry(
             icon = Icons.Rounded.Settings,
-            label = "设置",
+            label = ko("设置", "설정"),
             onClick = onOpenSettings,
             modifier = Modifier.weight(1f),
         )
         DockEntry(
             icon = Icons.Rounded.Cloud,
-            label = "模型",
+            label = ko("模型", "모델"),
             onClick = onOpenModelProviders,
             modifier = Modifier.weight(1f),
         )
         DockEntry(
             icon = Icons.Rounded.Dashboard,
-            label = "工具",
+            label = ko("工具", "도구"),
             onClick = onOpenTools,
             modifier = Modifier.weight(1f),
         )
@@ -512,13 +513,13 @@ private fun PaneDock(
         )
         DockEntry(
             icon = Icons.Rounded.Lock,
-            label = "权限",
+            label = ko("权限", "권한"),
             onClick = onOpenPermissions,
             modifier = Modifier.weight(1f),
         )
         DockEntry(
             icon = Icons.Rounded.SportsBar,
-            label = "角色",
+            label = ko("角色", "캐릭터"),
             onClick = onOpenCharacters,
             modifier = Modifier.weight(1f),
         )

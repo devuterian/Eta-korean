@@ -1,5 +1,6 @@
 package io.github.mangi.eta.agent.voice
 
+import io.github.mangi.eta.i18n.ko
 import java.io.Closeable
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.channels.Channel
@@ -35,7 +36,7 @@ internal class SpeechSocket(request: Request) : Closeable {
 
     private fun receive(socket: WebSocket, bytes: ByteArray) {
         if (bytes.size > SpeechHttp.MAX_JSON_BYTES || !messages.trySend(bytes).isSuccess) {
-            messages.close(SpeechFailure(SpeechErrorCode.BACKPRESSURE, "语音数据处理不及时，请重试"))
+            messages.close(SpeechFailure(SpeechErrorCode.BACKPRESSURE, ko("语音数据处理不及时，请重试", "음성 데이터 처리가 지연되었습니다. 다시 시도하세요.")))
             socket.cancel()
         }
     }
@@ -45,7 +46,7 @@ internal class SpeechSocket(request: Request) : Closeable {
     fun binary(value: ByteArray) = sent(socket.send(value.toByteString()))
     private fun sent(accepted: Boolean) {
         if (!accepted || socket.queueSize() > 256 * 1024) {
-            throw SpeechFailure(SpeechErrorCode.BACKPRESSURE, "网络上传不及时，请检查网络后重试")
+            throw SpeechFailure(SpeechErrorCode.BACKPRESSURE, ko("网络上传不及时，请检查网络后重试", "네트워크 업로드가 지연되었습니다. 네트워크를 확인한 후 다시 시도하세요."))
         }
     }
     override fun close() {
