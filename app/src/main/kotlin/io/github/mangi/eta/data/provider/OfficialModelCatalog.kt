@@ -9,7 +9,7 @@ import io.github.mangi.eta.data.model.ProviderSetting
 import io.github.mangi.eta.data.model.ProviderSourceTypes
 
 internal object OfficialModelCatalog {
-    internal const val CURRENT_REVISION = 1
+    internal const val CURRENT_REVISION = 2
 
     // 旧安装只补入本次新增的模型，避免恢复用户主动删除的旧预设。
     private val additionsByRevision = mapOf(
@@ -22,7 +22,10 @@ internal object OfficialModelCatalog {
             ProviderSourceTypes.DEEPSEEK to setOf("deepseek-flash"),
             ProviderSourceTypes.MIMO to setOf("mimo-v2.6-pro", "mimo-v2.6-flash"),
             ProviderSourceTypes.STEPFUN to setOf("step-5-preview"),
-        )
+        ),
+        2 to mapOf(
+            ProviderSourceTypes.OPENAI to setOf("gpt-6.1-sol"),
+        ),
     )
 
     private val modelsByCatalogId: Map<String, List<Model>> = mapOf(
@@ -31,6 +34,17 @@ internal object OfficialModelCatalog {
                 id = "builtin-openai-gpt-6-astra",
                 modelId = "gpt-6-astra",
                 displayName = "GPT-6 Astra",
+                ownedBy = "openai",
+                inputModalities = listOf(Model.TEXT_MODALITY, Model.IMAGE_MODALITY),
+                toolCall = true,
+                reasoning = true,
+                structuredOutput = true,
+                contextWindow = 1_050_000,
+            ),
+            officialModel(
+                id = "builtin-openai-gpt-6-1-sol",
+                modelId = "gpt-6.1-sol",
+                displayName = "GPT-6.1 Sol",
                 ownedBy = "openai",
                 inputModalities = listOf(Model.TEXT_MODALITY, Model.IMAGE_MODALITY),
                 toolCall = true,

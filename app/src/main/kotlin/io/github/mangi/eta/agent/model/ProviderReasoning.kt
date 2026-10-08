@@ -35,6 +35,7 @@ internal object ProviderReasoning {
             ProviderSourceTypes.OPENROUTER -> applyOpenRouter(request, effort)
             ProviderSourceTypes.STEPFUN -> applyStepFun(request, config, effort)
             ProviderSourceTypes.OPENAI -> applyOpenAi(request, config, effort)
+            ProviderSourceTypes.OPENAI_CODEX -> applyNamedReasoningEffort(request, effort)
             ProviderSourceTypes.CUSTOM -> applyNamedReasoningEffort(request, effort)
         }
     }
@@ -299,7 +300,7 @@ internal object ProviderReasoning {
             "gpt-6-astra" -> require(effort !in setOf(ReasoningEffort.OFF, ReasoningEffort.MINIMAL)) {
                 "GPT-6 Astra 不支持 ${effort.displayName} thinking effort"
             }
-            "gpt-6-sol", "gpt-6-luna" -> require(effort != ReasoningEffort.MINIMAL) {
+            "gpt-6.1-sol", "gpt-6-sol", "gpt-6-luna" -> require(effort != ReasoningEffort.MINIMAL) {
                 "GPT-6 不支持 ${effort.displayName} thinking effort"
             }
             "gpt-5.6", "gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna" ->
@@ -343,7 +344,8 @@ internal object ProviderReasoning {
     private fun isLegacyReasoningModel(sourceType: String, modelId: String): Boolean {
         val model = modelId.trim().lowercase()
         return when (sourceType) {
-            ProviderSourceTypes.OPENAI ->
+            ProviderSourceTypes.OPENAI,
+            ProviderSourceTypes.OPENAI_CODEX ->
                 model.startsWith("gpt-5") || model.startsWith("gpt-6") || model.startsWith("o")
             ProviderSourceTypes.ANTHROPIC -> model.startsWith("claude-")
             ProviderSourceTypes.BAILIAN ->

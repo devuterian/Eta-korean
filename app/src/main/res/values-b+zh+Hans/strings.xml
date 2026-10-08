@@ -918,6 +918,22 @@
   </plurals>
   <string name="provider_models_endpoint_summary">读取 %1$s 的 /models 列表</string>
   <string name="provider_models_fetched_filtered">已拉取 %1$d 个模型，过滤 %2$d 个非对话模型</string>
+  <string name="provider_codex_account_title">ChatGPT 订阅</string>
+  <string name="provider_codex_account_signed_in">Codex 账号已连接</string>
+  <string name="provider_codex_account_signed_out">登录后即可使用 ChatGPT Codex 订阅。凭据会加密保存在此设备。</string>
+  <string name="provider_codex_login">登录</string>
+  <string name="provider_codex_relogin">重新登录</string>
+  <string name="provider_codex_logout">退出登录</string>
+  <string name="provider_codex_login_instructions">打开验证页面并输入此临时设备码。Eta 不会显示或记录访问令牌。</string>
+  <string name="provider_codex_device_code">设备码：%1$s</string>
+  <string name="provider_codex_open_verification">打开验证页面</string>
+  <string name="provider_codex_waiting_authorization">等待设备授权…</string>
+  <string name="provider_codex_cancel_login">取消登录</string>
+  <string name="provider_codex_models_fallback_notice">离线兜底模型（%1$d 个）。刷新账号模型目录后会替换为在线目录。</string>
+  <string name="provider_codex_models_refresh_failed">%1$s 已保留 %2$d 个离线兜底模型。</string>
+  <string name="provider_codex_models_unauthorized">Codex 模型目录返回 HTTP 401。已保留离线兜底模型。登录和对话成功本身并不能证明模型目录权限正常。</string>
+  <string name="provider_codex_model_source_fallback">离线兜底</string>
+  <string name="provider_codex_model_source_remote">在线目录</string>
   <string name="provider_model_list_count">模型列表（共 %1$d 个）</string>
   <string name="provider_model_list_matches">模型列表（匹配 %1$d / %2$d 个）</string>
   <string name="provider_model_saved">已保存：%1$s</string>

@@ -41,6 +41,7 @@ android {
         // versionCode 规则：yyyyMMdd + 两位当日序号（01 起），发版时随 versionName 一起手动递增。
         versionCode = 2026100701
         versionName = "3.3.0"
+        versionNameSuffix = "-ko"
     }
 
     signingConfigs {
@@ -85,7 +86,7 @@ android {
     }
 
     androidResources {
-        localeFilters += listOf("en", "b+zh+Hans", "b+zh+Hant")
+        localeFilters += listOf("en", "ko", "b+zh+Hans", "b+zh+Hant")
     }
 
     packaging {
