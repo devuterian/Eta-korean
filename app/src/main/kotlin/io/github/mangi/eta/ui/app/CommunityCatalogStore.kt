@@ -145,7 +145,7 @@ internal class CommunityCatalogStore(
             this is SocketTimeoutException -> ko("连接目录服务超时", "카탈로그 서버 연결 시간이 초과되었습니다")
             this is UnknownHostException -> ko("无法解析目录服务地址", "카탈로그 서버 주소를 확인할 수 없습니다")
             this is SSLException -> ko("目录服务安全连接失败", "카탈로그 서버 보안 연결에 실패했습니다")
-            message == "模型目录超出大小限制" -> ko("目录文件超出大小限制", "카탈로그 파일이 크기 제한을 초과했습니다")
+            message == "模型目录超出大小限制" || message == "모델 목록이 크기 제한을 초과했습니다." -> ko("目录文件超出大小限制", "카탈로그 파일이 크기 제한을 초과했습니다")
             this is org.json.JSONException || this is IllegalArgumentException -> ko("目录格式无效", "카탈로그 형식이 올바르지 않습니다")
             this is IOException -> ko("网络连接或本地缓存写入失败", "네트워크 연결 또는 로컬 캐시 쓰기에 실패했습니다")
             else -> ko("更新失败，请稍后重试", "업데이트하지 못했습니다. 잠시 후 다시 시도하세요.")

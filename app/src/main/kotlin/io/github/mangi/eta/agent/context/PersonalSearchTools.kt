@@ -1,5 +1,6 @@
 package io.github.mangi.eta.agent.context
 
+import io.github.mangi.eta.i18n.ko
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -9,19 +10,22 @@ internal object PersonalSearchTools {
         val name: String,
         val source: String,
         val title: String,
+        /** 发送给模型的工具描述，必须保持原文。 */
         val description: String,
+        /** 仅用于界面展示的描述（随系统语言本地化）。 */
+        val displayDescription: String = description,
     )
 
     val searches =
         listOf(
-            Search("search_bills", "bills", "查询账单", "按商户、内容和时间查找账单记录。"),
-            Search("search_todos", "todos", "查询待办线索", "查询系统从个人信息中提取的待办线索，未识别时间的记录不能按时间命中。"),
-            Search("search_calendar_todos", "calendar_todos", "查询日历待办", "查询日历中的待办及其计划时间。"),
-            Search("search_memory_collections", "collections", "查询记忆合集", "查找已保存的记忆合集，不支持业务时间筛选。"),
-            Search("search_daily_events", "events", "查询生活事件", "查找系统记录或推断的生活事件，不把推断当成确认事实。"),
-            Search("search_flights", "flights", "查询航班行程", "按航班、机场和计划起飞时间检索行程。"),
-            Search("search_hotels", "hotels", "查询酒店预订", "按酒店、地址、订单和入住时间检索预订。"),
-            Search("search_trains", "trains", "查询火车行程", "按车次、车站和出发时间检索行程。"),
+            Search("search_bills", "bills", ko("查询账单", "결제 내역 검색"), "按商户、内容和时间查找账单记录。", ko("按商户、内容和时间查找账单记录。", "가맹점, 내용, 시간으로 결제 내역을 찾습니다.")),
+            Search("search_todos", "todos", ko("查询待办线索", "할 일 단서 검색"), "查询系统从个人信息中提取的待办线索，未识别时间的记录不能按时间命中。", ko("查询系统从个人信息中提取的待办线索，未识别时间的记录不能按时间命中。", "시스템이 개인 정보에서 추출한 할 일 단서를 검색합니다. 시간이 인식되지 않은 기록은 시간으로 검색되지 않습니다.")),
+            Search("search_calendar_todos", "calendar_todos", ko("查询日历待办", "캘린더 할 일 검색"), "查询日历中的待办及其计划时间。", ko("查询日历中的待办及其计划时间。", "캘린더의 할 일과 예정 시간을 검색합니다.")),
+            Search("search_memory_collections", "collections", ko("查询记忆合集", "기억 모음 검색"), "查找已保存的记忆合集，不支持业务时间筛选。", ko("查找已保存的记忆合集，不支持业务时间筛选。", "저장된 기억 모음을 찾습니다. 시간 필터는 지원하지 않습니다.")),
+            Search("search_daily_events", "events", ko("查询生活事件", "생활 이벤트 검색"), "查找系统记录或推断的生活事件，不把推断当成确认事实。", ko("查找系统记录或推断的生活事件，不把推断当成确认事实。", "시스템이 기록하거나 추론한 생활 이벤트를 찾습니다. 추론은 확인된 사실로 취급하지 않습니다.")),
+            Search("search_flights", "flights", ko("查询航班行程", "항공편 일정 검색"), "按航班、机场和计划起飞时间检索行程。", ko("按航班、机场和计划起飞时间检索行程。", "항공편, 공항, 예정 출발 시간으로 일정을 검색합니다.")),
+            Search("search_hotels", "hotels", ko("查询酒店预订", "호텔 예약 검색"), "按酒店、地址、订单和入住时间检索预订。", ko("按酒店、地址、订单和入住时间检索预订。", "호텔, 주소, 주문, 체크인 시간으로 예약을 검색합니다.")),
+            Search("search_trains", "trains", ko("查询火车行程", "열차 일정 검색"), "按车次、车站和出发时间检索行程。", ko("按车次、车站和出发时间检索行程。", "열차 번호, 역, 출발 시간으로 일정을 검색합니다.")),
         )
     val names =
         searches.mapTo(linkedSetOf()) { it.name } + setOf("read_personal_item", "summarize_bills")

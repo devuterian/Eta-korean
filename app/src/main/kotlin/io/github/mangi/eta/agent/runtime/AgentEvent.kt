@@ -1,5 +1,6 @@
 package io.github.mangi.eta.agent.runtime
 
+import io.github.mangi.eta.i18n.ko
 import io.github.mangi.eta.core.toSafeLogToken
 
 internal sealed interface AgentEvent {
@@ -19,9 +20,9 @@ internal sealed interface AgentEvent {
         val reasonCode: String = "",
     ) : AgentEvent {
         val displayMessage: String get() = when (phase) {
-            PHASE_STARTED -> RUNNING_DETAIL
-            PHASE_COMPLETED -> "上下文已压缩，用量将在下一次模型响应后更新。"
-            else -> "上下文压缩失败，原始上下文已保留。"
+            PHASE_STARTED -> ko(RUNNING_DETAIL, "컨텍스트 압축 중…")
+            PHASE_COMPLETED -> ko("上下文已压缩，用量将在下一次模型响应后更新。", "컨텍스트를 압축했습니다. 사용량은 다음 모델 응답 후 업데이트됩니다.")
+            else -> ko("上下文压缩失败，原始上下文已保留。", "컨텍스트를 압축하지 못했습니다. 원래 컨텍스트는 유지됩니다.")
         }
         override fun toLogLine(): String =
             "context_compaction phase=${phase.toSafeLogToken()}, before=$tokensBefore, after=$tokensAfter, code=${reasonCode.toSafeLogToken()}"
@@ -60,7 +61,7 @@ internal sealed interface AgentEvent {
         val reasonCode: String,
     ) : AgentEvent {
         val displayMessage: String
-            get() = "模型请求暂时中断，${delayMs / 1000} 秒后重试（$attempt/$maxAttempts）；此前工具结果已保留。"
+            get() = ko("模型请求暂时中断，${delayMs / 1000} 秒后重试（$attempt/$maxAttempts）；此前工具结果已保留。", "모델 요청이 일시적으로 중단되었습니다. ${delayMs / 1000}초 후 다시 시도합니다(${attempt}/${maxAttempts}). 이전 도구 결과는 유지됩니다.")
 
         override fun toLogLine(): String =
             "model_retry_scheduled round=$round, attempt=$attempt, delay_ms=$delayMs, code=${reasonCode.toSafeLogToken()}"

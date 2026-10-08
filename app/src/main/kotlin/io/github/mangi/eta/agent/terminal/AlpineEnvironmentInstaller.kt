@@ -1,5 +1,6 @@
 package io.github.mangi.eta.agent.terminal
 
+import io.github.mangi.eta.i18n.ko
 import android.content.Context
 import android.os.Build
 import io.github.mangi.eta.core.AndroidAgentLogger
@@ -133,9 +134,9 @@ internal class AlpineEnvironmentInstaller(
         } catch (failure: RootlessInstallFailure) {
             return@withContext AlpineInstallResult.Failed(AlpineInstallStage.EXTRACTING, failure.code, failure.message)
         } catch (_: java.io.IOException) {
-            return@withContext AlpineInstallResult.Failed(AlpineInstallStage.EXTRACTING, "INSTALL_IO_FAILED", "安装文件无法读写，请检查内部存储空间并重试")
+            return@withContext AlpineInstallResult.Failed(AlpineInstallStage.EXTRACTING, "INSTALL_IO_FAILED", ko("安装文件无法读写，请检查内部存储空间并重试", "설치 파일을 읽거나 쓸 수 없습니다. 내부 저장소 공간을 확인한 후 다시 시도하세요"))
         } catch (_: IllegalArgumentException) {
-            return@withContext AlpineInstallResult.Failed(AlpineInstallStage.EXTRACTING, "INVALID_ARCHIVE", "环境归档无效或包含不安全路径，请重新下载后重试")
+            return@withContext AlpineInstallResult.Failed(AlpineInstallStage.EXTRACTING, "INVALID_ARCHIVE", ko("环境归档无效或包含不安全路径，请重新下载后重试", "환경 아카이브가 올바르지 않거나 안전하지 않은 경로를 포함합니다. 다시 다운로드한 후 시도하세요"))
         } finally {
             archive.delete()
         }

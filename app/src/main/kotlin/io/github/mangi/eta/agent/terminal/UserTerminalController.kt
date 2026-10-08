@@ -1,5 +1,6 @@
 package io.github.mangi.eta.agent.terminal
 
+import io.github.mangi.eta.i18n.ko
 import io.github.mangi.eta.core.AgentLogger
 import kotlin.concurrent.thread
 
@@ -91,19 +92,19 @@ internal class UserTerminalController(
         synchronized(sessionLock) {
             pruneDeadSessionsLocked()
             if (sessions.size >= MAX_SESSIONS) {
-                return OpenResult.Failed("SESSION_LIMIT_REACHED", "会话数量已达上限")
+                return OpenResult.Failed("SESSION_LIMIT_REACHED", ko("会话数量已达上限", "세션 수가 최대치에 도달했습니다"))
             }
             if (selectedIdentity != "root" && selectedIdentity != "user") {
                 return OpenResult.Failed("INVALID_ARGUMENT", "identity 仅支持 root/user")
             }
             if (environment.isLinux && selectedIdentity != "root" && LinuxEnvironmentPaths.backendOf(environmentRootfsPath) != LinuxExecutionBackend.PROOT) {
-                return OpenResult.Failed("LINUX_ENVIRONMENT_REQUIRES_ROOT", "Linux 工具环境仅支持 root identity")
+                return OpenResult.Failed("LINUX_ENVIRONMENT_REQUIRES_ROOT", ko("Linux 工具环境仅支持 root identity", "Linux 도구 환경은 root identity만 지원합니다"))
             }
-            if (selectedIdentity == "root" && !rootAvailable()) return OpenResult.Failed("ROOT_REQUIRED", "Root 授权不可用")
+            if (selectedIdentity == "root" && !rootAvailable()) return OpenResult.Failed("ROOT_REQUIRED", ko("Root 授权不可用", "Root 권한을 사용할 수 없습니다"))
             if (environment.isLinux &&
                 !LinuxEnvironmentPaths.rootfsReady(environmentRootfsPath)
             ) {
-                return OpenResult.Failed("LINUX_ENVIRONMENT_NOT_READY", "Linux 工具环境尚未安装")
+                return OpenResult.Failed("LINUX_ENVIRONMENT_NOT_READY", ko("Linux 工具环境尚未安装", "Linux 도구 환경이 아직 설치되지 않았습니다"))
             }
             val safeCwd = cwd?.takeIf { it.isNotBlank() } ?: if (environment.isLinux) LINUX_DEFAULT_CWD else TerminalRuntime.workspace(selectedIdentity)
             val process = processSupervisor.startShellProcess(
@@ -117,7 +118,7 @@ internal class UserTerminalController(
                 } else {
                     emptyList()
                 },
-            ) ?: return OpenResult.Failed("PROCESS_START_FAILED", "无法启动终端进程")
+            ) ?: return OpenResult.Failed("PROCESS_START_FAILED", ko("无法启动终端进程", "터미널 프로세스를 시작할 수 없습니다"))
             val newSession = Session(
                 identity = selectedIdentity,
                 environment = environment,
@@ -141,7 +142,7 @@ internal class UserTerminalController(
             }
             if (!processSupervisor.transferActiveProcess(process) { sessions[sessionId] = newSession }) {
                 processSupervisor.terminateProcessTree(process)
-                return OpenResult.Failed("TERMINAL_CLOSED", "终端控制器已关闭")
+                return OpenResult.Failed("TERMINAL_CLOSED", ko("终端控制器已关闭", "터미널 컨트롤러가 닫혔습니다"))
             }
 
             val setup = buildString {
@@ -157,7 +158,7 @@ internal class UserTerminalController(
             if (setupResult.exitCode != 0 || setupResult.timedOut) {
                 closeSessionLocked(sessionId)
                 logger.warn("User terminal action=open outcome=failed environment=${environment.wireName}")
-                return OpenResult.Failed("SESSION_OPEN_FAILED", "终端会话初始化失败")
+                return OpenResult.Failed("SESSION_OPEN_FAILED", ko("终端会话初始化失败", "터미널 세션을 초기화하지 못했습니다"))
             }
             newSession.cwd = setupResult.cwd ?: safeCwd
             newSession.stdout.clear()

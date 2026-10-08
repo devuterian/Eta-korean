@@ -83,9 +83,9 @@ internal fun ToolActivityMessageUi.outcomeLine(): String? {
         ToolActivityStatusUi.Running -> null
         ToolActivityStatusUi.Failed, ToolActivityStatusUi.Unknown -> {
             val detail = lines.drop(1).lastOrNull { it != TRUNCATION_MARK }
-            head.removePrefix(FAILURE_PREFIX)
+            head.removeAnyPrefix(FAILURE_PREFIXES)
                 .substringBefore(FAILURE_CODE_SEPARATOR)
-                .takeIf { it.isNotBlank() && it != FAILURE_LABEL }
+                .takeIf { it.isNotBlank() && it !in FAILURE_LABELS }
                 ?: detail
         }
         ToolActivityStatusUi.Success -> {
@@ -93,16 +93,19 @@ internal fun ToolActivityMessageUi.outcomeLine(): String? {
             when {
                 output != null -> output
                 head in TRIVIAL_SUCCESS -> null
-                else -> head.removePrefix(SUCCESS_PREFIX).takeIf { it.isNotBlank() }
+                else -> head.removeAnyPrefix(SUCCESS_PREFIXES).takeIf { it.isNotBlank() }
             }
         }
     }
 }
 
-// 与 Runtime 侧结果摘要的固定格式对应。
-private const val FAILURE_LABEL = "失败"
-private const val FAILURE_PREFIX = "失败 · "
+private fun String.removeAnyPrefix(prefixes: List<String>): String =
+    prefixes.firstOrNull { startsWith(it) }?.let { removePrefix(it) } ?: this
+
+// 与 Runtime 侧结果摘要的固定格式对应。중국어(기존 기록·다른 로케일)와 한국어 로케일 문구를 모두 인식한다.
+private val FAILURE_LABELS = setOf("失败", "실패")
+private val FAILURE_PREFIXES = listOf("失败 · ", "실패 · ")
 private const val FAILURE_CODE_SEPARATOR = " · code="
-private const val SUCCESS_PREFIX = "完成 · "
+private val SUCCESS_PREFIXES = listOf("完成 · ", "완료 · ")
 private const val TRUNCATION_MARK = "…"
-private val TRIVIAL_SUCCESS = setOf("完成", "执行完成")
+private val TRIVIAL_SUCCESS = setOf("完成", "执行完成", "완료", "실행 완료")

@@ -1,5 +1,6 @@
 package io.github.mangi.eta.agent.mcp
 
+import io.github.mangi.eta.i18n.ko
 import io.github.mangi.eta.data.model.McpServerSetting
 import io.github.mangi.eta.data.repository.McpServerRepository
 
@@ -24,7 +25,7 @@ internal object McpServerManager {
 
     suspend fun refresh(serverId: String): McpServerSetting {
         val server = requireNotNull(McpServerRepository.serverById(serverId)) {
-            "MCP 服务器不存在"
+            ko("MCP 服务器不存在", "MCP 서버가 없습니다")
         }
         val refreshed = discover(server, McpServerRepository.bearerToken(serverId))
         McpServerRepository.update(refreshed)

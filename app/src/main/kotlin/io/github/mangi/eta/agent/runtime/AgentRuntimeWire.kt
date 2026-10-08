@@ -1,5 +1,6 @@
 package io.github.mangi.eta.agent.runtime
 
+import io.github.mangi.eta.i18n.ko
 import io.github.mangi.eta.agent.model.AgentContextSnapshot
 import io.github.mangi.eta.agent.model.AssistantScreenContextProjection
 
@@ -42,7 +43,7 @@ internal object AgentRuntimeWire {
     const val ETA_VOICE_HANDOFF_SOURCE = "eta_voice"
 
     internal class PayloadTooLargeException(sizeBytes: Int) : IllegalArgumentException(
-        "Agent Runtime 请求元数据过大（$sizeBytes bytes）；请缩短输入或会话历史后重试"
+        ko("Agent Runtime 请求元数据过大（$sizeBytes bytes）；请缩短输入或会话历史后重试", "Agent Runtime 요청 메타데이터가 너무 큽니다(${sizeBytes}바이트). 입력이나 대화 기록을 줄인 후 다시 시도하세요")
     )
 
     /** bind 获取服务端 Messenger 的 Intent action。 */
